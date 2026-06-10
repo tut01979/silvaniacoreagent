@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Silvania CoreAgent | Asistente Ejecutivo de Élite</title>
+  <meta name="description" content="El asistente personal definitivo que transforma tu Telegram en un centro de control ejecutivo inteligente para gestionar Gmail, Drive, Calendar y más.">
+  <!-- SEO Meta Tags -->
+  <meta property="og:title" content="Silvania CoreAgent | Asistente Ejecutivo de Élite">
+  <meta property="og:description" content="Transforma tu Telegram en un centro de control ejecutivo inteligente para gestionar Gmail, Drive, Calendar y más.">
+  <meta property="og:type" content="website">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Plus+Jakarta+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    :root {
+      --bg-color: #0b0f19;
+      --card-bg: rgba(17, 24, 39, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --primary: #10b981;
+      --primary-glow: rgba(16, 185, 129, 0.15);
+      --secondary: #3b82f6;
+      --accent: #8b5cf6;
+      --font-title: 'Outfit', sans-serif;
+      --font-body: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    /* Fondo degradado animado */
+    .bg-glows {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      overflow: hidden;
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    .glow-circle {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(100px);
+      opacity: 0.15;
+    }
+
+    .glow-1 {
+      width: 400px;
+      height: 400px;
+      background: var(--primary);
+      top: -100px;
+      right: -100px;
+    }
+
+    .glow-2 {
+      width: 500px;
+      height: 500px;
+      background: var(--secondary);
+      bottom: -100px;
+      left: -150px;
+    }
+
+    .glow-3 {
+      width: 300px;
+      height: 300px;
+      background: var(--accent);
+      top: 40%;
+      right: 15%;
+    }
+
+    /* Header */
+    header {
+      backdrop-filter: blur(12px);
+      background-color: rgba(11, 15, 25, 0.7);
+      border-bottom: 1px solid var(--card-border);
+      position: fixed;
+      width: 100%;
+      top: 0;
+      left: 0;
+      z-index: 100;
+      padding: 1rem 2rem;
+    }
+
+    .header-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-family: var(--font-title);
+      font-weight: 800;
+      font-size: 1.5rem;
+      background: linear-gradient(135deg, #3b82f6, #10b981);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-decoration: none;
+    }
+
+    .logo i {
+      background: linear-gradient(135deg, #3b82f6, #10b981);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .nav-btn {
+      background: linear-gradient(135deg, var(--primary), #059669);
+      color: white;
+      text-decoration: none;
+      padding: 0.6rem 1.4rem;
+      border-radius: 50px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px var(--primary-glow);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .nav-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+    }
+
+    /* Hero Section */
+    .hero {
+      padding: 10rem 2rem 6rem;
+      max-width: 1200px;
+      margin: 0 auto;
+      text-align: center;
+      position: relative;
+    }
+
+    .hero-tag {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: var(--primary);
+      padding: 0.4rem 1rem;
+      border-radius: 50px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: inline-block;
+      margin-bottom: 2rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .hero h1 {
+      font-family: var(--font-title);
+      font-size: 4rem;
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 1.5rem;
+      letter-spacing: -1px;
+    }
+
+    .hero h1 span {
+      background: linear-gradient(135deg, #60a5fa, #34d399, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      font-size: 1.25rem;
+      color: var(--text-muted);
+      max-width: 700px;
+      margin: 0 auto 3rem;
+      font-weight: 300;
+    }
+
+    .cta-container {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-main {
+      background: linear-gradient(135deg, var(--primary), #059669);
+      color: white;
+      text-decoration: none;
+      padding: 1rem 2.2rem;
+      border-radius: 50px;
+      font-weight: 700;
+      font-size: 1.1rem;
+      transition: all 0.3s ease;
+      box-shadow: 0 10px 25px var(--primary-glow);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .btn-main:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 15px 30px rgba(16, 185, 129, 0.35);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      text-decoration: none;
+      padding: 1rem 2.2rem;
+      border-radius: 50px;
+      font-weight: 600;
+      font-size: 1.1rem;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateY(-3px);
+    }
+
+    /* Features Section */
+    .features {
+      padding: 6rem 2rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .section-title {
+      text-align: center;
+      margin-bottom: 4rem;
+    }
+
+    .section-title h2 {
+      font-family: var(--font-title);
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 1rem;
+    }
+
+    .section-title p {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 2rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      padding: 2.5rem;
+      backdrop-filter: blur(8px);
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 100%);
+      pointer-events: none;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      border-color: rgba(16, 185, 129, 0.25);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 0 0 30px rgba(16, 185, 129, 0.05);
+    }
+
+    .card-icon {
+      width: 60px;
+      height: 60px;
+      border-radius: 16px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      color: var(--primary);
+      margin-bottom: 1.5rem;
+      transition: all 0.3s ease;
+    }
+
+    .card:hover .card-icon {
+      background: var(--primary);
+      color: #0b0f19;
+      transform: scale(1.05);
+    }
+
+    .card h3 {
+      font-family: var(--font-title);
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+    }
+
+    .card p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    /* Guide Section */
+    .guide {
+      padding: 6rem 2rem;
+      background: rgba(17, 24, 39, 0.4);
+      border-top: 1px solid var(--card-border);
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .guide-container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+      margin-top: 4rem;
+    }
+
+    .step {
+      display: flex;
+      gap: 2rem;
+      background: rgba(11, 15, 25, 0.6);
+      border: 1px solid var(--card-border);
+      padding: 2rem;
+      border-radius: 20px;
+      align-items: flex-start;
+      transition: border-color 0.3s;
+    }
+
+    .step:hover {
+      border-color: rgba(59, 130, 246, 0.3);
+    }
+
+    .step-num {
+      background: linear-gradient(135deg, var(--secondary), var(--accent));
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-family: var(--font-title);
+      font-size: 1.25rem;
+      flex-shrink: 0;
+      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+    }
+
+    .step-content h3 {
+      font-family: var(--font-title);
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .step-content p {
+      color: var(--text-muted);
+    }
+
+    code {
+      background: rgba(255, 255, 255, 0.08);
+      padding: 0.2rem 0.5rem;
+      border-radius: 5px;
+      font-family: monospace;
+      color: #38bdf8;
+      font-size: 0.95rem;
+    }
+
+    /* Footer */
+    footer {
+      padding: 4rem 2rem;
+      text-align: center;
+      border-top: 1px solid var(--card-border);
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .footer-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.3s;
+    }
+
+    .footer-links a:hover {
+      color: var(--primary);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .hero h1 {
+        font-size: 2.75rem;
+      }
+      .cta-container {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .btn-main, .btn-secondary {
+        justify-content: center;
+      }
+      .step {
+        flex-direction: column;
+        gap: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-glows">
+    <div class="glow-circle glow-1"></div>
+    <div class="glow-circle glow-2"></div>
+    <div class="glow-circle glow-3"></div>
+  </div>
+
+  <header>
+    <div class="header-container">
+      <a href="#" class="logo">
+        <i class="fa-solid fa-bolt"></i> Silvania CoreAgent
+      </a>
+      <a href="https://t.me/{{BOT_USERNAME}}" target="_blank" class="nav-btn">
+        <i class="fa-brands fa-telegram"></i> Telegram
+      </a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <span class="hero-tag">Inteligencia Ejecutiva 2.0</span>
+    <h1>El Asistente de Élite en tu <span>Telegram</span></h1>
+    <p>Gestiona tu correo de Gmail, carpetas de Google Drive, hojas de cálculo en Sheets y eventos en Calendar mediante lenguaje natural, notas de voz y carga de archivos.</p>
+    <div class="cta-container">
+      <a href="https://t.me/{{BOT_USERNAME}}" target="_blank" class="btn-main">
+        <i class="fa-brands fa-telegram"></i> Hablar con Silvania
+      </a>
+      <a href="#tutorial" class="btn-secondary">
+        <i class="fa-solid fa-circle-play"></i> Ver Cómo Vincular
+      </a>
+    </div>
+  </section>
+
+  <section class="features">
+    <div class="section-title">
+      <h2>Poder de Control Absoluto</h2>
+      <p>Herramientas y habilidades integradas y diseñadas para que actúes de manera ágil y tomes el control de tus tareas diarias.</p>
+    </div>
+    <div class="grid">
+      
+      <div class="card">
+        <div class="card-icon"><i class="fa-solid fa-envelope"></i></div>
+        <h3>Gestión de Gmail</h3>
+        <p>Lee tus correos recientes, redacta respuestas instantáneas o busca mensajes específicos de tu bandeja de entrada utilizando comandos y lenguaje natural en tu chat de Telegram.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon"><i class="fa-solid fa-calendar-days"></i></div>
+        <h3>Google Calendar</h3>
+        <p>Consulta tu agenda diaria de eventos, programa nuevas reuniones, actualiza horarios o cancela citas de forma automática e integrada.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon"><i class="fa-solid fa-folder-open"></i></div>
+        <h3>Drive y Sheets</h3>
+        <p>Sube imágenes o documentos. Silvania los identificará, los renombrará de forma inteligente, les añadirá notas de texto y los organizará automáticamente en tus carpetas de Google Drive.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon"><i class="fa-brands fa-youtube"></i></div>
+        <h3>Extractor de YouTube</h3>
+        <p>Envía cualquier enlace de YouTube y Silvania extraerá los subtítulos y la transcripción del vídeo para darte un resumen ejecutivo y organizado al instante.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon"><i class="fa-solid fa-microphone-lines"></i></div>
+        <h3>Comandos de Voz (TTS)</h3>
+        <p>Envía mensajes de voz para interactuar con Silvania y escúchala responderte con audios realistas gracias a motores integrados de alta gama como ElevenLabs y AWS Polly.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon"><i class="fa-solid fa-user-shield"></i></div>
+        <h3>SaaS Multi-usuario</h3>
+        <p>Aislamiento total y cifrado de los datos de conversación y credenciales de Google de cada usuario. Cada cuenta es única y privada.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="guide" id="tutorial">
+    <div class="guide-container">
+      <div class="section-title">
+        <h2>Cómo Vincular tu Cuenta</h2>
+        <p>Sigue estos sencillos pasos para dotar a Silvania de acceso a tus herramientas de Google de forma 100% segura.</p>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <h3>Iniciar la conversación</h3>
+            <p>Haz clic en el botón de Telegram y presiona <code>/start</code> para iniciar el bot.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <h3>Solicitar autorización</h3>
+            <p>Escribe en el chat: <code>/auth tu-correo@gmail.com</code>. Silvania creará un enlace seguro de inicio de sesión de Google.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <h3>Autorizar</h3>
+            <p>Abre el enlace que te envíe el bot, autoriza los permisos de Google Workspace y serás redirigido automáticamente a una ventana de éxito. ¡Listo, tu asistente está conectado!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="footer-links">
+      <a href="https://t.me/{{BOT_USERNAME}}" target="_blank">Telegram Bot</a>
+      <a href="#">Soporte</a>
+      <a href="#">Privacidad</a>
+    </div>
+    <p>&copy; 2026 Silvania CoreAgent. Diseñado para la excelencia empresarial.</p>
+  </footer>
+
+</body>
+</html>

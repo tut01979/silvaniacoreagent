@@ -25,6 +25,15 @@ if (process.env.GOOGLE_CREDS_JSON) {
 
 const bot = new Bot(config.telegram.token);
 
+let botUsername = "silvaniacore_bot";
+bot.api.getMe().then(me => {
+  botUsername = me.username;
+  console.log(`🤖 Bot conectado como: @${botUsername}`);
+}).catch(err => {
+  console.error("❌ Error obteniendo info del bot:", err.message);
+});
+
+
 // Función para limpiar texto antes de enviarlo al motor de voz
 function cleanTextForTTS(text: string): string {
   return text
@@ -113,6 +122,24 @@ const activeAuthProcesses = new Map<number, PendingAuth>();
 const app = express();
 const PORT = process.env.PORT || 3000;
 const PUBLIC_URL = process.env.PUBLIC_URL || ""; // e.g. https://myapp.railway.app
+
+// Servir Landing Page dinámica
+app.get("/", (req, res) => {
+  try {
+    const htmlPath = path.join(process.cwd(), "public", "index.html");
+    if (fs.existsSync(htmlPath)) {
+      let html = fs.readFileSync(htmlPath, "utf8");
+      html = html.replace(/{{BOT_USERNAME}}/g, botUsername);
+      res.send(html);
+    } else {
+      res.status(404).send("Landing page no encontrada.");
+    }
+  } catch (err: any) {
+    console.error("Error sirviendo landing page:", err);
+    res.status(500).send("Error interno.");
+  }
+});
+
 
 app.get("/auth/google/callback", async (req, res) => {
   const { code, state } = req.query;
