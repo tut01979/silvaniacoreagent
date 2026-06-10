@@ -12,8 +12,16 @@ import path from "path";
 import { userContextStore } from "./services/context.js";
 import { executeTool } from "./tools/index.js";
 import { MOTIVATIONAL_QUOTES } from "./config/quotes.js";
+import fs from "fs";
 
-
+if (process.env.GOOGLE_CREDS_JSON) {
+  try {
+    fs.writeFileSync("./service-account.json", process.env.GOOGLE_CREDS_JSON);
+    console.log("🔑 service-account.json creado exitosamente desde variable de entorno.");
+  } catch (err: any) {
+    console.error("❌ Error creando service-account.json desde variable de entorno:", err.message);
+  }
+}
 
 const bot = new Bot(config.telegram.token);
 
