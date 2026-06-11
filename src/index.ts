@@ -120,6 +120,7 @@ interface PendingAuth {
 const activeAuthProcesses = new Map<number, PendingAuth>();
 
 const app = express();
+app.use(express.static("public"));
 const PORT = process.env.PORT || 3000;
 const PUBLIC_URL = process.env.PUBLIC_URL || ""; // e.g. https://myapp.railway.app
 

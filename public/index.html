@@ -153,8 +153,16 @@
       padding: 10rem 2rem 6rem;
       max-width: 1200px;
       margin: 0 auto;
-      text-align: center;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 4rem;
+      align-items: center;
       position: relative;
+      text-align: left;
+    }
+
+    .hero-text {
+      max-width: 100%;
     }
 
     .hero-tag {
@@ -173,7 +181,7 @@
 
     .hero h1 {
       font-family: var(--font-title);
-      font-size: 4rem;
+      font-size: 3.8rem;
       font-weight: 800;
       line-height: 1.1;
       margin-bottom: 1.5rem;
@@ -187,18 +195,65 @@
     }
 
     .hero p {
-      font-size: 1.25rem;
+      font-size: 1.2rem;
       color: var(--text-muted);
-      max-width: 700px;
-      margin: 0 auto 3rem;
+      margin-bottom: 3rem;
       font-weight: 300;
     }
 
     .cta-container {
       display: flex;
-      justify-content: center;
+      justify-content: flex-start;
       gap: 1.5rem;
       flex-wrap: wrap;
+    }
+
+    .hero-image-container {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      perspective: 1000px;
+    }
+
+    .robot-wrapper {
+      position: relative;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(59, 130, 246, 0.15));
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 32px;
+      padding: 12px;
+      box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6), 0 0 50px rgba(16, 185, 129, 0.15);
+      backdrop-filter: blur(12px);
+      transition: transform 0.1s ease-out, box-shadow 0.3s ease;
+      will-change: transform;
+      transform-style: preserve-3d;
+    }
+
+    .robot-wrapper:hover {
+      box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.8), 0 0 60px rgba(16, 185, 129, 0.25);
+    }
+
+    .robot-image {
+      width: 100%;
+      max-width: 340px;
+      height: auto;
+      border-radius: 24px;
+      display: block;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transform: translateZ(20px);
+    }
+
+    .robot-glow {
+      position: absolute;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(16, 185, 129, 0.25) 0%, transparent 70%);
+      filter: blur(50px);
+      z-index: -1;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
     }
 
     .btn-main {
@@ -433,17 +488,32 @@
     }
 
     /* Responsive */
-    @media (max-width: 768px) {
+    @media (max-width: 992px) {
+      .hero {
+        grid-template-columns: 1fr;
+        text-align: center;
+        padding: 8rem 1.5rem 4rem;
+        gap: 2.5rem;
+      }
       .hero h1 {
-        font-size: 2.75rem;
+        font-size: 3rem;
       }
       .cta-container {
+        justify-content: center;
         flex-direction: column;
         align-items: stretch;
       }
       .btn-main, .btn-secondary {
         justify-content: center;
       }
+      .hero-image-container {
+        margin-top: 2rem;
+      }
+      .robot-image {
+        max-width: 280px;
+      }
+    }
+    @media (max-width: 768px) {
       .step {
         flex-direction: column;
         gap: 1rem;
@@ -471,16 +541,24 @@
   </header>
 
   <section class="hero">
-    <span class="hero-tag">Inteligencia Ejecutiva 2.0</span>
-    <h1>El Asistente de Élite en tu <span>Telegram</span></h1>
-    <p>Gestiona tu correo de Gmail, carpetas de Google Drive, hojas de cálculo en Sheets y eventos en Calendar mediante lenguaje natural, notas de voz y carga de archivos.</p>
-    <div class="cta-container">
-      <a href="https://t.me/{{BOT_USERNAME}}" target="_blank" class="btn-main">
-        <i class="fa-brands fa-telegram"></i> Hablar con Silvania
-      </a>
-      <a href="#tutorial" class="btn-secondary">
-        <i class="fa-solid fa-circle-play"></i> Ver Cómo Vincular
-      </a>
+    <div class="hero-text">
+      <span class="hero-tag">Inteligencia Ejecutiva 2.0</span>
+      <h1>El Asistente de Élite en tu <span>Telegram</span></h1>
+      <p>Gestiona tu correo de Gmail, carpetas de Google Drive, hojas de cálculo en Sheets y eventos en Calendar mediante lenguaje natural, notas de voz y carga de archivos.</p>
+      <div class="cta-container">
+        <a href="https://t.me/{{BOT_USERNAME}}" target="_blank" class="btn-main">
+          <i class="fa-brands fa-telegram"></i> Hablar con Silvania
+        </a>
+        <a href="#tutorial" class="btn-secondary">
+          <i class="fa-solid fa-circle-play"></i> Ver Cómo Vincular
+        </a>
+      </div>
+    </div>
+    <div class="hero-image-container">
+      <div class="robot-wrapper" id="interactive-robot">
+        <img src="/robot.png" alt="Silvania Asistente Ejecutivo" class="robot-image">
+        <div class="robot-glow"></div>
+      </div>
     </div>
   </section>
 
@@ -571,5 +649,50 @@
     <p>&copy; 2026 Silvania CoreAgent. Diseñado para la excelencia empresarial.</p>
   </footer>
 
+  <script>
+    // Efecto 3D interactivo con el Scroll (Parallax)
+    window.addEventListener('scroll', () => {
+      const scrolled = window.scrollY;
+      const robot = document.getElementById('interactive-robot');
+      if (robot) {
+        const yVal = scrolled * 0.12; // Mover sutilmente hacia abajo
+        const rVal = scrolled * 0.04;  // Rotación leve
+        const scaleVal = Math.max(0.85, 1 - (scrolled * 0.00015)); // Reducir escala gradualmente
+        
+        robot.style.transform = `translateY(${yVal}px) rotate(${rVal}deg) scale(${scaleVal})`;
+      }
+    });
+
+    // Efecto 3D interactivo con el Mouse (Tilt Effect)
+    const card = document.getElementById('interactive-robot');
+    if (card) {
+      card.addEventListener('mousemove', (e) => {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        
+        // Rotación máxima de 12 grados en ejes X e Y
+        const rotateX = ((centerY - y) / centerY) * 12;
+        const rotateY = ((x - centerX) / centerX) * 12;
+        
+        const scrolled = window.scrollY;
+        const yVal = scrolled * 0.12;
+        const rVal = scrolled * 0.04;
+        
+        card.style.transform = `translateY(${yVal}px) rotate(${rVal}deg) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.03)`;
+      });
+      
+      card.addEventListener('mouseleave', () => {
+        const scrolled = window.scrollY;
+        const yVal = scrolled * 0.12;
+        const rVal = scrolled * 0.04;
+        
+        card.style.transform = `translateY(${yVal}px) rotate(${rVal}deg) rotateX(0deg) rotateY(0deg) scale(1)`;
+      });
+    }
+  </script>
 </body>
 </html>
