@@ -12,6 +12,7 @@ import path from "path";
 import { userContextStore } from "./services/context.js";
 import { executeTool } from "./tools/index.js";
 import { MOTIVATIONAL_QUOTES } from "./config/quotes.js";
+import axios from "axios";
 import fs from "fs";
 
 if (process.env.GOOGLE_CREDS_JSON) {
@@ -33,6 +34,27 @@ bot.api.getMe().then(me => {
   console.error("❌ Error obteniendo info del bot:", err.message);
 });
 
+const app = express();
+app.use(express.static("public"));
+const PORT = process.env.PORT || 3000;
+const PUBLIC_URL = process.env.PUBLIC_URL || "";
+
+// Servir Landing Page dinámica
+app.get("/", (req: any, res: any) => {
+  try {
+    const htmlPath = path.join(process.cwd(), "public", "index.html");
+    if (fs.existsSync(htmlPath)) {
+      let html = fs.readFileSync(htmlPath, "utf8");
+      html = html.replace(/{{BOT_USERNAME}}/g, botUsername);
+      res.send(html);
+    } else {
+      res.status(404).send("Landing page no encontrada.");
+    }
+  } catch (err: any) {
+    console.error("Error sirviendo landing page:", err);
+    res.status(500).send("Error interno.");
+  }
+});
 
 // Función para limpiar texto antes de enviarlo al motor de voz
 function cleanTextForTTS(text: string): string {
@@ -110,72 +132,155 @@ async function safeReply(ctx: any, text: string) {
   }
 }
 
-interface PendingAuth {
-  email: string;
-  authProcess: any;
-  urlSent: boolean;
-  port?: string;
-  ctx: any;
-}
-const activeAuthProcesses = new Map<number, PendingAuth>();
-
-const app = express();
-app.use(express.static("public"));
-const PORT = process.env.PORT || 3000;
-const PUBLIC_URL = process.env.PUBLIC_URL || ""; // e.g. https://myapp.railway.app
-
-// Servir Landing Page dinámica
-app.get("/", (req, res) => {
+function getGoogleCredentials() {
   try {
-    const htmlPath = path.join(process.cwd(), "public", "index.html");
-    if (fs.existsSync(htmlPath)) {
-      let html = fs.readFileSync(htmlPath, "utf8");
-      html = html.replace(/{{BOT_USERNAME}}/g, botUsername);
-      res.send(html);
-    } else {
-      res.status(404).send("Landing page no encontrada.");
+    const credsPath = path.join(process.cwd(), "data", "gmail-credentials.json");
+    if (fs.existsSync(credsPath)) {
+      const data = JSON.parse(fs.readFileSync(credsPath, "utf8"));
+      return data.installed || data.web;
     }
   } catch (err: any) {
-    console.error("Error sirviendo landing page:", err);
-    res.status(500).send("Error interno.");
+    console.error("Error leyendo gmail-credentials.json:", err.message);
   }
-});
+  return null;
+}
 
-
-app.get("/auth/google/callback", async (req, res) => {
+app.get("/auth/google/callback", async (req: any, res: any) => {
   const { code, state } = req.query;
   if (!code || !state) {
     return res.status(400).send("Faltan parámetros code o state.");
   }
   const userId = parseInt(state as string);
-  const pending = activeAuthProcesses.get(userId);
-  if (!pending) {
-    return res.status(400).send("No hay ningún proceso de autenticación activo para este usuario.");
-  }
-  
-  const port = pending.port || "8080";
-  const redirectUrl = `http://localhost:${port}/oauth2/callback?code=${code}&state=${state}\n`;
-  
+
   try {
-    pending.authProcess.stdin.write(redirectUrl);
-    res.send(`
-      <html>
-        <head>
-          <title>Conexión SilvaniaCoreAgent</title>
-          <meta charset="utf-8">
-        </head>
-        <body style="font-family: -apple-system, sans-serif; text-align: center; padding: 50px; background-color: #f5f5f5;">
-          <div style="background: white; padding: 30px; border-radius: 10px; display: inline-block; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-            <h1 style="color: #4CAF50; margin-bottom: 10px;">⚡ ¡Vínculo Completado!</h1>
-            <p style="color: #666; font-size: 16px;">Has autorizado correctamente el acceso de SilvaniaCoreAgent.</p>
-            <p style="color: #999; font-size: 14px;">Ya puedes cerrar esta ventana y regresar a Telegram.</p>
-          </div>
-        </body>
-      </html>
-    `);
+    const creds = getGoogleCredentials();
+    if (!creds) {
+      return res.status(500).send("No se encontraron las credenciales del cliente de Google.");
+    }
+
+    const redirectUri = PUBLIC_URL 
+      ? `${PUBLIC_URL}/auth/google/callback` 
+      : `http://localhost:${PORT}/auth/google/callback`;
+
+    // 1. Intercambiar el código por tokens
+    const tokenResponse = await axios.post("https://oauth2.googleapis.com/token", {
+      code,
+      client_id: creds.client_id,
+      client_secret: creds.client_secret,
+      redirect_uri: redirectUri,
+      grant_type: "authorization_code"
+    });
+
+    const tokens = tokenResponse.data;
+    const { access_token, refresh_token } = tokens;
+
+    // 2. Obtener el email del usuario con el access_token
+    const userinfoResponse = await axios.get("https://www.googleapis.com/oauth2/v2/userinfo", {
+      headers: { Authorization: `Bearer ${access_token}` }
+    });
+
+    const email = userinfoResponse.data.email;
+    if (!email) {
+      return res.status(400).send("No se pudo obtener el correo del usuario.");
+    }
+
+    console.log(`🔑 Vinculando usuario ${userId} con el correo ${email}...`);
+
+    // 3. Guardar el correo en la base de datos
+    await dbService.setUserEmail(userId, email);
+
+    // 4. Importar el refresh_token a gog CLI si se recibió
+    if (refresh_token) {
+      const tokenObj = {
+        email: email,
+        client: "default",
+        services: ["gmail", "calendar", "drive", "sheets"],
+        scopes: [
+          "openid",
+          "profile",
+          "https://www.googleapis.com/auth/userinfo.email",
+          "https://www.googleapis.com/auth/gmail.modify",
+          "https://www.googleapis.com/auth/drive",
+          "https://www.googleapis.com/auth/calendar",
+          "https://www.googleapis.com/auth/spreadsheets"
+        ],
+        created_at: new Date().toISOString(),
+        refresh_token: refresh_token
+      };
+
+      const localDataPath = path.join(process.cwd(), "data");
+      const tempTokenPath = path.join(localDataPath, `temp_token_${userId}.json`);
+      
+      fs.writeFileSync(tempTokenPath, JSON.stringify(tokenObj, null, 2));
+
+      const executable = process.platform === "win32" ? "bin\\gog.exe" : "./bin/gog";
+      const customEnv = { 
+        ...process.env, 
+        APPDATA: localDataPath,
+        HOME: localDataPath, 
+        USERPROFILE: localDataPath
+      };
+
+      const importCmd = `"${executable}" auth tokens import "${tempTokenPath}"`;
+      console.log(`🔧 [gog] Importando token: ${importCmd}`);
+      
+      const { exec } = await import("child_process");
+      exec(importCmd, { env: customEnv }, async (err, stdout, stderr) => {
+        try { fs.unlinkSync(tempTokenPath); } catch {}
+
+        if (err) {
+          console.error("❌ Error importando token en gog:", stderr || err.message);
+          res.status(500).send("Error al registrar las credenciales en el sistema.");
+        } else {
+          console.log(`✅ Token importado correctamente en gog para ${email}`);
+          
+          try {
+            await bot.api.sendMessage(userId, `✅ ¡Tu cuenta de Google (${email}) ha sido vinculada correctamente! Ya puedes utilizar todas mis herramientas.`);
+          } catch (tErr: any) {
+            console.error("Error enviando mensaje de éxito a Telegram:", tErr.message);
+          }
+
+          res.send(`
+            <html>
+              <head>
+                <title>Conexión SilvaniaCoreAgent</title>
+                <meta charset="utf-8">
+              </head>
+              <body style="font-family: -apple-system, sans-serif; text-align: center; padding: 50px; background-color: #0b0f19; color: #f3f4f6; margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center;">
+                <div style="background: rgba(17, 24, 39, 0.7); padding: 40px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: inline-block;">
+                  <h1 style="color: #10b981; margin-bottom: 20px; font-size: 2.2rem;">⚡ ¡Vínculo Completado!</h1>
+                  <p style="color: #9ca3af; font-size: 1.1rem; margin-bottom: 20px;">Has autorizado correctamente el acceso para <strong>${email}</strong>.</p>
+                  <p style="color: #6b7280; font-size: 0.95rem;">Ya puedes cerrar esta ventana y regresar a Telegram.</p>
+                </div>
+              </body>
+            </html>
+          `);
+        }
+      });
+    } else {
+      try {
+        await bot.api.sendMessage(userId, `✅ ¡Tu cuenta de Google (${email}) ya estaba vinculada! Si tienes problemas de acceso, ve a la configuración de seguridad de tu cuenta de Google, revoca el acceso a la aplicación de Silvania y vuelve a iniciar el proceso.`);
+      } catch {}
+
+      res.send(`
+        <html>
+          <head>
+            <title>Conexión SilvaniaCoreAgent</title>
+            <meta charset="utf-8">
+          </head>
+          <body style="font-family: -apple-system, sans-serif; text-align: center; padding: 50px; background-color: #0b0f19; color: #f3f4f6; margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center;">
+            <div style="background: rgba(17, 24, 39, 0.7); padding: 40px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: inline-block;">
+              <h1 style="color: #3b82f6; margin-bottom: 20px; font-size: 2.2rem;">🔗 Ya Vinculado</h1>
+              <p style="color: #9ca3af; font-size: 1.1rem; margin-bottom: 20px;">Tu cuenta <strong>${email}</strong> ya cuenta con autorización previa.</p>
+              <p style="color: #6b7280; font-size: 0.95rem;">Ya puedes cerrar esta ventana y regresar a Telegram.</p>
+            </div>
+          </body>
+        </html>
+      `);
+    }
   } catch (err: any) {
-    console.error("Error escribiendo en stdin de authProcess:", err);
-    res.status(500).send("Error interno procesando la autenticación.");
+    console.error("Error procesando la autenticación de Google:", err.message);
+    res.status(500).send(`Error interno procesando la autenticación: ${err.message}`);
   }
 });
 
@@ -313,120 +418,48 @@ bot.command("clear", async (ctx) => {
 
 // Comando /auth para generar y entregar el enlace
 bot.command("auth", async (ctx) => {
-  const args = ctx.match;
-  const email = args?.trim();
-
-  if (!email || !email.includes("@")) {
-    return ctx.reply("Para vincular tu cuenta de Google, por favor indícame tu correo.\n\nEjemplo: `/auth tu_correo@gmail.com`", { parse_mode: "Markdown" });
+  const userId = ctx.from!.id;
+  const creds = getGoogleCredentials();
+  if (!creds) {
+    return ctx.reply("❌ Error: No se encontraron las credenciales de Google del bot en el servidor.");
   }
 
-  const userId = ctx.from!.id;
-  await dbService.setUserEmail(userId, email);
-  
-  await ctx.reply(`Generando enlace de autorización para ${email}. Por favor, espera unos segundos...`, { link_preview_options: { is_disabled: true } });
+  const clientId = creds.client_id;
+  const redirectUri = PUBLIC_URL 
+    ? `${PUBLIC_URL}/auth/google/callback` 
+    : `http://localhost:${PORT}/auth/google/callback`;
 
-  const executable = process.platform === "win32" ? "bin\\gog.exe" : "./bin/gog";
-  
-  const localDataPath = path.join(process.cwd(), "data");
-  const customEnv = { 
-    ...process.env, 
-    APPDATA: localDataPath,
-    HOME: localDataPath, 
-    USERPROFILE: localDataPath
-  };
+  const scopes = [
+    "openid",
+    "profile",
+    "email",
+    "https://www.googleapis.com/auth/gmail.modify",
+    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/calendar",
+    "https://www.googleapis.com/auth/spreadsheets"
+  ].join(" ");
 
-  const authProcess = spawn(executable, ["auth", "add", email, "--manual", "--services", "gmail,calendar,drive,sheets"], { 
-    shell: true,
-    env: customEnv
-  });
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+    `response_type=code` +
+    `&client_id=${clientId}` +
+    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+    `&scope=${encodeURIComponent(scopes)}` +
+    `&state=${userId}` +
+    `&access_type=offline` +
+    `&prompt=consent%20select_account`;
 
-  let urlSent = false;
-  let accumulatedOutput = "";
-  let extractedPort = "8080";
-
-  activeAuthProcesses.set(userId, {
-    email,
-    authProcess,
-    urlSent: false,
-    ctx
-  });
-
-  authProcess.stdout.on("data", async (data) => {
-    const chunk = data.toString();
-    accumulatedOutput += chunk;
-    console.log(`[Auth Output User ${userId}]:`, chunk);
-
-    if (!urlSent && accumulatedOutput.includes("https://accounts.google.com")) {
-      const urlMatch = accumulatedOutput.match(/(https:\/\/accounts\.google\.com[^\s]+)/);
-      if (urlMatch) {
-        let authUrl = urlMatch[1];
-        urlSent = true;
-
-        const portMatch = authUrl.match(/localhost:(\d+)/) || authUrl.match(/127\.0\.0\.1:(\d+)/);
-        if (portMatch) {
-          extractedPort = portMatch[1];
-          activeAuthProcesses.get(userId)!.port = extractedPort;
-        }
-
-        if (PUBLIC_URL) {
-          const publicCallback = `${PUBLIC_URL}/auth/google/callback`;
-          authUrl = authUrl
-            .replace(/redirect_uri=http%3A%2F%2Flocalhost%3A\d+%2Foauth2%2Fcallback/, `redirect_uri=${encodeURIComponent(publicCallback)}`)
-            .replace(/redirect_uri=http%3A%2F%2F127\.0\.0\.1%3A\d+%2Foauth2%2Fcallback/, `redirect_uri=${encodeURIComponent(publicCallback)}`);
-          
-          authUrl += `&state=${userId}`;
-          
-          await ctx.reply(
-            `🔗 **Enlace de Vinculación Automática:**\n[Haz clic aquí para autorizar tu cuenta](${authUrl})\n\n` +
-            `Una vez autorizado en el navegador, el bot se vinculará de forma completamente automática y segura.`,
-            { parse_mode: "Markdown", link_preview_options: { is_disabled: true } }
-          );
-        } else {
-          await ctx.reply(
-            `🔗 **Enlace de Vinculación:**\n[Haz clic aquí para autorizar tu cuenta](${authUrl})\n\n` +
-            `Una vez que inicies sesión y autorices los permisos:\n` +
-            `1. Serás redirigido a una página local (que dará un error de conexión, esto es normal).\n` +
-            `2. **Copia la dirección URL completa** de la barra de direcciones de tu navegador.\n` +
-            `3. **Pega ese enlace aquí mismo** en el chat para completar la vinculación.`,
-            { parse_mode: "Markdown", link_preview_options: { is_disabled: true } }
-          );
-        }
-      }
-    }
-
-    if (accumulatedOutput.toLowerCase().includes("successfully")) {
-      await ctx.reply(`✅ ¡Tu cuenta de Google (${email}) ha sido vinculada correctamente!`);
-      activeAuthProcesses.delete(userId);
-      try { authProcess.kill(); } catch {}
-    }
-  });
-
-  authProcess.stderr.on("data", (data) => {
-    console.error(`[Auth Error User ${userId}]:`, data.toString());
-  });
-
-  authProcess.on("exit", (code) => {
-    console.log(`[Auth Process User ${userId}] finalizado con código:`, code);
-    activeAuthProcesses.delete(userId);
-  });
+  await ctx.reply(
+    `🔗 **Enlace de Vinculación de Google:**\n\n` +
+    `[Haz clic aquí para conectar tu cuenta de Google](${authUrl})\n\n` +
+    `Este enlace te redirigirá a Google para que elijas qué cuenta deseas conectar de forma segura y automática.`,
+    { parse_mode: "Markdown", link_preview_options: { is_disabled: true } }
+  );
 });
 
 // Manejador de mensajes de texto
 bot.on("message:text", async (ctx) => {
   const userId = ctx.from.id;
   const text = ctx.message.text;
-
-  // 1. Verificar si el usuario está en proceso de autenticación y pegó el callback
-  const pending = activeAuthProcesses.get(userId);
-  if (pending && (text.startsWith("http://") || text.startsWith("https://") || text.includes("code="))) {
-    await ctx.reply("Procesando tu URL de autorización. Por favor, espera...");
-    try {
-      pending.authProcess.stdin.write(text + "\n");
-    } catch (err: any) {
-      ctx.reply(`❌ Error escribiendo la URL de callback: ${err.message}`);
-    }
-    return;
-  }
 
   // Notificar que está pensando con un intervalo para mantener el estado "escribiendo"
   await ctx.replyWithChatAction("typing");

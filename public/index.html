@@ -256,6 +256,40 @@
       pointer-events: none;
     }
 
+    .eye-glow {
+      position: absolute;
+      top: 31%;
+      left: 49%;
+      width: 13%;
+      height: 3.5%;
+      background: radial-gradient(ellipse, rgba(56, 189, 248, 0.95) 0%, rgba(56, 189, 248, 0.45) 45%, transparent 70%);
+      filter: blur(3px);
+      mix-blend-mode: screen;
+      pointer-events: none;
+      z-index: 5;
+      transform: translate(-50%, -50%);
+      will-change: transform, opacity;
+      opacity: 0.85;
+      transition: opacity 0.3s ease;
+    }
+
+    .computer-glow {
+      position: absolute;
+      top: 68%;
+      left: 50%;
+      width: 65%;
+      height: 25%;
+      background: radial-gradient(ellipse, rgba(16, 185, 129, 0.9) 0%, rgba(59, 130, 246, 0.5) 40%, transparent 70%);
+      filter: blur(10px);
+      mix-blend-mode: screen;
+      pointer-events: none;
+      z-index: 4;
+      transform: translate(-50%, -50%);
+      will-change: opacity, filter;
+      opacity: 0.1;
+      transition: opacity 0.2s ease, filter 0.2s ease;
+    }
+
     .btn-main {
       background: linear-gradient(135deg, var(--primary), #059669);
       color: white;
@@ -557,6 +591,8 @@
     <div class="hero-image-container">
       <div class="robot-wrapper" id="interactive-robot">
         <img src="/robot.png" alt="Silvania Asistente Ejecutivo" class="robot-image">
+        <div class="eye-glow" id="eye-glow"></div>
+        <div class="computer-glow" id="computer-glow"></div>
         <div class="robot-glow"></div>
       </div>
     </div>
@@ -626,7 +662,7 @@
           <div class="step-num">2</div>
           <div class="step-content">
             <h3>Solicitar autorización</h3>
-            <p>Escribe en el chat: <code>/auth tu-correo@gmail.com</code>. Silvania creará un enlace seguro de inicio de sesión de Google.</p>
+            <p>Escribe en el chat: <code>genera el enlace de autorización</code> (o usa <code>/auth</code>). Silvania creará un enlace seguro para que elijas tu cuenta de Google.</p>
           </div>
         </div>
         <div class="step">
@@ -650,10 +686,12 @@
   </footer>
 
   <script>
-    // Efecto 3D interactivo con el Scroll (Parallax)
+    // Efecto 3D interactivo con el Scroll (Parallax y encendido de luces del ordenador)
     window.addEventListener('scroll', () => {
       const scrolled = window.scrollY;
       const robot = document.getElementById('interactive-robot');
+      const computerGlow = document.getElementById('computer-glow');
+      
       if (robot) {
         const yVal = scrolled * 0.12; // Mover sutilmente hacia abajo
         const rVal = scrolled * 0.04;  // Rotación leve
@@ -661,10 +699,22 @@
         
         robot.style.transform = `translateY(${yVal}px) rotate(${rVal}deg) scale(${scaleVal})`;
       }
+      
+      if (computerGlow) {
+        // La opacidad sube de 0.1 a 0.95 a medida que se hace scroll (máximo a 450px)
+        const opacity = Math.min(0.95, 0.1 + (scrolled / 450) * 0.85);
+        computerGlow.style.opacity = opacity;
+        
+        // El desenfoque disminuye para concentrar la intensidad de la luz
+        const blurVal = Math.max(6, 12 - (scrolled / 450) * 6);
+        computerGlow.style.filter = `blur(${blurVal}px)`;
+      }
     });
 
-    // Efecto 3D interactivo con el Mouse (Tilt Effect)
+    // Efecto 3D interactivo con el Mouse (Tilt Effect y ojos que siguen al ratón)
     const card = document.getElementById('interactive-robot');
+    const eyeGlow = document.getElementById('eye-glow');
+
     if (card) {
       card.addEventListener('mousemove', (e) => {
         const rect = card.getBoundingClientRect();
@@ -674,15 +724,22 @@
         const centerX = rect.width / 2;
         const centerY = rect.height / 2;
         
-        // Rotación máxima de 12 grados en ejes X e Y
-        const rotateX = ((centerY - y) / centerY) * 12;
-        const rotateY = ((x - centerX) / centerX) * 12;
+        // Rotación máxima de 10 grados en ejes X e Y para un efecto sutil y premium
+        const rotateX = ((centerY - y) / centerY) * 10;
+        const rotateY = ((x - centerX) / centerX) * 10;
         
         const scrolled = window.scrollY;
         const yVal = scrolled * 0.12;
         const rVal = scrolled * 0.04;
         
-        card.style.transform = `translateY(${yVal}px) rotate(${rVal}deg) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.03)`;
+        card.style.transform = `translateY(${yVal}px) rotate(${rVal}deg) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.02)`;
+        
+        // Movimiento de los ojos siguiendo al ratón (máximo 8px de desviación)
+        if (eyeGlow) {
+          const eyeX = ((x - centerX) / centerX) * 8;
+          const eyeY = ((y - centerY) / centerY) * 8;
+          eyeGlow.style.transform = `translate(calc(-50% + ${eyeX}px), calc(-50% + ${eyeY}px))`;
+        }
       });
       
       card.addEventListener('mouseleave', () => {
@@ -691,6 +748,11 @@
         const rVal = scrolled * 0.04;
         
         card.style.transform = `translateY(${yVal}px) rotate(${rVal}deg) rotateX(0deg) rotateY(0deg) scale(1)`;
+        
+        // Restablecer posición de los ojos al centro
+        if (eyeGlow) {
+          eyeGlow.style.transform = `translate(-50%, -50%)`;
+        }
       });
     }
   </script>

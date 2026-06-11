@@ -200,6 +200,53 @@ export const tools = {
 
   load_skills: async () => {
     return await loadSkills();
+  },
+
+  generate_authorization_link: async ({ userId }: { userId?: number }) => {
+    try {
+      if (!userId) {
+        return "❌ Error: ID de usuario no especificado.";
+      }
+      const credsPath = path.join(process.cwd(), "data", "gmail-credentials.json");
+      if (!fs.existsSync(credsPath)) {
+        return "❌ Error: No se encontraron las credenciales de Google (gmail-credentials.json) en el servidor.";
+      }
+      const fileData = JSON.parse(fs.readFileSync(credsPath, "utf8"));
+      const creds = fileData.installed || fileData.web;
+      if (!creds) {
+        return "❌ Error: Las credenciales de Google en el archivo son inválidas.";
+      }
+
+      const clientId = creds.client_id;
+      const publicUrl = process.env.PUBLIC_URL || "";
+      const port = process.env.PORT || "3000";
+      const redirectUri = publicUrl 
+        ? `${publicUrl}/auth/google/callback` 
+        : `http://localhost:${port}/auth/google/callback`;
+
+      const scopes = [
+        "openid",
+        "profile",
+        "email",
+        "https://www.googleapis.com/auth/gmail.modify",
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/spreadsheets"
+      ].join(" ");
+
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `response_type=code` +
+        `&client_id=${clientId}` +
+        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+        `&scope=${encodeURIComponent(scopes)}` +
+        `&state=${userId}` +
+        `&access_type=offline` +
+        `&prompt=consent%20select_account`;
+
+      return `🔗 **Enlace de Vinculación de Google:**\n\n[Haz clic aquí para conectar tu cuenta de Google](${authUrl})\n\nEste enlace te redirigirá a Google para que elijas qué cuenta deseas conectar de forma segura y automática.`;
+    } catch (err: any) {
+      return `❌ Error generando el enlace de autorización: ${err.message}`;
+    }
   }
 };
 
