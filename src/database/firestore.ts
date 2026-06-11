@@ -3,26 +3,51 @@ import { config } from "../config/config.js";
 import fs from "fs";
 import path from "path";
 
-// Cargar el archivo de credenciales
+// Generar el archivo de credenciales de Firebase en caliente si está en el entorno
 const serviceAccountPath = path.resolve(config.db.serviceAccountPath);
 
-if (!fs.existsSync(serviceAccountPath)) {
-  console.error(`❌ ERROR: No se encontró el archivo de credenciales en ${serviceAccountPath}`);
-} else {
-  if (!admin.apps.length) {
-    const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, "utf8"));
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-    console.log("✅ Firebase Admin inicializado correctamente.");
+if (process.env.GOOGLE_CREDS_JSON && !fs.existsSync(serviceAccountPath)) {
+  try {
+    fs.writeFileSync(serviceAccountPath, process.env.GOOGLE_CREDS_JSON);
+    console.log("🔑 service-account.json generado dinámicamente en firestore.ts.");
+  } catch (err: any) {
+    console.error("❌ Error creando service-account.json en firestore.ts:", err.message);
   }
 }
 
-const db = admin.firestore();
+// Cargar el archivo de credenciales si existe
+if (!fs.existsSync(serviceAccountPath)) {
+  console.warn(`⚠️ ADVERTENCIA: No se encontró el archivo de credenciales de Firebase en ${serviceAccountPath}. Las funciones de la nube no estarán disponibles.`);
+} else {
+  if (!admin.apps.length) {
+    try {
+      const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, "utf8"));
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+      });
+      console.log("✅ Firebase Admin inicializado correctamente.");
+    } catch (err: any) {
+      console.error("❌ Error inicializando Firebase Admin:", err.message);
+    }
+  }
+}
+
+let dbInstance: admin.firestore.Firestore | null = null;
+
+function getDb(): admin.firestore.Firestore {
+  if (!dbInstance) {
+    if (!admin.apps.length) {
+      throw new Error("Firebase Admin no ha sido inicializado. No se puede acceder a Firestore.");
+    }
+    dbInstance = admin.firestore();
+  }
+  return dbInstance;
+}
 
 export const firestoreService = {
   async addMessage(userId: number, role: string, content: string) {
     try {
+      const db = getDb();
       const docRef = db.collection("conversations")
         .doc(userId.toString())
         .collection("messages")
@@ -40,6 +65,7 @@ export const firestoreService = {
 
   async getHistory(userId: number, limit: number = 20) {
     try {
+      const db = getDb();
       const snapshot = await db.collection("conversations")
         .doc(userId.toString())
         .collection("messages")
@@ -64,6 +90,7 @@ export const firestoreService = {
 
   async clearHistory(userId: number) {
     try {
+      const db = getDb();
       const messagesRef = db.collection("conversations")
         .doc(userId.toString())
         .collection("messages");
@@ -79,6 +106,7 @@ export const firestoreService = {
 
   async setUserEmail(userId: number, email: string) {
     try {
+      const db = getDb();
       const docRef = db.collection("user_accounts").doc(userId.toString());
       await docRef.set({ email });
     } catch (error) {
@@ -88,6 +116,7 @@ export const firestoreService = {
 
   async getUserEmail(userId: number): Promise<string | null> {
     try {
+      const db = getDb();
       const doc = await db.collection("user_accounts").doc(userId.toString()).get();
       if (doc.exists) {
         return doc.data()?.email || null;
@@ -101,6 +130,7 @@ export const firestoreService = {
 
   async getAllUsers(): Promise<{ userId: number; email: string }[]> {
     try {
+      const db = getDb();
       const snapshot = await db.collection("user_accounts").get();
       return snapshot.docs.map(doc => ({
         userId: parseInt(doc.id),
