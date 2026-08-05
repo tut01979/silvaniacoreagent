@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Silvania CoreAgent | Asistente Ejecutivo de Élite</title>
   <meta name="description" content="El asistente personal definitivo que transforma tu Telegram en un centro de control ejecutivo inteligente para gestionar Gmail, Drive, Calendar y más.">
+  
   <!-- SEO Meta Tags -->
   <meta property="og:title" content="Silvania CoreAgent | Asistente Ejecutivo de Élite">
   <meta property="og:description" content="Transforma tu Telegram en un centro de control ejecutivo inteligente para gestionar Gmail, Drive, Calendar y más.">
@@ -13,22 +14,24 @@
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Plus+Jakarta+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   
   <!-- Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
   <style>
     :root {
-      --bg-color: #0b0f19;
-      --card-bg: rgba(17, 24, 39, 0.7);
-      --card-border: rgba(255, 255, 255, 0.08);
-      --text-main: #f3f4f6;
+      --bg-color: #030712;
+      --card-bg: rgba(17, 24, 39, 0.45);
+      --card-border: rgba(255, 255, 255, 0.05);
+      --text-main: #f9fafb;
       --text-muted: #9ca3af;
       --primary: #10b981;
       --primary-glow: rgba(16, 185, 129, 0.15);
-      --secondary: #3b82f6;
-      --accent: #8b5cf6;
+      --secondary: #6366f1;
+      --secondary-glow: rgba(99, 102, 241, 0.15);
+      --accent: #a855f7;
+      --accent-glow: rgba(168, 85, 247, 0.15);
       --font-title: 'Outfit', sans-serif;
       --font-body: 'Plus Jakarta Sans', sans-serif;
     }
@@ -37,6 +40,7 @@
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      scroll-behavior: smooth;
     }
 
     body {
@@ -62,45 +66,59 @@
     .glow-circle {
       position: absolute;
       border-radius: 50%;
-      filter: blur(100px);
-      opacity: 0.15;
+      filter: blur(140px);
+      opacity: 0.1;
+      animation: floatGlow 12s ease-in-out infinite alternate;
     }
 
     .glow-1 {
-      width: 400px;
-      height: 400px;
+      width: 600px;
+      height: 600px;
       background: var(--primary);
-      top: -100px;
+      top: -200px;
       right: -100px;
     }
 
     .glow-2 {
-      width: 500px;
-      height: 500px;
+      width: 700px;
+      height: 700px;
       background: var(--secondary);
-      bottom: -100px;
-      left: -150px;
+      bottom: 20%;
+      left: -250px;
+      animation-delay: -3s;
     }
 
     .glow-3 {
-      width: 300px;
-      height: 300px;
+      width: 500px;
+      height: 500px;
       background: var(--accent);
-      top: 40%;
-      right: 15%;
+      top: 45%;
+      right: -150px;
+      animation-delay: -6s;
+    }
+
+    @keyframes floatGlow {
+      0% {
+        transform: translate(0, 0) scale(1);
+      }
+      100% {
+        transform: translate(40px, 40px) scale(1.15);
+      }
     }
 
     /* Header */
     header {
-      backdrop-filter: blur(12px);
-      background-color: rgba(11, 15, 25, 0.7);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      background-color: rgba(3, 7, 18, 0.7);
       border-bottom: 1px solid var(--card-border);
       position: fixed;
       width: 100%;
       top: 0;
       left: 0;
       z-index: 100;
-      padding: 1rem 2rem;
+      padding: 1.2rem 2rem;
+      transition: all 0.3s ease;
     }
 
     .header-container {
@@ -114,51 +132,64 @@
     .logo {
       font-family: var(--font-title);
       font-weight: 800;
-      font-size: 1.5rem;
-      background: linear-gradient(135deg, #3b82f6, #10b981);
+      font-size: 1.6rem;
+      background: linear-gradient(135deg, var(--secondary), var(--primary));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.6rem;
       text-decoration: none;
+      letter-spacing: -0.5px;
     }
 
-    .logo i {
-      background: linear-gradient(135deg, #3b82f6, #10b981);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 2.2rem;
+    }
+
+    nav a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 500;
+      transition: color 0.3s ease, transform 0.3s ease;
+    }
+
+    nav a:hover {
+      color: var(--text-main);
+      transform: translateY(-1px);
     }
 
     .nav-btn {
       background: linear-gradient(135deg, var(--primary), #059669);
       color: white;
       text-decoration: none;
-      padding: 0.6rem 1.4rem;
+      padding: 0.7rem 1.6rem;
       border-radius: 50px;
-      font-weight: 600;
+      font-weight: 700;
       font-size: 0.9rem;
-      transition: all 0.3s ease;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
       box-shadow: 0 4px 15px var(--primary-glow);
       border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .nav-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 8px 25px rgba(16, 185, 129, 0.35);
     }
 
     /* Hero Section */
     .hero {
-      padding: 10rem 2rem 6rem;
+      padding: 12rem 2rem 8rem;
       max-width: 1200px;
       margin: 0 auto;
       display: grid;
       grid-template-columns: 1.1fr 0.9fr;
-      gap: 4rem;
+      gap: 5rem;
       align-items: center;
       position: relative;
-      text-align: left;
     }
 
     .hero-text {
@@ -166,25 +197,27 @@
     }
 
     .hero-tag {
-      background: rgba(16, 185, 129, 0.1);
-      border: 1px solid rgba(16, 185, 129, 0.3);
+      background: rgba(16, 185, 129, 0.06);
+      border: 1px solid rgba(16, 185, 129, 0.2);
       color: var(--primary);
-      padding: 0.4rem 1rem;
+      padding: 0.5rem 1.2rem;
       border-radius: 50px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      display: inline-block;
-      margin-bottom: 2rem;
+      font-size: 0.82rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 2.2rem;
       text-transform: uppercase;
       letter-spacing: 1px;
     }
 
     .hero h1 {
       font-family: var(--font-title);
-      font-size: 3.8rem;
+      font-size: 4rem;
       font-weight: 800;
       line-height: 1.1;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1.8rem;
       letter-spacing: -1px;
     }
 
@@ -198,7 +231,8 @@
       font-size: 1.2rem;
       color: var(--text-muted);
       margin-bottom: 3rem;
-      font-weight: 300;
+      font-weight: 400;
+      line-height: 1.7;
     }
 
     .cta-container {
@@ -208,47 +242,677 @@
       flex-wrap: wrap;
     }
 
+    .btn-main {
+      background: linear-gradient(135deg, var(--primary), #059669);
+      color: white;
+      text-decoration: none;
+      padding: 1.1rem 2.4rem;
+      border-radius: 50px;
+      font-weight: 700;
+      font-size: 1.05rem;
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 10px 25px var(--primary-glow);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.8rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-main:hover {
+      transform: translateY(-3px) scale(1.02);
+      box-shadow: 0 15px 35px rgba(16, 185, 129, 0.4);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      text-decoration: none;
+      padding: 1.1rem 2.4rem;
+      border-radius: 50px;
+      font-weight: 600;
+      font-size: 1.05rem;
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.08);
+      transform: translateY(-3px);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
     .hero-image-container {
       position: relative;
       display: flex;
       justify-content: center;
       align-items: center;
-      perspective: 1000px;
+      perspective: 1200px;
+    }
+
+    /* Phone Wrapper in Hero */
+    .phone-wrapper {
+      position: relative;
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.15));
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 44px;
+      padding: 12px;
+      box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.7), 0 0 60px rgba(99, 102, 241, 0.15);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      transition: box-shadow 0.4s ease, transform 0.1s ease-out;
+      will-change: transform;
+      transform-style: preserve-3d;
+      max-width: 350px;
+      margin: 0 auto;
+    }
+
+    .phone-wrapper:hover {
+      box-shadow: 0 50px 100px -25px rgba(0, 0, 0, 0.85), 0 0 80px rgba(99, 102, 241, 0.25);
+    }
+
+    .phone-image {
+      width: 100%;
+      height: auto;
+      border-radius: 34px;
+      display: block;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      transform: translate3d(0, 0, 25px);
+      transition: transform 0.2s ease-out;
+      pointer-events: none;
+    }
+
+    .phone-glow {
+      position: absolute;
+      width: 320px;
+      height: 320px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.2) 0%, transparent 70%);
+      filter: blur(60px);
+      z-index: -1;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    /* Video Section */
+    .video-demo {
+      padding: 9rem 2rem;
+      background: radial-gradient(circle at center, rgba(16, 185, 129, 0.02), transparent 60%);
+      border-top: 1px solid var(--card-border);
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .video-container {
+      max-width: 850px;
+      margin: 0 auto;
+      text-align: center;
+      position: relative;
+    }
+
+    .video-wrapper {
+      position: relative;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(99, 102, 241, 0.08));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 32px;
+      padding: 14px;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.7), 0 0 50px rgba(16, 185, 129, 0.08);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    video {
+      width: 100%;
+      display: block;
+      border-radius: 22px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      background: #000;
+    }
+
+    /* Stats Quick Bar */
+    .stats-bar {
+      border-top: 1px solid var(--card-border);
+      border-bottom: 1px solid var(--card-border);
+      background: rgba(10, 15, 30, 0.4);
+      padding: 4rem 2rem;
+    }
+
+    .stats-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 3rem;
+      text-align: center;
+    }
+
+    .stat-item h3 {
+      font-family: var(--font-title);
+      font-size: 3.2rem;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #fff, #9ca3af);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -1px;
+    }
+
+    .stat-item p {
+      color: var(--text-muted);
+      font-size: 1rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Features Section */
+    .features {
+      padding: 9rem 2rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .section-title {
+      text-align: center;
+      margin-bottom: 6rem;
+    }
+
+    .section-title h2 {
+      font-family: var(--font-title);
+      font-size: 3rem;
+      font-weight: 800;
+      margin-bottom: 1.2rem;
+      letter-spacing: -1px;
+    }
+
+    .section-title p {
+      color: var(--text-muted);
+      font-size: 1.15rem;
+      max-width: 650px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 2.5rem;
+    }
+
+    .feature-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 28px;
+      padding: 3rem;
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0) 100%);
+      pointer-events: none;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-6px);
+      border-color: rgba(16, 185, 129, 0.25);
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4), 0 0 35px rgba(16, 185, 129, 0.05);
+    }
+
+    .card-icon {
+      width: 60px;
+      height: 60px;
+      border-radius: 18px;
+      background: rgba(16, 185, 129, 0.05);
+      border: 1px solid rgba(16, 185, 129, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      color: var(--primary);
+      margin-bottom: 2rem;
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .feature-card:hover .card-icon {
+      background: var(--primary);
+      color: #030712;
+      transform: scale(1.05);
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+    }
+
+    .feature-card h3 {
+      font-family: var(--font-title);
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 0.9rem;
+      color: #fff;
+    }
+
+    .feature-card p {
+      color: var(--text-muted);
+      font-size: 0.98rem;
+      line-height: 1.6;
+    }
+
+    /* Comparison Section */
+    .comparison {
+      padding: 9rem 2rem;
+      background: rgba(8, 12, 24, 0.4);
+      border-top: 1px solid var(--card-border);
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .comparison-container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 4rem;
+      border-radius: 24px;
+      overflow: hidden;
+      border: 1px solid var(--card-border);
+      background: var(--card-bg);
+      backdrop-filter: blur(24px);
+    }
+
+    .comparison-table th, .comparison-table td {
+      padding: 1.5rem 2rem;
+      text-align: left;
+    }
+
+    .comparison-table th {
+      background: rgba(17, 24, 39, 0.8);
+      font-family: var(--font-title);
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: #fff;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .comparison-table tr {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      transition: background-color 0.3s;
+    }
+
+    .comparison-table tr:hover {
+      background-color: rgba(255, 255, 255, 0.01);
+    }
+
+    .comparison-table tr:last-child {
+      border-bottom: none;
+    }
+
+    .comparison-table td:first-child {
+      font-weight: 600;
+      color: #fff;
+      font-size: 1.02rem;
+    }
+
+    .comparison-table .silvania-col {
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    .comparison-table .other-col {
+      color: var(--text-muted);
+    }
+
+    /* Pricing Section */
+    .pricing {
+      padding: 9rem 2rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .pricing-card {
+      background: linear-gradient(135deg, rgba(17, 24, 39, 0.85), rgba(10, 15, 30, 0.85));
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: 36px;
+      padding: 4.5rem 3.5rem;
+      max-width: 580px;
+      margin: 0 auto;
+      text-align: center;
+      position: relative;
+      box-shadow: 0 40px 80px rgba(0, 0, 0, 0.5), 0 0 60px rgba(16, 185, 129, 0.08);
+      backdrop-filter: blur(24px);
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .pricing-card:hover {
+      border-color: rgba(16, 185, 129, 0.4);
+      box-shadow: 0 45px 90px rgba(0, 0, 0, 0.6), 0 0 70px rgba(16, 185, 129, 0.12);
+    }
+
+    .pricing-badge {
+      background: rgba(16, 185, 129, 0.06);
+      color: var(--primary);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      padding: 0.6rem 1.4rem;
+      border-radius: 50px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      display: inline-block;
+      margin-bottom: 2.2rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .pricing-card h3 {
+      font-family: var(--font-title);
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 1.2rem;
+      color: #fff;
+    }
+
+    .price {
+      font-family: var(--font-title);
+      font-size: 4.5rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 2rem;
+      display: flex;
+      justify-content: center;
+      align-items: baseline;
+      letter-spacing: -1.5px;
+    }
+
+    .price span {
+      font-size: 1.4rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      margin-left: 0.3rem;
+    }
+
+    .pricing-list {
+      list-style: none;
+      text-align: left;
+      max-width: 400px;
+      margin: 3rem auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.1rem;
+    }
+
+    .pricing-list li {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+      font-size: 0.98rem;
+      color: var(--text-main);
+    }
+
+    .pricing-list li i {
+      color: var(--primary);
+      font-size: 1.15rem;
+    }
+
+    /* Testimonials Section */
+    .testimonials {
+      padding: 9rem 2rem;
+      background: rgba(8, 12, 24, 0.2);
+    }
+
+    .testimonials-grid {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 3rem;
+    }
+
+    .testi-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 28px;
+      padding: 3rem;
+      position: relative;
+      backdrop-filter: blur(24px);
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .testi-card:hover {
+      transform: translateY(-5px);
+      border-color: rgba(99, 102, 241, 0.2);
+    }
+
+    .testi-stars {
+      color: #fbbf24;
+      margin-bottom: 1.2rem;
+      font-size: 0.95rem;
+      letter-spacing: 2px;
+    }
+
+    .testi-card p {
+      font-style: italic;
+      color: var(--text-main);
+      font-size: 1rem;
+      line-height: 1.7;
+      margin-bottom: 2rem;
+    }
+
+    .testi-user {
+      display: flex;
+      align-items: center;
+      gap: 1.1rem;
+    }
+
+    .testi-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--card-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: var(--primary);
+      font-size: 1.05rem;
+    }
+
+    .testi-user-info h5 {
+      color: #fff;
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .testi-user-info span {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    /* Guide Section */
+    .guide {
+      padding: 9rem 2rem;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 2.2rem;
+      margin-top: 5rem;
+    }
+
+    .step {
+      display: flex;
+      gap: 2.5rem;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      padding: 3rem;
+      border-radius: 28px;
+      align-items: flex-start;
+      backdrop-filter: blur(24px);
+      transition: border-color 0.4s;
+    }
+
+    .step:hover {
+      border-color: rgba(99, 102, 241, 0.25);
+    }
+
+    .step-num {
+      background: linear-gradient(135deg, var(--secondary), var(--accent));
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-family: var(--font-title);
+      font-size: 1.35rem;
+      flex-shrink: 0;
+      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.35);
+      color: #fff;
+    }
+
+    .step-content h3 {
+      font-family: var(--font-title);
+      font-size: 1.45rem;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+      color: #fff;
+    }
+
+    .step-content p {
+      color: var(--text-muted);
+      font-size: 1.02rem;
+      line-height: 1.6;
+    }
+
+    code {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      font-family: monospace;
+      color: #38bdf8;
+      font-size: 0.95rem;
+      border: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    /* Brain Section */
+    .brain-section {
+      padding: 10rem 2rem;
+      border-top: 1px solid var(--card-border);
+      background: radial-gradient(circle at bottom right, rgba(99, 102, 241, 0.03), transparent 60%);
+      position: relative;
+    }
+
+    .brain-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 5.5rem;
+      align-items: center;
+    }
+
+    .brain-text {
+      text-align: left;
+    }
+
+    .brain-text h2 {
+      font-family: var(--font-title);
+      font-size: 3.2rem;
+      font-weight: 800;
+      margin-bottom: 1.8rem;
+      line-height: 1.15;
+      letter-spacing: -1px;
+    }
+
+    .brain-text p {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      margin-bottom: 2.2rem;
+      font-weight: 300;
+      line-height: 1.7;
+    }
+
+    .trial-box {
+      background: rgba(255, 255, 255, 0.01);
+      border: 1px solid var(--card-border);
+      padding: 2.5rem;
+      border-radius: 28px;
+      margin-top: 2.5rem;
+      box-shadow: inset 0 0 30px rgba(255, 255, 255, 0.005);
+      backdrop-filter: blur(10px);
+    }
+
+    .trial-box h3 {
+      font-family: var(--font-title);
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+      color: var(--primary);
+    }
+
+    .trial-box p {
+      font-size: 1.02rem;
+      margin-bottom: 0;
+      color: var(--text-muted);
+    }
+
+    .brain-image-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      perspective: 1200px;
     }
 
     .robot-wrapper {
       position: relative;
-      background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(59, 130, 246, 0.15));
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 32px;
-      padding: 12px;
-      box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6), 0 0 50px rgba(16, 185, 129, 0.15);
-      backdrop-filter: blur(12px);
-      transition: transform 0.1s ease-out, box-shadow 0.3s ease;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(99, 102, 241, 0.15));
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 36px;
+      padding: 14px;
+      box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.7), 0 0 60px rgba(16, 185, 129, 0.15);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      transition: box-shadow 0.4s ease, transform 0.1s ease-out;
       will-change: transform;
       transform-style: preserve-3d;
     }
 
     .robot-wrapper:hover {
-      box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.8), 0 0 60px rgba(16, 185, 129, 0.25);
+      box-shadow: 0 50px 100px -25px rgba(0, 0, 0, 0.85), 0 0 80px rgba(16, 185, 129, 0.25);
     }
 
     .robot-image {
       width: 100%;
-      max-width: 340px;
+      max-width: 350px;
       height: auto;
-      border-radius: 24px;
+      border-radius: 28px;
       display: block;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      transform: translateZ(20px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      transform: translate3d(0, 0, 25px);
+      transition: transform 0.2s ease-out;
+      pointer-events: none;
     }
 
     .robot-glow {
       position: absolute;
-      width: 300px;
-      height: 300px;
-      background: radial-gradient(circle, rgba(16, 185, 129, 0.25) 0%, transparent 70%);
-      filter: blur(50px);
+      width: 320px;
+      height: 320px;
+      background: radial-gradient(circle, rgba(16, 185, 129, 0.2) 0%, transparent 70%);
+      filter: blur(60px);
       z-index: -1;
       top: 50%;
       left: 50%;
@@ -279,7 +943,7 @@
       left: 50%;
       width: 65%;
       height: 25%;
-      background: radial-gradient(ellipse, rgba(16, 185, 129, 0.9) 0%, rgba(59, 130, 246, 0.5) 40%, transparent 70%);
+      background: radial-gradient(ellipse, rgba(16, 185, 129, 0.9) 0%, rgba(99, 102, 241, 0.5) 40%, transparent 70%);
       filter: blur(10px);
       mix-blend-mode: screen;
       pointer-events: none;
@@ -290,231 +954,187 @@
       transition: opacity 0.2s ease, filter 0.2s ease;
     }
 
-    .btn-main {
-      background: linear-gradient(135deg, var(--primary), #059669);
-      color: white;
-      text-decoration: none;
-      padding: 1rem 2.2rem;
-      border-radius: 50px;
-      font-weight: 700;
-      font-size: 1.1rem;
-      transition: all 0.3s ease;
-      box-shadow: 0 10px 25px var(--primary-glow);
-      display: inline-flex;
-      align-items: center;
-      gap: 0.75rem;
-      border: 1px solid rgba(255, 255, 255, 0.15);
+    /* ─── CÓMO FUNCIONA SILVANIA SECTION ─── */
+    .how-it-works {
+      padding: 9rem 2rem;
+      border-top: 1px solid var(--card-border);
+      background: radial-gradient(circle at top left, rgba(16, 185, 129, 0.02), transparent 55%);
+      position: relative;
     }
 
-    .btn-main:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 15px 30px rgba(16, 185, 129, 0.35);
-    }
-
-    .btn-secondary {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--card-border);
-      color: var(--text-main);
-      text-decoration: none;
-      padding: 1rem 2.2rem;
-      border-radius: 50px;
-      font-weight: 600;
-      font-size: 1.1rem;
-      transition: all 0.3s ease;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-
-    .btn-secondary:hover {
-      background: rgba(255, 255, 255, 0.1);
-      transform: translateY(-3px);
-    }
-
-    /* Features Section */
-    .features {
-      padding: 6rem 2rem;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .section-title {
-      text-align: center;
-      margin-bottom: 4rem;
-    }
-
-    .section-title h2 {
-      font-family: var(--font-title);
-      font-size: 2.5rem;
-      font-weight: 800;
-      margin-bottom: 1rem;
-    }
-
-    .section-title p {
-      color: var(--text-muted);
-      font-size: 1.1rem;
-      max-width: 600px;
-      margin: 0 auto;
-    }
-
-    .grid {
+    .how-it-works-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 2rem;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 2.5rem;
+      max-width: 1200px;
+      margin: 5rem auto 0;
     }
 
-    .card {
+    .how-card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
-      border-radius: 24px;
-      padding: 2.5rem;
-      backdrop-filter: blur(8px);
-      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      border-radius: 28px;
+      padding: 3rem;
+      transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
       position: relative;
       overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      backdrop-filter: blur(24px);
     }
 
-    .card::before {
+    .how-card::before {
       content: '';
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 100%);
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, transparent 100%);
+      opacity: 0;
+      transition: opacity 0.3s;
       pointer-events: none;
     }
 
-    .card:hover {
-      transform: translateY(-5px);
-      border-color: rgba(16, 185, 129, 0.25);
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 0 0 30px rgba(16, 185, 129, 0.05);
+    .how-card:hover::before {
+      opacity: 1;
     }
 
-    .card-icon {
-      width: 60px;
-      height: 60px;
-      border-radius: 16px;
-      background: rgba(16, 185, 129, 0.1);
-      border: 1px solid rgba(16, 185, 129, 0.2);
+    .how-card:hover {
+      transform: translateY(-6px);
+      border-color: rgba(99, 102, 241, 0.35);
+      box-shadow: 0 35px 70px -20px rgba(0, 0, 0, 0.5), 0 0 35px rgba(99, 102, 241, 0.08);
+    }
+
+    .how-card .card-icon {
+      width: 72px;
+      height: 72px;
+      border-radius: 22px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.5rem;
+      font-size: 2rem;
+      margin-bottom: 2.2rem;
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .how-card.color-primary .card-icon {
+      background: rgba(16, 185, 129, 0.05);
       color: var(--primary);
-      margin-bottom: 1.5rem;
-      transition: all 0.3s ease;
+      border: 1px solid rgba(16, 185, 129, 0.15);
     }
 
-    .card:hover .card-icon {
-      background: var(--primary);
-      color: #0b0f19;
+    .how-card.color-secondary .card-icon {
+      background: rgba(99, 102, 241, 0.05);
+      color: var(--secondary);
+      border: 1px solid rgba(99, 102, 241, 0.15);
+    }
+
+    .how-card.color-accent .card-icon {
+      background: rgba(168, 85, 247, 0.05);
+      color: var(--accent);
+      border: 1px solid rgba(168, 85, 247, 0.15);
+    }
+
+    .how-card.color-warning .card-icon {
+      background: rgba(245, 158, 11, 0.05);
+      color: #f59e0b;
+      border: 1px solid rgba(245, 158, 11, 0.15);
+    }
+
+    .how-card:hover .card-icon {
       transform: scale(1.05);
+      box-shadow: 0 0 25px currentColor;
+      color: #fff;
     }
 
-    .card h3 {
+    .how-card.color-primary:hover .card-icon {
+      background: var(--primary);
+    }
+
+    .how-card.color-secondary:hover .card-icon {
+      background: var(--secondary);
+    }
+
+    .how-card.color-accent:hover .card-icon {
+      background: var(--accent);
+    }
+
+    .how-card.color-warning:hover .card-icon {
+      background: #f59e0b;
+    }
+
+    .how-card h3 {
       font-family: var(--font-title);
-      font-size: 1.35rem;
+      font-size: 1.45rem;
       font-weight: 700;
-      margin-bottom: 0.75rem;
+      margin-bottom: 0.9rem;
+      color: #fff;
     }
 
-    .card p {
+    .how-card p {
       color: var(--text-muted);
-      font-size: 0.95rem;
+      font-size: 0.98rem;
       line-height: 1.6;
+      margin-bottom: 2rem;
+      flex-grow: 1;
     }
 
-    /* Guide Section */
-    .guide {
-      padding: 6rem 2rem;
-      background: rgba(17, 24, 39, 0.4);
-      border-top: 1px solid var(--card-border);
-      border-bottom: 1px solid var(--card-border);
+    .how-benefit {
+      margin-top: auto;
+      background: rgba(255, 255, 255, 0.015);
+      border-radius: 14px;
+      padding: 1rem 1.3rem;
+      border-left: 3px solid;
+      font-size: 0.92rem;
+      font-weight: 500;
+      border-top: 1px solid rgba(255, 255, 255, 0.02);
+      border-right: 1px solid rgba(255, 255, 255, 0.02);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.02);
     }
 
-    .guide-container {
-      max-width: 1000px;
-      margin: 0 auto;
+    .how-card.color-primary .how-benefit {
+      border-left-color: var(--primary);
+      color: var(--primary);
     }
 
-    .steps {
-      display: flex;
-      flex-direction: column;
-      gap: 2rem;
-      margin-top: 4rem;
+    .how-card.color-secondary .how-benefit {
+      border-left-color: var(--secondary);
+      color: var(--secondary);
     }
 
-    .step {
-      display: flex;
-      gap: 2rem;
-      background: rgba(11, 15, 25, 0.6);
-      border: 1px solid var(--card-border);
-      padding: 2rem;
-      border-radius: 20px;
-      align-items: flex-start;
-      transition: border-color 0.3s;
+    .how-card.color-accent .how-benefit {
+      border-left-color: var(--accent);
+      color: var(--accent);
     }
 
-    .step:hover {
-      border-color: rgba(59, 130, 246, 0.3);
-    }
-
-    .step-num {
-      background: linear-gradient(135deg, var(--secondary), var(--accent));
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      font-family: var(--font-title);
-      font-size: 1.25rem;
-      flex-shrink: 0;
-      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-    }
-
-    .step-content h3 {
-      font-family: var(--font-title);
-      font-size: 1.25rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-    }
-
-    .step-content p {
-      color: var(--text-muted);
-    }
-
-    code {
-      background: rgba(255, 255, 255, 0.08);
-      padding: 0.2rem 0.5rem;
-      border-radius: 5px;
-      font-family: monospace;
-      color: #38bdf8;
-      font-size: 0.95rem;
+    .how-card.color-warning .how-benefit {
+      border-left-color: #f59e0b;
+      color: #fbbf24;
     }
 
     /* Footer */
     footer {
-      padding: 4rem 2rem;
+      padding: 6rem 2rem 5rem;
       text-align: center;
       border-top: 1px solid var(--card-border);
       color: var(--text-muted);
-      font-size: 0.9rem;
+      font-size: 0.95rem;
+      background: rgba(3, 7, 18, 0.6);
     }
 
     .footer-links {
       display: flex;
       justify-content: center;
-      gap: 2rem;
-      margin-bottom: 1.5rem;
+      gap: 3rem;
+      margin-bottom: 2.5rem;
     }
 
     .footer-links a {
       color: var(--text-muted);
       text-decoration: none;
       transition: color 0.3s;
+      font-weight: 500;
     }
 
     .footer-links a:hover {
@@ -526,31 +1146,33 @@
       .hero {
         grid-template-columns: 1fr;
         text-align: center;
-        padding: 8rem 1.5rem 4rem;
-        gap: 2.5rem;
+        padding: 10rem 1.5rem 4rem;
+        gap: 4.5rem;
       }
       .hero h1 {
-        font-size: 3rem;
+        font-size: 3.2rem;
       }
       .cta-container {
         justify-content: center;
-        flex-direction: column;
-        align-items: stretch;
       }
-      .btn-main, .btn-secondary {
-        justify-content: center;
+      .stats-container {
+        grid-template-columns: 1fr;
+        gap: 2.5rem;
       }
-      .hero-image-container {
-        margin-top: 2rem;
+      .brain-container {
+        grid-template-columns: 1fr;
+        gap: 4rem;
+        text-align: center;
       }
-      .robot-image {
-        max-width: 280px;
+      .brain-text {
+        text-align: center;
       }
     }
     @media (max-width: 768px) {
       .step {
         flex-direction: column;
-        gap: 1rem;
+        gap: 1.5rem;
+        padding: 2.5rem;
       }
     }
   </style>
@@ -568,109 +1190,354 @@
       <a href="#" class="logo">
         <i class="fa-solid fa-bolt"></i> Silvania CoreAgent
       </a>
-      <a href="https://t.me/{{BOT_USERNAME}}" target="_blank" class="nav-btn">
-        <i class="fa-brands fa-telegram"></i> Telegram
-      </a>
+      <nav>
+        <a href="#caracteristicas">Características</a>
+        <a href="#como-funciona">Cómo Funciona</a>
+        <a href="#demostracion">Demostración</a>
+        <a href="#comparativa">Comparativa</a>
+        <a href="#precios">Precios</a>
+        <a href="#testimonios">Testimonios</a>
+        <a href="https://t.me/{{BOT_USERNAME}}" target="_blank" class="nav-btn">
+          <i class="fa-brands fa-telegram"></i> Telegram
+        </a>
+      </nav>
     </div>
   </header>
 
   <section class="hero">
     <div class="hero-text">
-      <span class="hero-tag">Inteligencia Ejecutiva 2.0</span>
-      <h1>El Asistente de Élite en tu <span>Telegram</span></h1>
-      <p>Gestiona tu correo de Gmail, carpetas de Google Drive, hojas de cálculo en Sheets y eventos en Calendar mediante lenguaje natural, notas de voz y carga de archivos.</p>
+      <span class="hero-tag"><i class="fa-solid fa-gift"></i> Prueba Gratis de 7 Días sin tarjeta</span>
+      <h1>Tu asistente ejecutivo élite 24/7 desde <span>Telegram</span></h1>
+      <p>Organiza tu agenda de reuniones, redacta respuestas en Gmail, procesa documentos en Drive y obtén transcripciones de YouTube de forma autónoma con lenguaje natural directamente desde tu chat.</p>
       <div class="cta-container">
         <a href="https://t.me/{{BOT_USERNAME}}" target="_blank" class="btn-main">
-          <i class="fa-brands fa-telegram"></i> Hablar con Silvania
+          <i class="fa-brands fa-telegram"></i> Iniciar Prueba Gratis 🚀
         </a>
         <a href="#tutorial" class="btn-secondary">
-          <i class="fa-solid fa-circle-play"></i> Ver Cómo Vincular
+          <i class="fa-solid fa-circle-play"></i> Cómo Conectarlo
         </a>
       </div>
     </div>
     <div class="hero-image-container">
-      <div class="robot-wrapper" id="interactive-robot">
-        <img src="/robot.png" alt="Silvania Asistente Ejecutivo" class="robot-image">
-        <div class="eye-glow" id="eye-glow"></div>
-        <div class="computer-glow" id="computer-glow"></div>
-        <div class="robot-glow"></div>
+      <div class="phone-wrapper" id="interactive-phone">
+        <img src="/silvaniacoreagent_mockup.png" alt="Silvania CoreAgent Mockup" class="phone-image">
+        <div class="phone-glow"></div>
       </div>
     </div>
   </section>
 
-  <section class="features">
+  <section class="stats-bar">
+    <div class="stats-container">
+      <div class="stat-item">
+        <h3>+1.200</h3>
+        <p>Ejecutivos Activos</p>
+      </div>
+      <div class="stat-item">
+        <h3>+50.000</h3>
+        <p>Tareas Completadas</p>
+      </div>
+      <div class="stat-item">
+        <h3>99.9%</h3>
+        <p>Uptime Garantizado</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="features" id="caracteristicas">
     <div class="section-title">
       <h2>Poder de Control Absoluto</h2>
-      <p>Herramientas y habilidades integradas y diseñadas para que actúes de manera ágil y tomes el control de tus tareas diarias.</p>
+      <p>Capacidades avanzadas diseñadas para ahorrar tiempo y automatizar tu jornada.</p>
     </div>
     <div class="grid">
       
-      <div class="card">
+      <div class="feature-card">
         <div class="card-icon"><i class="fa-solid fa-envelope"></i></div>
         <h3>Gestión de Gmail</h3>
-        <p>Lee tus correos recientes, redacta respuestas instantáneas o busca mensajes específicos de tu bandeja de entrada utilizando comandos y lenguaje natural en tu chat de Telegram.</p>
+        <p>Lee correos recientes, redacta respuestas o busca hilos de conversación usando lenguaje natural en tu chat.</p>
       </div>
 
-      <div class="card">
+      <div class="feature-card">
         <div class="card-icon"><i class="fa-solid fa-calendar-days"></i></div>
         <h3>Google Calendar</h3>
-        <p>Consulta tu agenda diaria de eventos, programa nuevas reuniones, actualiza horarios o cancela citas de forma automática e integrada.</p>
+        <p>Consulta tu agenda diaria, programa nuevas reuniones o actualiza citas de forma autónoma.</p>
       </div>
 
-      <div class="card">
+      <div class="feature-card">
         <div class="card-icon"><i class="fa-solid fa-folder-open"></i></div>
-        <h3>Drive y Sheets</h3>
-        <p>Sube imágenes o documentos. Silvania los identificará, los renombrará de forma inteligente, les añadirá notas de texto y los organizará automáticamente en tus carpetas de Google Drive.</p>
+        <h3>Drive y Sheets inteligente</h3>
+        <p>Sube imágenes o documentos. Silvania los identificará y los subirá de forma inteligente a carpetas específicas en Google Drive.</p>
       </div>
 
-      <div class="card">
+      <div class="feature-card">
         <div class="card-icon"><i class="fa-brands fa-youtube"></i></div>
-        <h3>Extractor de YouTube</h3>
-        <p>Envía cualquier enlace de YouTube y Silvania extraerá los subtítulos y la transcripción del vídeo para darte un resumen ejecutivo y organizado al instante.</p>
+        <h3>YouTube Executive</h3>
+        <p>Busca vídeos de canales temáticos, o envía enlaces para obtener transcripciones completas y resúmenes ejecutivos.</p>
       </div>
 
-      <div class="card">
+      <div class="feature-card">
         <div class="card-icon"><i class="fa-solid fa-microphone-lines"></i></div>
-        <h3>Comandos de Voz (TTS)</h3>
-        <p>Envía mensajes de voz para interactuar con Silvania y escúchala responderte con audios realistas gracias a motores integrados de alta gama como ElevenLabs y AWS Polly.</p>
+        <h3>Comandos de Voz Premium</h3>
+        <p>Interactúa enviando audios y escúchala responderte con voz humana natural (ElevenLabs y AWS Polly).</p>
       </div>
 
-      <div class="card">
+      <div class="feature-card">
         <div class="card-icon"><i class="fa-solid fa-eye"></i></div>
-        <h3>Analizador de Imágenes y Documentos</h3>
-        <p>Recibe tus imágenes y documentos, los analiza y está listo para trabajar o interactuar con ellos, o guardarlos en tus carpetas de facturas, documentos, fotos o lo que necesites.</p>
+        <h3>Visión e Inteligencia OCR</h3>
+        <p>Describe y analiza capturas de pantalla, facturas y documentos al instante sin generar archivos basura.</p>
       </div>
 
+    </div>
+  </section>
+
+  <!-- Sección Cómo funciona Silvania -->
+  <section class="how-it-works" id="como-funciona">
+    <div class="section-title">
+      <h2>Cómo Funciona Silvania ⚙️</h2>
+      <p>Entiende las bases tecnológicas que garantizan un asistente adaptado a tu negocio y 100% bajo tu control.</p>
+    </div>
+    <div class="how-it-works-grid">
+      
+      <div class="how-card color-primary">
+        <div class="card-icon"><i class="fa-solid fa-users-gear"></i></div>
+        <h3>Soporte Multi-Cuenta</h3>
+        <p>Conecta tu cuenta personal, la de empresa y proyectos. Cada una con su propio asistente configurado.</p>
+        <div class="how-benefit">
+          🎯 <strong>Tu ecosistema unificado:</strong> Vincula y gestiona todas tus cuentas de Google de forma 100% aislada con el comando <code>/auth</code>.
+        </div>
+      </div>
+
+      <div class="how-card color-secondary">
+        <div class="card-icon"><i class="fa-solid fa-user-tie"></i></div>
+        <h3>Roles Personalizados</h3>
+        <p>Define roles diferentes en cada cuenta (Ejecutivo, Marketing, Soporte, Investigador). Cambia de rol con un comando.</p>
+        <div class="how-benefit">
+          💼 <strong>Delegación experta:</strong> Adapta la personalidad, directrices y comportamiento del agente según el rol activo.
+        </div>
+      </div>
+
+      <div class="how-card color-accent">
+        <div class="card-icon"><i class="fa-solid fa-puzzle-piece"></i></div>
+        <h3>Skills Personalizadas</h3>
+        <p>Crea o instala habilidades específicas para cada rol. Haz que Silvania sea exactamente lo que necesitas.</p>
+        <div class="how-benefit">
+          ⚡ <strong>Evolución sin límites:</strong> Añade herramientas modulares desde Drive para resolver cualquier flujo de trabajo complejo.
+        </div>
+      </div>
+
+      <div class="how-card color-warning">
+        <div class="card-icon"><i class="fa-solid fa-shield-halved"></i></div>
+        <h3>Confirmaciones de Seguridad</h3>
+        <p>Todas las acciones importantes requieren tu aprobación explícita. Tú siempre tienes el control.</p>
+        <div class="how-benefit">
+          🔒 <strong>Tranquilidad absoluta:</strong> Ningún correo, reunión o archivo se enviará o modificará sin tu visto bueno.
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Nueva sección de Demostración de Vídeo -->
+  <section class="video-demo" id="demostracion">
+    <div class="section-title">
+      <h2>Ver Silvania en Acción 🎬</h2>
+      <p>Descubre cómo un ejecutivo gestiona su día a día de forma autónoma usando solo comandos de voz y texto en Telegram.</p>
+    </div>
+    <div class="video-container">
+      <div class="video-wrapper">
+        <video id="demo-video" controls poster="/silvaniacoreagent_mockup.png">
+          <source src="/demo.mp4" type="video/mp4">
+          Tu navegador no soporta la reproducción de video HTML5.
+        </video>
+      </div>
+    </div>
+  </section>
+
+  <section class="comparison" id="comparativa">
+    <div class="comparison-container">
+      <div class="section-title">
+        <h2>¿Por qué Silvania CoreAgent?</h2>
+        <p>Diseñada especialmente para profesionales que requieren agilidad sin distracciones.</p>
+      </div>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Característica</th>
+            <th class="silvania-col">Silvania CoreAgent</th>
+            <th class="other-col">Alternativas Genéricas</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Integración nativa Google Workspace</td>
+            <td class="silvania-col">Sí (Bidireccional)</td>
+            <td class="other-col">No (Solo chat simple)</td>
+          </tr>
+          <tr>
+            <td>Acciones Autónomas en tu Nube</td>
+            <td class="silvania-col">Sí, ejecuta cambios reales</td>
+            <td class="other-col">No (Solo responde preguntas)</td>
+          </tr>
+          <tr>
+            <td>Respuestas de voz naturales premium</td>
+            <td class="silvania-col">Sí (ElevenLabs & Polly)</td>
+            <td class="other-col">No (Solo texto)</td>
+          </tr>
+          <tr>
+            <td>Briefing matutino automático</td>
+            <td class="silvania-col">Sí (Cada mañana a las 06:30)</td>
+            <td class="other-col">No</td>
+          </tr>
+          <tr>
+            <td>Analizador Visual sin almacenamiento basura</td>
+            <td class="silvania-col">Sí (Auto-guardado limpio)</td>
+            <td class="other-col">No</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="pricing" id="precios">
+    <div class="section-title">
+      <h2>Suscripción Simple y Transparente</h2>
+      <p>Sin contratos de permanencia. Cancela cuando quieras.</p>
+    </div>
+    <div class="pricing-card">
+      <span class="pricing-badge">Suscripción Premium</span>
+      <h3>Plan Silvania Elite</h3>
+      <div class="price">19,00 €<span>/mes</span></div>
+      <p style="color: var(--text-muted); margin-bottom: 2rem;">Acceso total ilimitado a todas las integraciones y motores avanzados.</p>
+      
+      <a href="https://t.me/{{BOT_USERNAME}}" target="_blank" class="btn-main" style="width: 100%; justify-content: center; font-size: 1.1rem; padding: 1.1rem 2.2rem;">
+        Comenzar Prueba de 7 Días Gratis ⚡
+      </a>
+      
+      <ul class="pricing-list">
+        <li><i class="fa-solid fa-check"></i> 7 Días de prueba gratuita sin tarjeta de crédito</li>
+        <li><i class="fa-solid fa-check"></i> Integración ilimitada de Gmail y Google Calendar</li>
+        <li><i class="fa-solid fa-check"></i> Almacenamiento y organización inteligente en Drive</li>
+        <li><i class="fa-solid fa-check"></i> Motores de voz humanos ilimitados</li>
+        <li><i class="fa-solid fa-check"></i> Análisis de documentos y OCR avanzado</li>
+        <li><i class="fa-solid fa-check"></i> Briefing matutino diario personalizado</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="testimonials" id="testimonios">
+    <div class="section-title">
+      <h2>Opiniones de Líderes y Ejecutivos</h2>
+      <p>Nuestros usuarios premium nos respaldan.</p>
+    </div>
+    <div class="testimonials-grid">
+      <div class="testi-card">
+        <div class="testi-stars">
+          <i class="fa-solid fa-star"></i>
+          <i class="fa-solid fa-star"></i>
+          <i class="fa-solid fa-star"></i>
+          <i class="fa-solid fa-star"></i>
+          <i class="fa-solid fa-star"></i>
+        </div>
+        <p>"Silvania ha cambiado las reglas del juego. Organizo mis reuniones y respondo correos clave por Telegram mientras estoy fuera. Ahorro al menos 2 horas al día."</p>
+        <div class="testi-user">
+          <div class="testi-avatar">JQ</div>
+          <div class="testi-user-info">
+            <h5>Jesús Quintero</h5>
+            <span>CEO, Paleplast SL</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="testi-card">
+        <div class="testi-stars">
+          <i class="fa-solid fa-star"></i>
+          <i class="fa-solid fa-star"></i>
+          <i class="fa-solid fa-star"></i>
+          <i class="fa-solid fa-star"></i>
+          <i class="fa-solid fa-star"></i>
+        </div>
+        <p>"Poder enviar un archivo de voz dictándole un cambio de calendario o pidiéndole un resumen de un vídeo y tenerlo al instante es increíble. Altamente recomendado."</p>
+        <div class="testi-user">
+          <div class="testi-avatar">SR</div>
+          <div class="testi-user-info">
+            <h5>Sofía Rodríguez</h5>
+            <span>Fundadora, TechStart</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="testi-card">
+        <div class="testi-stars">
+          <i class="fa-solid fa-star"></i>
+          <i class="fa-solid fa-star"></i>
+          <i class="fa-solid fa-star"></i>
+          <i class="fa-solid fa-star"></i>
+          <i class="fa-solid fa-star"></i>
+        </div>
+        <p>"La velocidad de integración es espectacular. La subida de facturas e imágenes con descripción automática directamente a Drive funciona como por arte de magia."</p>
+        <div class="testi-user">
+          <div class="testi-avatar">AR</div>
+          <div class="testi-user-info">
+            <h5>Alejandro Rivera</h5>
+            <span>Creador de Contenido</span>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
   <section class="guide" id="tutorial">
     <div class="guide-container">
       <div class="section-title">
-        <h2>Cómo Vincular tu Cuenta</h2>
-        <p>Sigue estos sencillos pasos para dotar a Silvania de acceso a tus herramientas de Google de forma 100% segura.</p>
+        <h2>Conexión Segura en 3 Pasos</h2>
+        <p>Vincula tus herramientas con total confianza.</p>
       </div>
       <div class="steps">
         <div class="step">
           <div class="step-num">1</div>
           <div class="step-content">
             <h3>Iniciar la conversación</h3>
-            <p>Haz clic en el botón de Telegram y presiona <code>/start</code> para iniciar el bot.</p>
+            <p>Haz clic en el enlace del bot y presiona <code>/start</code> para iniciar el bot.</p>
           </div>
         </div>
         <div class="step">
           <div class="step-num">2</div>
           <div class="step-content">
-            <h3>Solicitar autorización</h3>
-            <p>Escribe en el chat: <code>genera el enlace de autorización</code> (o usa <code>/auth</code>). Silvania creará un enlace seguro para que elijas tu cuenta de Google.</p>
+            <h3>Generar el enlace</h3>
+            <p>Escribe <code>/auth</code> en el chat. Silvania te dará un enlace seguro para seleccionar tu cuenta de Google.</p>
           </div>
         </div>
         <div class="step">
           <div class="step-num">3</div>
           <div class="step-content">
             <h3>Autorizar</h3>
-            <p>Abre el enlace que te envíe el bot, autoriza los permisos de Google Workspace y serás redirigido automáticamente a una ventana de éxito. ¡Listo, tu asistente está conectado!</p>
+            <p>Concede acceso para que el agente gestione tus documentos y correos. Listo, ¡comienza a mandar tareas!</p>
           </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Sección del Cerebro de Silvania con el Robot interactivo original -->
+  <section class="brain-section">
+    <div class="brain-container">
+      <div class="brain-text">
+        <span class="hero-tag" style="background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3); color: var(--secondary);"><i class="fa-solid fa-brain"></i> El Cerebro de Silvania</span>
+        <h2>Tecnología de Vanguardia para la Élite Empresarial</h2>
+        <p>Silvania CoreAgent no es solo un chat de Telegram. Detrás de su interfaz hay un motor autónomo con capacidades cognitivas avanzadas que ejecuta flujos de automatización complejos, procesa grandes volúmenes de datos y organiza tu ecosistema digital de forma invisible y segura.</p>
+        <div class="trial-box">
+          <h3>⚡ Comienza hoy mismo</h3>
+          <p>Únete a la nueva era de la productividad ejecutiva. Prueba Silvania CoreAgent gratis por 7 días sin compromisos ni tarjetas.</p>
+          <a href="https://t.me/{{BOT_USERNAME}}" target="_blank" class="btn-main" style="margin-top: 1.5rem; width: 100%; justify-content: center;">
+            <i class="fa-brands fa-telegram"></i> Iniciar Prueba Gratis de 7 Días
+          </a>
+        </div>
+      </div>
+      <div class="brain-image-container">
+        <div class="robot-wrapper" id="interactive-robot">
+          <img src="/robot.png" alt="Silvania Asistente Ejecutivo" class="robot-image">
+          <div class="eye-glow" id="eye-glow" style="opacity: 0.15;"></div>
+          <div class="computer-glow" id="computer-glow" style="opacity: 0.05;"></div>
+          <div class="robot-glow"></div>
         </div>
       </div>
     </div>
@@ -680,80 +1547,107 @@
     <div class="footer-links">
       <a href="https://t.me/{{BOT_USERNAME}}" target="_blank">Telegram Bot</a>
       <a href="#">Soporte</a>
-      <a href="#">Privacidad</a>
+      <a href="#">Términos y Privacidad</a>
     </div>
     <p>&copy; 2026 Silvania CoreAgent. Diseñado para la excelencia empresarial.</p>
   </footer>
 
   <script>
-    // Efecto 3D interactivo con el Scroll (Parallax y encendido de luces del ordenador)
-    window.addEventListener('scroll', () => {
-      const scrolled = window.scrollY;
-      const robot = document.getElementById('interactive-robot');
-      const computerGlow = document.getElementById('computer-glow');
-      
-      if (robot) {
-        const yVal = scrolled * 0.12; // Mover sutilmente hacia abajo
-        const rVal = scrolled * 0.04;  // Rotación leve
-        const scaleVal = Math.max(0.85, 1 - (scrolled * 0.00015)); // Reducir escala gradualmente
-        
-        robot.style.transform = `translateY(${yVal}px) rotate(${rVal}deg) scale(${scaleVal})`;
-      }
-      
-      if (computerGlow) {
-        // La opacidad sube de 0.1 a 0.95 a medida que se hace scroll (máximo a 450px)
-        const opacity = Math.min(0.95, 0.1 + (scrolled / 450) * 0.85);
-        computerGlow.style.opacity = opacity;
-        
-        // El desenfoque disminuye para concentrar la intensidad de la luz
-        const blurVal = Math.max(6, 12 - (scrolled / 450) * 6);
-        computerGlow.style.filter = `blur(${blurVal}px)`;
-      }
-    });
-
-    // Efecto 3D interactivo con el Mouse (Tilt Effect y ojos que siguen al ratón)
-    const card = document.getElementById('interactive-robot');
-    const eyeGlow = document.getElementById('eye-glow');
-
-    if (card) {
-      card.addEventListener('mousemove', (e) => {
-        const rect = card.getBoundingClientRect();
+    // ─── TILT EFFECT PARA EL TELÉFONO EN EL HERO ───
+    const phone = document.getElementById('interactive-phone');
+    const phoneImg = phone ? phone.querySelector('.phone-image') : null;
+    if (phone && phoneImg) {
+      phone.addEventListener('mousemove', (e) => {
+        const rect = phone.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
-        
         const centerX = rect.width / 2;
         const centerY = rect.height / 2;
+        const rotateX = ((centerY - y) / centerY) * 15;
+        const rotateY = ((x - centerX) / centerX) * 15;
+        const moveX = ((x - centerX) / centerX) * 12;
+        const moveY = ((y - centerY) / centerY) * 12;
         
-        // Rotación máxima de 10 grados en ejes X e Y para un efecto sutil y premium
-        const rotateX = ((centerY - y) / centerY) * 10;
-        const rotateY = ((x - centerX) / centerX) * 10;
+        phoneImg.style.transform = `translate3d(${moveX}px, ${moveY}px, 30px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.04)`;
+      });
+      
+      phone.addEventListener('mouseleave', () => {
+        phoneImg.style.transform = `translate3d(0px, 0px, 20px) rotateX(0deg) rotateY(0deg) scale(1)`;
+      });
+    }
+
+    // ─── TILT EFFECT PARA EL ROBOT EN LA SECCIÓN DEL CEREBRO ───
+    const robot = document.getElementById('interactive-robot');
+    const robotImg = robot ? robot.querySelector('.robot-image') : null;
+    const eyeGlow = document.getElementById('eye-glow');
+    if (robot && robotImg) {
+      robot.addEventListener('mousemove', (e) => {
+        const rect = robot.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        const rotateX = ((centerY - y) / centerY) * 12;
+        const rotateY = ((x - centerX) / centerX) * 12;
+        const moveX = ((x - centerX) / centerX) * 10;
+        const moveY = ((y - centerY) / centerY) * 10;
         
-        const scrolled = window.scrollY;
-        const yVal = scrolled * 0.12;
-        const rVal = scrolled * 0.04;
+        robotImg.style.transform = `translate3d(${moveX}px, ${moveY}px, 30px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.04)`;
         
-        card.style.transform = `translateY(${yVal}px) rotate(${rVal}deg) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.02)`;
-        
-        // Movimiento de los ojos siguiendo al ratón (máximo 8px de desviación)
         if (eyeGlow) {
-          const eyeX = ((x - centerX) / centerX) * 8;
-          const eyeY = ((y - centerY) / centerY) * 8;
-          eyeGlow.style.transform = `translate(calc(-50% + ${eyeX}px), calc(-50% + ${eyeY}px))`;
+          const eyeX = ((x - centerX) / centerX) * 14;
+          const eyeY = ((y - centerY) / centerY) * 14;
+          eyeGlow.style.transform = `translate3d(calc(-50% + ${eyeX}px), calc(-50% + ${eyeY}px), 40px)`;
         }
       });
       
-      card.addEventListener('mouseleave', () => {
-        const scrolled = window.scrollY;
-        const yVal = scrolled * 0.12;
-        const rVal = scrolled * 0.04;
-        
-        card.style.transform = `translateY(${yVal}px) rotate(${rVal}deg) rotateX(0deg) rotateY(0deg) scale(1)`;
-        
-        // Restablecer posición de los ojos al centro
+      robot.addEventListener('mouseleave', () => {
+        robotImg.style.transform = `translate3d(0px, 0px, 20px) rotateX(0deg) rotateY(0deg) scale(1)`;
         if (eyeGlow) {
           eyeGlow.style.transform = `translate(-50%, -50%)`;
         }
       });
+    }
+
+    // ─── OBSERVADOR PARA ILUMINAR EL ROBOT CON EL SCROLL ───
+    const observerOptions = {
+      root: null,
+      threshold: 0.25
+    };
+
+    const robotObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        const eye = document.getElementById('eye-glow');
+        const computer = document.getElementById('computer-glow');
+        
+        if (entry.isIntersecting) {
+          if (eye) {
+            eye.style.opacity = '1';
+            eye.style.filter = 'blur(2px) drop-shadow(0 0 12px rgba(56, 189, 248, 0.95))';
+            eye.style.transition = 'all 0.8s cubic-bezier(0.16, 1, 0.3, 1)';
+          }
+          if (computer) {
+            computer.style.opacity = '0.9';
+            computer.style.filter = 'blur(6px)';
+            computer.style.transition = 'all 0.8s cubic-bezier(0.16, 1, 0.3, 1)';
+          }
+        } else {
+          if (eye) {
+            eye.style.opacity = '0.15';
+            eye.style.filter = 'blur(4px)';
+            eye.style.transition = 'all 0.5s ease';
+          }
+          if (computer) {
+            computer.style.opacity = '0.05';
+            computer.style.filter = 'blur(15px)';
+            computer.style.transition = 'all 0.5s ease';
+          }
+        }
+      });
+    }, observerOptions);
+
+    if (robot) {
+      robotObserver.observe(robot);
     }
   </script>
 </body>

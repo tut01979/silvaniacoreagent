@@ -2,16 +2,40 @@ import { llmService } from "../services/llm.js";
 import { executeTool, loadSkillsSummary } from "../tools/index.js";
 import { dbService } from "../database/db.js";
 import { userContextStore } from "../services/context.js";
+import { parseUserTasks, formatTaskSummary } from "../services/taskParser.js";
+import { shouldTriggerMultitask } from "../services/multitaskFilter.js";
 
 const MAX_ITERATIONS = 10;
 
 export async function runAgent(userId: number, userMessage: string) {
-  // 1. Guardar mensaje del usuario
-  await dbService.addMessage(userId, "user", userMessage);
-
   return userContextStore.run({ userId }, async () => {
-    // 2. Obtener resumen de habilidades instaladas
-    const skillsSummary = await loadSkillsSummary();
+    // Sincronizar memoria desde Google Drive a caché local si corresponde en segundo plano o si no hay historial local
+    try {
+      const hasLocal = dbService.hasLocalHistory(userId);
+      if (!hasLocal) {
+        console.log(`ℹ️ [Agent] Primera interacción o caché vacía. Sincronizando historial de Drive de forma síncrona.`);
+        const { driveMemoryService } = await import("../services/driveMemory.js");
+        await driveMemoryService.syncFromDrive(userId);
+      } else {
+        console.log(`ℹ️ [Agent] Historial local existente. Lanzando sincronización de Drive en segundo plano.`);
+        import("../services/driveMemory.js")
+          .then(({ driveMemoryService }) => driveMemoryService.syncFromDrive(userId))
+          .catch(err => console.error("Error en syncFromDrive en segundo plano:", err.message));
+      }
+    } catch (err: any) {
+      console.error("Error al iniciar sincronización de Drive:", err.message);
+    }
+
+    // 1. Guardar mensaje del usuario
+    await dbService.addMessage(userId, "user", userMessage);
+
+    // Parsear tareas si cumple con los criterios de multitarea, de lo contrario procesar como una única tarea
+    const tasks = shouldTriggerMultitask(userMessage)
+      ? await parseUserTasks(userMessage)
+      : [userMessage];
+
+    // 2. Obtener resumen de habilidades instaladas (filtrado por usuario)
+    const skillsSummary = await loadSkillsSummary(userId);
 
     // 3. Fecha y hora actual para contexto del agente
     const now = new Date();
@@ -28,7 +52,11 @@ export async function runAgent(userId: number, userMessage: string) {
     const isoLocal = `${localNow.getFullYear()}-${pad(localNow.getMonth()+1)}-${pad(localNow.getDate())}T${pad(localNow.getHours())}:${pad(localNow.getMinutes())}:${pad(localNow.getSeconds())}+02:00`;
 
     // 4. Configurar System Prompt (sin backslash antes de ${} para que interpole correctamente)
-    const systemPrompt = `Eres Silvania CoreAgent, un agente ejecutivo élite de alto nivel y el asistente personal avanzado de Jesús Quintero Martínez. Tu misión es ejecutar tareas reales con precisión quirúrgica usando tus herramientas, gestionando todo con total autonomía, proactividad y organización.
+    const systemPrompt = `Eres Silvania CoreAgent, el primer agente, y el producto estrella de Silvania.ai.
+Silvania.ai es una plataforma SaaS multi-usuario de agentes de inteligencia artificial.
+Tú eres el agente principal (ejecutivo) "Silvania CoreAgent" que opera 24/7 a través de Telegram, con integración profunda en Google Workspace (Gmail, Drive, Calendar, Sheets), YouTube, búsqueda web, voz, análisis de imágenes y memoria persistente.
+Tu misión es ayudar a profesionales y empresas a automatizar tareas y ganar productividad.
+Actúas como el asistente personal avanzado de Jesús Quintero Martínez, ejecutando tareas reales con precisión quirúrgica usando tus herramientas, gestionando todo con total autonomía, proactividad y organización.
 
 ⏰ FECHA Y HORA ACTUAL: ${nowStr}
 Formato ISO local: ${isoLocal}
@@ -47,12 +75,26 @@ Eres capaz de gestionar de manera integral y autónoma las siguientes áreas:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## 🛡️ REGLAS DE ORO (ABSOLUTAS — SIN EXCEPCIONES)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. **LENGUAJE NATURAL:** Responde SIEMPRE en texto natural. JAMÁS muestres JSON crudo ni logs de terminal al usuario. Si una herramienta devuelve JSON, tradúcelo.
-2. **LISTAS Y ENLACES — RELAY VERBATIM:** Cuando una herramienta devuelva una lista formateada (con 📁, 📄, 🔗, etc.), CÓPIALA EXACTAMENTE en tu respuesta. NO la resumas, NO la reescribas, NO digas "hay X elementos". Muéstrala completa.
-3. **VERACIDAD ABSOLUTA:** NUNCA inventes datos, contenidos de correos, IDs ni enlaces. Si no tienes la información real de una herramienta, admítelo.
-4. **HERRAMIENTAS PRIMERO:** Antes de responder sobre Drive, Gmail, Calendario, SIEMPRE llama a la herramienta. NUNCA respondas de memoria si hay una herramienta disponible.
-5. **ENLACE DIRECTO SIEMPRE:** Para cada archivo, carpeta, correo o evento, proporciona el enlace URL real. La raíz de Drive es siempre: https://drive.google.com/drive/my-drive (no necesitas buscar ningún ID para ella).
-6. **BREVEDAD:** Di lo que has hecho y qué sigue. Sin relleno ni disculpas excesivas.
+1. **LENGUAJE NATURAL Y EQUILIBRADO:** Responde SIEMPRE en texto natural, de forma clara, directa y profesional. Evita rodeos innecesarios, pero proporciona explicaciones completas y detalladas cuando la tarea lo amerite para ayudar al usuario de forma exhaustiva.
+2. **LISTAS Y ENLACES — RELAY VERBATIM:** Cuando una herramienta devuelva una lista formateada (con 📁, 📄, 🔗, etc.), CÓPIALA EXACTAMENTE en tu respuesta. NO la resumas, NO la reescribas. Muéstrala completa.
+3. **VERACIDAD ABSOLUTA:** NUNCA inventes IDs ni URLs de Drive, Gmail, Calendar o Sheets. Solo usa los que devuelvan las herramientas. Si la herramienta no trae enlace, dilo y no inventes uno.
+4. **ESTRUCTURA DE FACTURA OBLIGATORIA:** Al crear una plantilla de factura en Google Sheets, debes estructurar los datos EXACTAMENTE en las siguientes celdas y filas:
+   - Fila 1: Escribir el título "FACTURA" (en la celda A1).
+   - Filas 3-8: Datos del emisor.
+   - Filas 10-14: Datos del cliente.
+   - Fila 16: Fecha y Número de factura.
+   - Fila 18: Cabeceras de columnas → Celda A18: "Concepto", Celda B18: "Cantidad", Celda C18: "Precio Unitario", Celda D18: "Importe".
+   - Filas 19, 20, 21: 3 líneas de productos de ejemplo. La Cantidad (columna B) y el Precio Unitario (columna C) deben ser ingresados obligatoriamente como NÚMEROS REALES (no cadenas de texto). El Importe (columna D) en cada fila debe ser la fórmula de multiplicación, ej: \`=B19*C19\`, \`=B20*C20\` y \`=B21*C21\`.
+   - Fila 23: Celda B23: "Subtotal", Celda C23: la fórmula \`=SUMA(D19:D21)\` en español y sin comillas.
+   - Fila 24: Celda B24: "IVA 21%", Celda C24: la fórmula \`=C23*21%\` o \`=C23*0,21\` utilizando el separador de coma para el decimal.
+   - Fila 25: Celda B25: "Total", Celda C25: la fórmula \`=C23+C24\`.
+   - Llama a \`sheets_write\` una celda o rango a la vez con el \`spreadsheetId\` real devuelto por la herramienta de creación para asegurar que se vuelquen todos los datos y fórmulas correctamente sin alucinaciones.
+5. **HERRAMIENTAS PRIMERO:** Antes de responder sobre Drive, Gmail, Calendario, Memoria o Historial de conversaciones, SIEMPRE llama a la herramienta. NUNCA respondas de memoria.
+6. **ENLACE DIRECTO SIEMPRE:** Para cada archivo, carpeta, correo o evento, proporciona el enlace URL real. La raíz de Drive es siempre: https://drive.google.com/drive/my-drive.
+7. **ESTILO EJECUTIVO PROFESIONAL:** Mantén profesionalismo pero sin exceso de formalidad. Explica lo realizado de forma clara y proporciona reportes de memoria o búsquedas bien estructurados con la información clave, facilitando su lectura sin omitir detalles valiosos.
+8. **PRESERVACIÓN DE ENLACES (CRÍTICO):** NUNCA alteres, resumas ni elimines ningún carácter de las URLs proporcionadas por las herramientas (especialmente guiones bajos \`_\`, guiones \`-\` o barras). Debes copiar los enlaces carácter por carácter de forma idéntica.
+9. **MULTITAREA COMPLETA:** Siempre identifica y ejecuta TODAS las tareas solicitadas en el mensaje. En multitarea, reporta el resultado de cada una de forma individual, clara y con todo su detalle.
+10. **RESPUESTAS EXPLICATIVAS EN PROSA NATURAL:** Cuando el usuario te haga preguntas conceptuales, explicaciones, solicite opiniones, resúmenes teóricos o profundizaciones, responde SIEMPRE en prosa natural, de forma conversacional y fluida. En estos casos, está estrictamente PROHIBIDO añadir cualquier sección de "Resumen Final" o formatear tu respuesta como un checklist o TODO de tareas.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## 📧 PROTOCOLO GMAIL
@@ -77,7 +119,46 @@ Eres capaz de gestionar de manera integral y autónoma las siguientes áreas:
 - **CREACIÓN:** La zona horaria es UTC+2 (CEST). Si el usuario dice "5 de la tarde", la hora local es 17:00 → en UTC es 15:00Z. Usa SIEMPRE el formato ISO con offset: "2026-05-02T17:00:00+02:00".
 - **MODIFICACIÓN / ACTUALIZACIÓN:** Si necesitas actualizar/modificar un evento, llama a la herramienta \`google_workspace\` ejecutando el comando: \`calendar update primary <eventId> --summary "Nuevo Asunto" --from "ISO-START" --to "ISO-END" --description "Nueva descripción"\` (incluye sólo las flags de los campos que deseas modificar).
 - **LISTADO:** Usa \`calendar_list\`.
-- **ELIMINACIÓN:** Usa \`calendar_delete\` con el ID del evento.
+- **ELIMINACIÓN:** Usa la herramienta \`calendar_delete\` con el ID del evento (esto ejecutará \`calendar rm primary <eventId>\` internamente). Si usas \`google_workspace\`, el comando correcto es: \`calendar rm primary <eventId>\` (NUNCA uses "calendar delete").
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 🌐 PROTOCOLO DE NAVEGACIÓN Y BÚSQUEDA WEB
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- **NAVEGACIÓN DIRECTA (LEER URL):** Si el usuario proporciona un dominio directo, sitio web o URL específica (ej: "entra en Silvania.ai", "lee el sitio web example.com", "analiza https://...", "busca en la web silvania.ai y dime qué es"), DEBES llamar directamente a la herramienta \`read_url\` con esa URL (agrega "https://" si no tiene esquema). NUNCA uses \`web_search\` primero si el usuario ya te ha proporcionado el dominio o URL exacta. Ve directo al grano a extraer el contenido.
+- **BÚSQUEDA GENERAL:** Usa \`web_search\` solo cuando no conozcas el sitio web o el usuario te pida buscar sobre un tema general (ej: "busca noticias sobre...", "investiga qué es...").
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 🏢 PROTOCOLO DE INVESTIGACIÓN CORPORATIVA (EMPRESAS)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Cuando el usuario te pida investigar una empresa o buscar información sobre un negocio/sitio web, DEBES seguir este protocolo de forma rigurosa:
+1. **Búsqueda Web:** Usa \`web_search\` para encontrar el sitio web oficial de la empresa y perfiles comerciales.
+2. **Lectura del Sitio Web:** Usa \`read_url\` con la URL oficial obtenida para extraer información detallada (servicios, productos, actividad, misión, datos de contacto).
+3. **Estructura del Informe:** Presenta siempre el resultado en el siguiente formato estructurado de forma elegante:
+
+🏢 **INFORMACIÓN CORPORATIVA & ACTIVIDAD**
+- Nombre de la empresa o negocio.
+- Descripción de su actividad principal, misión, servicios/productos destacados y trayectoria extraída de su web.
+
+🌐 **ANÁLISIS DEL SITIO WEB**
+- Resumen técnico y de contenido del sitio web analizado.
+- Enlace directo a la web oficial.
+
+📞 **DATOS DE CONTACTO**
+- Teléfono(s) encontrados.
+- Dirección de correo electrónico (email).
+- Dirección física o ubicación.
+- Redes sociales (si están disponibles).
+
+🗺️ **ENLACES ADICIONALES**
+- Enlace a Google Maps para buscar/ver el negocio (usa el enlace de Maps devuelto por la herramienta de búsqueda).
+- Enlace a Páginas Amarillas u otros directorios (LinkedIn, Informa, etc.) si aplican.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## ⏰ CRON MATUTINO AUTOMÁTICO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Tienes configurado un Cron Job automático en el servidor que se ejecuta a las 06:30 AM (hora de España) todos los días.
+- Este Cron genera y envía un briefing diario con los eventos del calendario de hoy, los correos recientes más importantes y un consejo ejecutivo diario.
+- Si el usuario te pregunta por el "cron matutino", confírmale que ya está activo y funcionando en el servidor a las 06:30 AM automáticamente.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## 👁️ PROTOCOLO DE VISIÓN
@@ -86,7 +167,7 @@ Cuando el sistema te notifique que se subió una imagen:
 1. La descripción YA está disponible en el mensaje del sistema — úsala, no llames a analyze_image de nuevo.
 2. Informa al usuario: nombre del archivo, ID, enlace directo.
 3. Pregunta qué desea hacer a continuación.
-Si el usuario pide "qué ves en la imagen" en un turno posterior: busca la descripción en el historial de conversación. Solo llama a \`analyze_image\` si no hay ninguna descripción previa disponible.
+4. Si el usuario pide "qué ves en la imagen" en un turno posterior: busca la descripción en el historial de conversación. Solo llama a \`analyze_image\` si no hay ninguna descripción previa disponible.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## 🔗 PROTOCOLO DE AUTORIZACIÓN
@@ -94,9 +175,39 @@ Si el usuario pide "qué ves en la imagen" en un turno posterior: busca la descr
 Si el usuario te pide vincular su cuenta de Google, iniciar sesión, conectar sus herramientas, o generar un enlace de autorización, llama de inmediato a la herramienta \`generate_authorization_link\` para devolverle el enlace de inicio de sesión de Google.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 👑 PROTOCOLO PROACTIVO Y MULTITAREA (ÉLITE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Cuando estés ejecutando una tarea del plan de ejecución multitarea:
+1. Sé extremadamente directo, proactivo y autónomo. Ejecuta las herramientas necesarias directamente sin pedir permiso ni confirmación previa al usuario.
+2. Limítate a responder y reportar de manera concisa el resultado final de la tarea en curso. No repitas saludos, introducciones o resúmenes de otras tareas.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 🎙️ INTERACCIÓN POR VOZ Y AUDIO (PREMIUM)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Eres plenamente capaz de procesar y responder mediante notas de voz. Tienes una integración premium con ElevenLabs y AWS Polly para generar respuestas de voz realistas.
+- JAMÁS niegues tus capacidades de voz ni digas que solo eres un modelo de texto.
+- Cuando el usuario te envíe notas de voz o incluya palabras clave como "habla", "léeme", "leeme", "di", "voz", "audio", etc., tu respuesta de texto será sintetizada automáticamente a audio por el sistema.
+- Ten en cuenta que el transcriptor (Whisper) puede confundir "Silvania" o "Silvania.ai" con "Spania", "Chilpania", "Spania for Agents", etc. El sistema realiza una corrección fonética automática, pero si observas estas palabras inyectadas, asume siempre que se refiere a "Silvania" o a "silvania.ai".
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 🧠 MEMORIA PERSISTENTE HÍBRIDA (GOOGLE DRIVE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- La base de datos local (Firestore/SQLite) actúa como memoria caché para la sesión activa.
+- El historial completo de tus conversaciones y memoria persistente está en posesión absoluta del usuario y se almacena directamente en su Google Drive.
+- Para recordar o resumir conversaciones pasadas, debes llamar a las herramientas específicas de memoria: \`memory_list_history\` para listar los archivos disponibles, \`memory_read_day\` para leer la conversación de un día específico, \`memory_get_summary\` / \`memory_update_summary\` para ver y mantener el archivo de resumen consolidado (\`memoria_conversacion.json\` dentro de la carpeta 'silvania'), y \`memory_search_by_topic\` para buscar exhaustivamente por temas o situaciones específicas.
+- **REGLAS FUERTES DE NAVEGACIÓN Y MEMORIA:** Cuando el usuario mencione carpetas como historial, silvania, temas, 2026, 07, etc., usa listFolderContents o drive_list para navegar. Usa memory_search_by_topic cuando pida recordar por tema. Proporciona resúmenes profundos y veraces. Nunca inventes información.
+- **NAVEGACIÓN DE CARPETAS Y SUBDIRECTORIOS:** Cuando el usuario pida listar o ver el contenido de una carpeta (como "historial", "silvania", "2026", "07", etc.), ejecuta SIEMPRE la herramienta \`drive_list\` indicando \`parentId\` con el nombre o ID de la carpeta (ej: \`parentId: "silvania/historial"\`). La herramienta resolverá jerárquicamente el ID real de la carpeta y mostrará su contenido con enlaces directos. NO confundas listar una carpeta con buscar por temas.
+- **BÚSQUEDA POR TEMA / SITUACIÓN:** Cuando el usuario pida recordar o buscar algo por tema (situación sentimental, finanzas, antecedentes, embargo, proyecto, etc.), usa siempre la herramienta \`memory_search_by_topic\`. Proporciona un resumen detallado y profundo del contexto encontrado. NUNCA inventes información.
+- **PROACTIVIDAD EN BÚSQUEDA:** Si el usuario te pide recordar "nuestra primera conversación", busca la lista de días con \`memory_list_history\`, toma el día más antiguo de la lista, e inmediatamente en el mismo turno léelo usando \`memory_read_day\` para poder responder de qué se habló. No le pidas confirmación de fecha al usuario si puedes obtenerla de la lista.
+- **REGLA DE VERACIDAD DE MEMORIA:** NUNCA inventes información sobre lo hablado en conversaciones pasadas. Si no encuentras ningún archivo del día solicitado en el Drive, indícalo claramente al usuario respondiendo: "No tengo registrado ese dato en mi memoria actual".
+- La sincronización se realiza de manera transparente al inicio y al final de cada turno.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## 🧬 HERRAMIENTAS DISPONIBLES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 **Google Workspace:** \`gmail_list\`, \`gmail_search\`, \`gmail_thread\`, \`gmail_send\`, \`drive_list\`, \`drive_search\`, \`drive_mkdir\`, \`drive_move\`, \`drive_upload\`, \`drive_remove\`, \`drive_create_text_file\`, \`drive_read_file\`, \`calendar_list\`, \`calendar_create\`, \`calendar_delete\`, \`sheets_list\`, \`sheets_create\`, \`sheets_read\`, \`sheets_write\`
+
+**Memoria e Historial:** \`memory_get_summary\`, \`memory_update_summary\`, \`memory_list_history\`, \`memory_read_day\`, \`memory_search_by_topic\`, \`memory_list_folder\`
 
 **Internet & Sistema:** \`web_search\`, \`read_url\`, \`execute_command\`, \`analyze_image\`, \`google_workspace\`, \`search_skills\`, \`get_skill\`, \`install_skill\`, \`create_skill\`, \`load_skills\`, \`generate_authorization_link\`
 
@@ -109,47 +220,230 @@ ${skillsSummary}
 Si detectas un error de red o de "Conflict", informa al usuario que estás reiniciando las conexiones. Eres un agente de EJECUCIÓN, actúa siempre con los datos reales obtenidos de las herramientas.`;
 
     // 4. Obtener historial
+    let customPromptStr = "";
+    try {
+      const cachedPrompt = await dbService.getCustomPrompt(userId);
+      if (cachedPrompt) {
+        customPromptStr = `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n## ⚙️ INSTRUCCIONES PERSONALIZADAS DEL USUARIO\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nEl usuario ha definido las siguientes reglas y roles personalizados en su Google Drive (archivo 'prompts/instrucciones_agente.txt'). Síguelas fielmente:\n${cachedPrompt}\n`;
+      }
+    } catch (e: any) {
+      console.error("Error al cargar customPrompt en agent.ts:", e.message);
+    }
+
+    // Ruteo de modelos: google/gemini-2.5-flash por defecto, gpt-4o-mini en cortesías ultra-simples.
+    const isCourtesy = isUltraSimpleCourtesy(userMessage);
+    const targetModel = isCourtesy ? "openai/gpt-4o-mini" : "google/gemini-2.5-flash";
+    console.log(`🤖 [Agent] Ruteo de modelo para "${userMessage}": ${targetModel}`);
+
     let history: any[] = [
-      { role: "system", content: systemPrompt },
+      { role: "system", content: systemPrompt + customPromptStr },
       ...(await dbService.getHistory(userId))
     ];
 
-    let iterations = 0;
-    
-    while (iterations < MAX_ITERATIONS) {
-      const response = await llmService.chat(history);
-      
-      // Si no quiere usar herramientas, terminamos
-      if (!response.tool_calls || response.tool_calls.length === 0) {
-        const finalContent = response.content || "No tengo una respuesta en este momento.";
+    if (tasks.length <= 1) {
+      // Usar chat sin herramientas si la consulta no menciona palabras clave de herramientas, búsqueda o memoria
+      let requiresTools = /crea|crear|lista|listar|busca|buscar|envia|envía|envias|envías|lee|leer|open|genera|generar|sube|subir|mueve|mover|borra|borrar|investiga|investigar|resume|resumir|transcribe|transcribir|factura|evento|correo|email|gmail|mensaje|recibido|bandeja|drive|carpeta|archivo|subir|descargar|mkdir|calendar|calendario|cita|reunion|reunión|agenda|programar|youtube|video|transcripcion|transcripción|sheets|excel|hoja|celda|fila|columna|web_search|noticia|noticias|memoria|historial|resumen|recordar|recuerdas|nombre|ayer|hablamos|primera|conversacion|conversación|dijiste|dije/i.test(userMessage);
+
+      // Si el bot estaba en medio de una búsqueda o proceso, forzar uso de herramientas para no abandonar la tarea
+      const isAwaiting = await dbService.isAwaitingSearchResponse(userId).catch(() => false);
+      if (isAwaiting) {
+        console.log(`ℹ️ [Agent] A la espera de respuesta de búsqueda previa. Forzando uso de herramientas.`);
+        requiresTools = true;
+      }
+
+      if (!requiresTools) {
+        console.log(`⚡ [Agent] Optimizando latencia: consulta conversacional simple detectada. Ejecutando sin herramientas.`);
+        const responseText = await llmService.chatWithoutTools(history, targetModel);
+        const finalContent = responseText || "No tengo una respuesta en este momento.";
         await dbService.addMessage(userId, "assistant", finalContent);
+        
+        // Guardar memoria actualizada en Google Drive en segundo plano (no bloqueante)
+        if (!isCourtesy) {
+          import("../services/driveMemory.js")
+            .then(({ driveMemoryService }) => driveMemoryService.syncToDrive(userId))
+            .catch(err => console.error("Error al guardar memoria en Drive (conversacional rápido):", err.message));
+        }
         return finalContent;
       }
 
-      // Si quiere usar herramientas, las ejecutamos
-      history.push(response);
-      
-      for (const toolCall of response.tool_calls) {
-        let result;
-        try {
-          result = await executeTool(toolCall.function.name, JSON.parse(toolCall.function.arguments), userId);
-        } catch (err: any) {
-          console.error(`❌ Error ejecutando herramienta ${toolCall.function.name}:`, err.message);
-          result = `❌ Error en herramienta ${toolCall.function.name}: ${err.message}`;
-        }
+      let iterations = 0;
+      while (iterations < MAX_ITERATIONS) {
+        const response = await llmService.chat(history, targetModel, userId);
         
-        // Añadimos el resultado de la herramienta al historial
-        history.push({
-          role: "tool" as const,
-          tool_call_id: toolCall.id,
-          content: String(result)
-        });
+        // Si no quiere usar herramientas, terminamos
+        if (!response.tool_calls || response.tool_calls.length === 0) {
+          const finalContent = response.content || "No tengo una respuesta en este momento.";
+          await dbService.addMessage(userId, "assistant", finalContent);
+
+          // Guardar memoria actualizada en Google Drive en segundo plano (no bloqueante)
+          if (!isCourtesy) {
+            import("../services/driveMemory.js")
+              .then(({ driveMemoryService }) => driveMemoryService.syncToDrive(userId))
+              .catch(err => console.error("Error al sincronizar memoria a Drive al finalizar el agente:", err.message));
+          }
+
+          return finalContent;
+        }
+
+        // Si quiere usar herramientas, las ejecutamos
+        history.push(response);
+        
+        for (const toolCall of response.tool_calls) {
+          let result;
+          try {
+            result = await executeTool(toolCall.function.name, JSON.parse(toolCall.function.arguments), userId);
+          } catch (err: any) {
+            console.error(`❌ Error ejecutando herramienta ${toolCall.function.name}:`, err.message);
+            result = `❌ Error en herramienta ${toolCall.function.name}: ${err.message}`;
+          }
+          
+          // Añadimos el resultado de la herramienta al historial
+          history.push({
+            role: "tool" as const,
+            tool_call_id: toolCall.id,
+            content: String(result)
+          });
+        }
+
+        // Volvemos a preguntar al modelo con los resultados de las herramientas
+        iterations++;
       }
 
-      // Volvemos a preguntar al modelo con los resultados de las herramientas
-      iterations++;
-    }
+      return "He alcanzado el límite de pensamientos para esta consulta.";
+    } else {
+      // 1. Ejecutar las tareas individualmente con su propio historial aislado para evitar redundancias
+      // Deduplicar tareas idénticas o muy similares antes de procesarlas
+      const uniqueTasks: string[] = [];
+      for (const t of tasks) {
+        const cleanT = t.toLowerCase().trim();
+        const isRedundant = uniqueTasks.some(existing => {
+          const extL = existing.toLowerCase().trim();
+          return extL.includes(cleanT) || cleanT.includes(extL);
+        });
+        if (!isRedundant) {
+          uniqueTasks.push(t);
+        }
+      }
 
-    return "He alcanzado el límite de pensamientos para esta consulta.";
+      const taskResults: { task: string; result: string }[] = [];
+
+      for (let i = 0; i < uniqueTasks.length; i++) {
+        const task = uniqueTasks[i];
+        const taskHistory = [...history];
+
+        // Reemplazar el último mensaje del historial (que es el mensaje multitarea original) con la tarea específica
+        if (taskHistory.length > 0 && taskHistory[taskHistory.length - 1].role === "user") {
+          taskHistory[taskHistory.length - 1] = {
+            role: "user",
+            content: `Ejecuta la siguiente tarea de forma autónoma y directa utilizando tus herramientas: "${task}"`
+          };
+        }
+
+        let taskInstruction = `Por favor, ejecuta ahora la tarea ${i + 1} de forma proactiva: "${task}"`;
+        const taskLower = task.toLowerCase();
+        if (taskLower.includes("lista") || taskLower.includes("mostrar") || taskLower.includes("ver")) {
+          if (taskLower.includes("carpeta") || taskLower.includes("historial") || taskLower.includes("silvania") || taskLower.includes("drive")) {
+            taskInstruction += `\n⚠️ INSTRUCCIÓN DE HERRAMIENTA: Llama INMEDIATAMENTE a la herramienta drive_list (o memory_list_folder) con el parámetro parentId o folderNameOrId correspondiente a la carpeta mencionada (ej: parentId: "silvania/historial").`;
+          }
+        }
+
+        // Añadir instrucción específica al historial aislado
+        taskHistory.push({
+          role: "user",
+          content: taskInstruction
+        });
+
+        let iterations = 0;
+        let taskCompletedContent = "";
+
+        while (iterations < MAX_ITERATIONS) {
+          const response = await llmService.chat(taskHistory, targetModel, userId);
+
+          if (!response.tool_calls || response.tool_calls.length === 0) {
+            taskCompletedContent = response.content || "Completado.";
+            taskHistory.push(response);
+            break;
+          }
+
+          taskHistory.push(response);
+
+          for (const toolCall of response.tool_calls) {
+            let result;
+            try {
+              result = await executeTool(toolCall.function.name, JSON.parse(toolCall.function.arguments), userId);
+            } catch (err: any) {
+              console.error(`❌ Error ejecutando herramienta ${toolCall.function.name}:`, err.message);
+              result = `❌ Error en herramienta ${toolCall.function.name}: ${err.message}`;
+            }
+
+            taskHistory.push({
+              role: "tool" as const,
+              tool_call_id: toolCall.id,
+              content: String(result)
+            });
+          }
+          iterations++;
+        }
+
+        if (iterations >= MAX_ITERATIONS && !taskCompletedContent) {
+          taskCompletedContent = "Límite de iteraciones alcanzado.";
+        }
+
+        taskResults.push({ task, result: taskCompletedContent });
+      }
+
+      // 2. Compilar la respuesta final detallada uniendo el resultado de cada tarea
+      let finalAgentResponse = "";
+      for (let i = 0; i < taskResults.length; i++) {
+        const tr = taskResults[i];
+        finalAgentResponse += `**${i + 1}. Tarea: ${tr.task}**\n${tr.result}\n\n`;
+      }
+      finalAgentResponse += `✅ Completado: ${taskResults.length}/${taskResults.length} tareas`;
+
+      // Guardar la respuesta final compilada en la DB del usuario
+      await dbService.addMessage(userId, "assistant", finalAgentResponse);
+
+      // Sincronizar memoria a Drive en segundo plano (no bloqueante)
+      if (!isCourtesy) {
+        import("../services/driveMemory.js")
+          .then(({ driveMemoryService }) => driveMemoryService.syncToDrive(userId))
+          .catch(err => console.error("Error al sincronizar memoria a Drive al finalizar el agente multitarea:", err.message));
+      }
+
+      return finalAgentResponse;
+    }
   });
+}
+
+/**
+ * Divide un mensaje complejo del usuario en una lista de tareas individuales delegando al servicio taskParser.
+ */
+async function parseMultipleTasks(userMessage: string): Promise<string[]> {
+  return await parseUserTasks(userMessage);
+}
+
+/**
+ * Detecta saludos y cortesías ultra-simples para ruteo rápido.
+ */
+export function isUltraSimpleCourtesy(text: string): boolean {
+  if (!text) return false;
+  const clean = text
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Eliminar acentos
+    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?¡¿]/g, "") // Eliminar puntuación
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const words = clean.split(" ");
+  if (words.length === 0 || words.length > 3) return false;
+
+  const courtesyWords = new Set([
+    "hola", "hi", "buenas", "buenos", "dias", "tardes", "noches",
+    "ok", "okay", "vale", "perfecto", "gracias", "de", "nada",
+    "entendido", "listo", "que", "dia", "es", "hoy", "hora"
+  ]);
+
+  return words.every(w => courtesyWords.has(w));
 }

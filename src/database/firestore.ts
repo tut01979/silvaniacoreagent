@@ -140,5 +140,53 @@ export const firestoreService = {
       console.error("Error obteniendo todos los usuarios en Firestore:", error);
       return [];
     }
+  },
+
+  async saveUserToken(userId: number, token: any) {
+    try {
+      const db = getDb();
+      const docRef = db.collection("user_tokens").doc(userId.toString());
+      await docRef.set({ token });
+    } catch (error) {
+      console.error("Error guardando token en Firestore:", error);
+    }
+  },
+
+  async getUserToken(userId: number): Promise<any | null> {
+    try {
+      const db = getDb();
+      const doc = await db.collection("user_tokens").doc(userId.toString()).get();
+      if (doc.exists) {
+        return doc.data()?.token || null;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error obteniendo token de Firestore:", error);
+      return null;
+    }
+  },
+
+  async saveUserSubscription(userId: number, subscription: any) {
+    try {
+      const db = getDb();
+      const docRef = db.collection("user_subscriptions").doc(userId.toString());
+      await docRef.set(subscription);
+    } catch (error) {
+      console.error("Error guardando suscripción en Firestore:", error);
+    }
+  },
+
+  async getUserSubscription(userId: number): Promise<any | null> {
+    try {
+      const db = getDb();
+      const doc = await db.collection("user_subscriptions").doc(userId.toString()).get();
+      if (doc.exists) {
+        return doc.data() || null;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error obteniendo suscripción de Firestore:", error);
+      return null;
+    }
   }
 };

@@ -1,6 +1,9 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
 import { config } from "../config/config.js";
+import { youtubeSearch } from "./youtube.js";
+import { resolveAndCleanNewsUrl } from "../services/newsUrlResolver.js";
+import { formatNewsLink, formatWebLink } from "../services/linkFormatter.js";
 
 const SEP = "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
 
@@ -224,7 +227,13 @@ async function searchGoogleNews(query: string, maxResults: number): Promise<Sear
         });
       }
     }
-    return results;
+    const resolvedResults = await Promise.all(
+      results.map(async (r) => {
+        const cleanUrl = await resolveAndCleanNewsUrl(r.url);
+        return { ...r, url: cleanUrl };
+      })
+    );
+    return resolvedResults;
   } catch (err) {
     console.error("❌ Google News error:", err);
     return [];
@@ -282,13 +291,61 @@ async function searchBrave(query: string, maxResults: number): Promise<SearchRes
 
 export async function webSearch(query: string, searchType: string = "web", maxResults: number = 5): Promise<string> {
   try {
+    const queryLower = query.toLowerCase();
+    const isYoutubeQuery = searchType === 'youtube' || searchType === 'video' ||
+                           queryLower.includes("youtube") || 
+                           /canal\s+(de\s+)?youtube/i.test(queryLower) ||
+                           /v[ií]deo(s)?\s+de/i.test(queryLower) ||
+                           /buscar\s+(en\s+)?youtube/i.test(queryLower);
+
+    if (isYoutubeQuery) {
+      try {
+        const ytRes = await youtubeSearch(query, maxResults);
+        if (!ytRes.startsWith("❌") && !ytRes.startsWith("⚠️")) {
+          return ytRes;
+        }
+        console.warn("⚠️ YouTube search yielded error or empty, falling back to web search:", ytRes);
+      } catch (err: any) {
+        console.error("❌ YouTube search failed, falling back to web search:", err);
+      }
+    }
+
     let results: SearchResult[] = [];
 
     if (searchType === 'news') {
-      results = await searchGoogleNews(query, maxResults);
-      if (results.length === 0) {
-        results = await searchDuckDuckGo(query + " noticias", maxResults);
-      }
+      // Obtener noticias de Google News y DuckDuckGo en paralelo
+      const [googleNews, ddgNews] = await Promise.all([
+        searchGoogleNews(query, maxResults * 2).catch(() => [] as SearchResult[]),
+        searchDuckDuckGo(query + " noticias", maxResults).catch(() => [] as SearchResult[])
+      ]);
+      
+      results = [...googleNews, ...ddgNews];
+      
+      // Eliminar duplicados por URL
+      results = results.filter((v, i, a) => a.findIndex(t => t.url === v.url) === i);
+      
+      // Filtrar enlaces rotos de Google News RSS que no pudieron decodificarse
+      results = results.filter(r => !r.url.includes("news.google.com/rss/articles"));
+
+      // Priorizar medios prestigiosos de España, Europa y del mundo
+      const mainSources = [
+        'elpais', 'el pais', 'abc', 'elmundo', 'el mundo', 'rtve', 'bbc', 'reuters', 
+        'antena 3', 'antena3', 'elconfidencial', 'el confidencial', 'lavanguardia', 
+        'la vanguardia', 'efe', 'expansion', 'expansión', 'cnn', 'nytimes', 'guardian',
+        'coindesk', 'cointelegraph'
+      ];
+      
+      results.sort((a, b) => {
+        const aText = (a.source || "").toLowerCase() + " " + a.url.toLowerCase() + " " + a.title.toLowerCase();
+        const bText = (b.source || "").toLowerCase() + " " + b.url.toLowerCase() + " " + b.title.toLowerCase();
+        
+        const aIsMain = mainSources.some(src => aText.includes(src)) ? 1 : 0;
+        const bIsMain = mainSources.some(src => bText.includes(src)) ? 1 : 0;
+        
+        return bIsMain - aIsMain;
+      });
+      
+      results = results.slice(0, maxResults);
     } else if (searchType === 'local') {
       // Ejecutar Brave Local y searchLocal en paralelo
       const [braveResults, localResults] = await Promise.allSettled([
@@ -331,12 +388,16 @@ export async function webSearch(query: string, searchType: string = "web", maxRe
     let formatted = "";
     if (searchType === 'news') {
       formatted = results.map((r, i) =>
-        `📰 **${i + 1}. ${r.title}**\n> 📅 ${r.date || 'Reciente'}  |  🌐 ${r.source || 'Web'}\n> 🔗 ${r.url}\n\n${r.snippet}`
+        `${formatNewsLink(r.title, r.url)}\n` +
+        `> 📅 ${r.date || 'Reciente'}  |  🌐 ${r.source || 'Web'}\n` +
+        `> 📝 ${r.snippet}`
       ).join('\n\n');
     } else {
       formatted = results.map((r, i) => {
-        const icon = r.source?.includes('Local') || r.source?.includes('Maps') ? '📍' : '🔍';
-        return `${icon} **${i + 1}. ${r.title}**\n> 🔗 ${r.url}\n\n${r.snippet}`;
+        const isLocal = r.source?.includes('Local') || r.source?.includes('Maps');
+        const linkStr = isLocal ? `📍 ${r.title}  ·  [🔗 Abrir](${r.url})` : formatWebLink(r.title, r.url);
+        return `${linkStr}\n` +
+               `> 📝 ${r.snippet}`;
       }).join('\n\n');
     }
 

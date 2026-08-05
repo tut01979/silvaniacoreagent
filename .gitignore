@@ -6,3 +6,4 @@ memory.db
 .env
 service-account.json
 data/
+gmail-credentials.json

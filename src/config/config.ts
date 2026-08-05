@@ -8,7 +8,8 @@ export const config = {
   llm: {
     groqKey: process.env.GROQ_API_KEY || "",
     openRouterKey: process.env.OPENROUTER_API_KEY || "",
-    openRouterModel: process.env.OPENROUTER_MODEL || "openrouter/free",
+    openRouterModel: process.env.OPENROUTER_MODEL || "google/gemini-2.5-flash",
+    openRouterVisionModel: process.env.OPENROUTER_VISION_MODEL || "google/gemini-2.5-flash",
   },
   voice: {
     elevenLabsKey: process.env.ELEVENLABS_API_KEY || "",

@@ -1,8 +1,10 @@
-import { exec } from "child_process";
+import { exec, execSync } from "child_process";
 import util from "util";
 import path from "path";
+import fs from "fs";
 import { userContextStore } from "../services/context.js";
 import { dbService } from "../database/db.js";
+import { config } from "../config/config.js";
 
 const execPromise = util.promisify(exec);
 const GOG_PATH = process.platform === "win32" ? "bin\\gog.exe" : "./bin/gog";
@@ -12,17 +14,26 @@ export function stripAnsi(text: string): string {
   return text.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, "");
 }
 
-export async function runGogRaw(command: string): Promise<string> {
-  const gogPath = process.platform === "win32" ? "bin\\gog.exe" : "bin/gog";
-  const fullCmd = `${gogPath} ${command}`;
+export async function runGogRaw(command: string, customEnv?: any): Promise<string> {
+  const gogPath = path.join(process.cwd(), "bin", process.platform === "win32" ? "gog.exe" : "gog");
+  let processedCmd = command;
+  if (process.platform === "win32") {
+    processedCmd = processedCmd.replace(/'(\[.*?\]|\{.*?\})'/g, (_, jsonStr) => {
+      const escapedJson = jsonStr.replace(/"/g, '\\"');
+      return `"${escapedJson}"`;
+    });
+  }
+
+  const fullCmd = `"${gogPath}" ${processedCmd}`;
   
   // Redirigir APPDATA al directorio local 'data' para persistencia v1.3
   const localDataPath = path.join(process.cwd(), "data");
-  const customEnv = { 
+  const envToUse = customEnv || { 
     ...process.env, 
     APPDATA: localDataPath,
     HOME: localDataPath, 
-    USERPROFILE: localDataPath
+    USERPROFILE: localDataPath,
+    GOG_KEYRING_PASSWORD: process.env.GOG_KEYRING_PASSWORD || "silvaniacoreagent"
   };
 
   console.log(`🔧 [gog] Ejecutando: ${fullCmd}`);
@@ -30,7 +41,7 @@ export async function runGogRaw(command: string): Promise<string> {
     const { stdout, stderr } = await execPromise(fullCmd, { 
       timeout: 60000, 
       maxBuffer: 1024 * 1024,
-      env: customEnv
+      env: envToUse
     });
     let output = stripAnsi(stdout || "").trim();
     
@@ -80,6 +91,16 @@ export async function runGogRaw(command: string): Promise<string> {
 export function preprocessWorkspaceCommand(command: string): string {
   let clean = command.trim();
   const now = new Date();
+  
+  // Asegurar que drive rm use --force para evitar prompt interactivo
+  if ((clean.startsWith("drive rm ") || clean.startsWith("drive remove ")) && !clean.includes("--force")) {
+    clean += " --force";
+  }
+  
+  // Normalizar drive mv -> drive move
+  if (clean.startsWith("drive mv ")) {
+    clean = clean.replace("drive mv ", "drive move ");
+  }
   
   // Si el comando ya tiene --json o --format=json, lo normalizamos a --json
   if (clean.includes("--format=json")) {
@@ -151,20 +172,85 @@ export function preprocessWorkspaceCommand(command: string): string {
 }
 
 /**
- * Ejecuta un comando gog con preprocesamiento y manejo de errores estandarizado.
+ * Asegura que el comando de gog incluya el parámetro --account con la cuenta correcta.
  */
-export async function runGog(command: string): Promise<string> {
-  let finalCmd = command;
-  const store = userContextStore.getStore();
-  if (store?.userId) {
-    const email = await dbService.getUserEmail(store.userId);
-    if (email) {
-      if (!finalCmd.includes("--account")) {
-        finalCmd += ` --account=${email}`;
-      }
+export async function ensureAccountParam(command: string, userId?: number): Promise<{ command: string; email: string }> {
+  const uId = userId || userContextStore.getStore()?.userId || (config.telegram?.allowedUsers?.[0]) || 1572946817;
+  const primaryUserId = config.telegram?.allowedUsers?.[0] || 1572946817;
+
+  let email: string | null = null;
+  if (uId === primaryUserId) {
+    email = "eduardoqm573@gmail.com";
+  } else {
+    email = await dbService.getUserEmail(uId);
+  }
+
+  if (!email) {
+    email = "eduardoqm573@gmail.com";
+  }
+
+  let clean = command.trim();
+  if (clean.match(/--account[=\s]\S+/)) {
+    clean = clean.replace(/--account[=\s]\S+/g, `--account=${email}`);
+  } else {
+    clean += ` --account=${email}`;
+  }
+
+  return { command: clean, email };
+}
+
+/**
+ * Ejecuta un comando gog con preprocesamiento y manejo de errores estandarizado.
+ * Utiliza almacenamiento aislado por usuario para garantizar la privacidad y seguridad.
+ */
+export async function runGog(command: string, userId?: number): Promise<string> {
+  let preprocessed = preprocessWorkspaceCommand(command);
+  const uId = userId || userContextStore.getStore()?.userId || (config.telegram?.allowedUsers?.[0]) || 1572946817;
+  
+  const { command: finalCmd, email } = await ensureAccountParam(preprocessed, uId);
+  
+  console.log(`[GOG] Ejecutando con account: ${email}`);
+  
+  // Directorio de almacenamiento aislado por usuario
+  const userAppdataPath = path.join(process.cwd(), "data", `user_${uId}`);
+  if (!fs.existsSync(userAppdataPath)) {
+    fs.mkdirSync(userAppdataPath, { recursive: true });
+  }
+  
+  const executable = path.join(process.cwd(), "bin", process.platform === "win32" ? "gog.exe" : "gog");
+  const customEnv = { 
+    ...process.env, 
+    APPDATA: userAppdataPath,
+    HOME: userAppdataPath, 
+    USERPROFILE: userAppdataPath,
+    GOG_KEYRING_PASSWORD: process.env.GOG_KEYRING_PASSWORD || "silvaniacoreagent"
+  };
+
+  // Registrar la credencial del cliente de Google de forma aislada
+  const credsPath = path.join(process.cwd(), "data", "gmail-credentials.json");
+  if (fs.existsSync(credsPath)) {
+    try {
+      const clientCmd = `"${executable}" auth credentials "${credsPath}"`;
+      execSync(clientCmd, { env: customEnv });
+    } catch (err: any) {
+      console.error(`❌ Error registrando credenciales en gog para usuario ${uId}:`, err.message);
     }
   }
-  const processed = preprocessWorkspaceCommand(finalCmd);
-  return await runGogRaw(processed);
+  
+  const tokenObj = await dbService.getUserToken(uId);
+  if (tokenObj) {
+    try {
+      const tempTokenPath = path.join(userAppdataPath, `temp_token_${uId}.json`);
+      fs.writeFileSync(tempTokenPath, JSON.stringify(tokenObj, null, 2));
+      
+      const importCmd = `"${executable}" auth tokens import "${tempTokenPath}"`;
+      execSync(importCmd, { env: customEnv });
+      try { fs.unlinkSync(tempTokenPath); } catch {}
+    } catch (importErr: any) {
+      console.error(`❌ Error importando token en caliente para usuario ${uId}:`, importErr.message);
+    }
+  }
+
+  return await runGogRaw(finalCmd, customEnv);
 }
 

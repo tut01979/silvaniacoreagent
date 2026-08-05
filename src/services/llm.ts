@@ -51,7 +51,7 @@ export const llmService = {
             ],
           } as any,
         ],
-        model: config.llm.openRouterModel,
+        model: "google/gemini-2.5-flash",
       });
       return response.choices[0].message;
     } catch (error: any) {
@@ -88,7 +88,10 @@ export const llmService = {
     }
   },
 
-  async chat(messages: any[]) {
+  async chat(messages: any[], model?: string, userId?: number) {
+    const targetModel = model || "google/gemini-2.5-flash";
+    const adminId = config.telegram.allowedUsers[0] || 1572946817;
+    const isAdmin = userId === adminId;
     const tools: any[] = [
       {
         type: "function",
@@ -142,20 +145,22 @@ export const llmService = {
           }
         }
       },
-  {
-    type: "function",
-    function: {
-      name: "execute_command",
-      description: "Ejecuta un comando en la terminal del sistema. Úsalo con precaución.",
-      parameters: {
-        type: "object",
-        properties: {
-          command: { type: "string", description: "El comando a ejecutar" }
-        },
-        required: ["command"]
-      }
-    }
-  },
+      {
+        type: "function",
+        function: {
+          name: "youtube_search",
+          description: "Busca videos en YouTube por palabra clave o nombre de canal, devolviendo títulos, duraciones, y enlaces directos.",
+          parameters: {
+            type: "object",
+            properties: {
+              query: { type: "string", description: "Términos de búsqueda para encontrar los videos relevantes en YouTube (ej: 'alejavi rivera', 'antigravity artificial intelligence')" },
+              max_results: { type: "number", description: "Número de resultados de video a devolver (1-10)" }
+            },
+            required: ["query"]
+          }
+        }
+      },
+
   {
     type: "function",
     function: {
@@ -396,6 +401,24 @@ export const llmService = {
           }
         }
       },
+      {
+        type: "function",
+        function: {
+          name: "calendar_update",
+          description: "Actualiza un evento existente en el calendario.",
+          parameters: {
+            type: "object",
+            properties: {
+              event_id: { type: "string", description: "ID del evento a actualizar" },
+              summary: { type: "string", description: "Nuevo título del evento (opcional)" },
+              start: { type: "string", description: "Nuevo inicio (ISO, ej: 2024-05-01T10:00:00Z, opcional)" },
+              end: { type: "string", description: "Nuevo fin (ISO, ej: 2024-05-01T11:00:00Z, opcional)" },
+              description: { type: "string", description: "Nueva descripción (opcional)" }
+            },
+            required: ["event_id"]
+          }
+        }
+      },
       // ─── SHEETS ───
       {
         type: "function",
@@ -532,15 +555,154 @@ export const llmService = {
             required: ["file_id"]
           }
         }
+      },
+      {
+        type: "function",
+        function: {
+          name: "analyze_document",
+          description: "Analiza el contenido de un documento (PDF, CSV, JSON, MD, TXT) en Google Drive usando capacidades avanzadas de lectura y comprensión de documentos.",
+          parameters: {
+            type: "object",
+            properties: {
+              file_id: { type: "string", description: "ID del archivo de documento en Google Drive" },
+              prompt: { type: "string", description: "Pregunta específica, resumen o instrucciones de análisis para el documento (opcional)" }
+            },
+            required: ["file_id"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "generate_authorization_link",
+          description: "Genera el enlace de autorización de Google para que el usuario vincule su cuenta.",
+          parameters: { type: "object", properties: {} }
+        }
+      },
+      // ─── MEMORIA E HISTORIAL ───
+      {
+        type: "function",
+        function: {
+          name: "memory_get_summary",
+          description: "Obtiene el resumen consolidado y los puntos clave de las conversaciones anteriores guardadas en Drive.",
+          parameters: { type: "object", properties: {} }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "memory_update_summary",
+          description: "Actualiza el resumen y los puntos clave de la memoria persistente en Google Drive.",
+          parameters: {
+            type: "object",
+            properties: {
+              summary: { type: "string", description: "Nuevo resumen consolidado de las conversaciones" },
+              keyPoints: { type: "array", items: { type: "string" }, description: "Lista de puntos clave o datos importantes (opcional)" }
+            },
+            required: ["summary"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "memory_list_history",
+          description: "Lista todos los días de conversaciones guardados en el historial de Google Drive (silvania/historial/...).",
+          parameters: { type: "object", properties: {} }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "memory_read_day",
+          description: "Lee y devuelve el historial de mensajes de un día específico guardado en Drive.",
+          parameters: {
+            type: "object",
+            properties: {
+              year: { type: "string", description: "Año de la conversación (ej: '2026')" },
+              month: { type: "string", description: "Mes de la conversación (ej: '07')" },
+              day: { type: "string", description: "Día de la conversación (ej: '19')" }
+            },
+            required: ["year", "month", "day"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "memory_search_by_topic",
+          description: "Busca exhaustivamente en la memoria persistente e historial de conversaciones por un tema, situación o palabra clave específica (ej: 'situación sentimental', 'finanzas', 'embargo', 'proyecto Silvania').",
+          parameters: {
+            type: "object",
+            properties: {
+              topic: { type: "string", description: "Tema, situación o palabras clave a buscar en el historial de memoria." }
+            },
+            required: ["topic"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "memory_save_topic",
+          description: "Guarda o actualiza un archivo de tema específico en la carpeta silvania/temas/ (ej: 'familia', 'proyectos', 'finanzas'). Úsala para estructurar y persistir información clave sobre un tema específico.",
+          parameters: {
+            type: "object",
+            properties: {
+              topicName: { type: "string", description: "Nombre del tema (ej: 'familia', 'proyectos', 'finanzas')" },
+              content: { type: "string", description: "Contenido detallado en formato JSON estructurado o texto para guardar sobre el tema." }
+            },
+            required: ["topicName", "content"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "memory_get_diagnostics",
+          description: "Obtiene un reporte detallado del estado y organización de la memoria del usuario, incluyendo los archivos reales en silvania/temas/ y el estado de memoria_conversacion.json.",
+          parameters: { type: "object", properties: {} }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "memory_list_folder",
+          description: "Lista el contenido de cualquier carpeta de Google Drive (como 'historial', 'silvania', '2026', '07', etc.) resolviendo su nombre a su ID real de Drive.",
+          parameters: {
+            type: "object",
+            properties: {
+              folderNameOrId: { type: "string", description: "Nombre o ID de la carpeta a listar (ej: 'historial', 'silvania', '2026', '07')." }
+            },
+            required: ["folderNameOrId"]
+          }
+        }
       }
 
     ];
 
+    if (isAdmin) {
+      tools.push({
+        type: "function",
+        function: {
+          name: "execute_command",
+          description: "Ejecuta un comando en la terminal del sistema. Úsalo con precaución.",
+          parameters: {
+            type: "object",
+            properties: {
+              command: { type: "string", description: "El comando a ejecutar" }
+            },
+            required: ["command"]
+          }
+        }
+      });
+    }
+
     try {
-      console.log(`🤖 [LLM] Usando OpenRouter (${config.llm.openRouterModel})...`);
+      console.log(`🤖 [LLM] Usando OpenRouter (${targetModel})...`);
       const response = await openRouter.chat.completions.create({
         messages,
-        model: config.llm.openRouterModel,
+        model: targetModel,
         temperature: 0.5,
         tools,
       });
@@ -548,15 +710,63 @@ export const llmService = {
     } catch (error: any) {
       console.warn("⚠️ OpenRouter falló:", error.message);
       try {
+        const cleanMessages = messages.map(m => {
+          if (typeof m === "object" && m !== null) {
+            const copy = { ...m };
+            delete (copy as any).refusal;
+            if (copy.role === "tool" && typeof copy.content === "string" && copy.content.length > 2500) {
+              copy.content = copy.content.substring(0, 2500) + "\n...[contenido truncado para optimizar tokens]";
+            }
+            return copy;
+          }
+          return m;
+        });
+
+        // Garantizar que la llamada a Groq no supere los 12k tokens (System Message + últimos 8 mensajes)
+        let groqMessages = cleanMessages;
+        if (cleanMessages.length > 10) {
+          const sys = cleanMessages[0]?.role === "system" ? [cleanMessages[0]] : [];
+          const tail = cleanMessages.slice(-8);
+          groqMessages = [...sys, ...tail];
+        }
+
         const response = await groq.chat.completions.create({
-          messages,
+          messages: groqMessages as any,
           model: "llama-3.3-70b-versatile",
           temperature: 0.5,
           tools,
         });
-        return response.choices[0].message;
+        const msg = response.choices[0].message;
+        delete (msg as any).refusal;
+        return msg;
       } catch (fallbackError: any) {
         console.error("❌ Modelos fallaron:", fallbackError.message);
+        throw fallbackError;
+      }
+    }
+  },
+
+  async chatWithoutTools(messages: any[], model?: string): Promise<string> {
+    const targetModel = model || "google/gemini-2.5-flash";
+    try {
+      console.log(`🤖 [LLM] Chat sin herramientas usando OpenRouter (${targetModel})...`);
+      const response = await openRouter.chat.completions.create({
+        messages,
+        model: targetModel,
+        temperature: 0.3,
+      });
+      return response.choices[0].message.content || "";
+    } catch (error: any) {
+      console.warn("⚠️ OpenRouter chat sin herramientas falló:", error.message);
+      try {
+        const response = await groq.chat.completions.create({
+          messages,
+          model: "llama-3.3-70b-versatile",
+          temperature: 0.3,
+        });
+        return response.choices[0].message.content || "";
+      } catch (fallbackError: any) {
+        console.error("❌ Ambos modelos fallaron en chat sin herramientas:", fallbackError.message);
         throw fallbackError;
       }
     }

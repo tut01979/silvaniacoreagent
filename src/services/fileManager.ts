@@ -84,13 +84,13 @@ export const fileManager = {
    * Obtiene el ID de la carpeta de uploads, buscando primero la preferida 'Archivos SilvaniaCoreAgent'.
    * Evita crear duplicados si ya existe alguna carpeta con ese nombre.
    */
-  async getOrCreateUploadFolder(): Promise<string> {
+  async getOrCreateUploadFolder(userId?: number): Promise<string> {
     const PREFERRED_NAME = UPLOADS_FOLDER_NAME;
 
     // 1. Intentar con el ID conocido (si sigue siendo válido)
     try {
       // Usamos drive list con el ID para verificar existencia rápida
-      const checkRaw = await runGog(`drive get ${UPLOADS_FOLDER_ID} --json`);
+      const checkRaw = await runGog(`drive get ${UPLOADS_FOLDER_ID} --json`, userId);
       if (checkRaw && (checkRaw.includes(UPLOADS_FOLDER_ID) || checkRaw.includes("name"))) {
         const check = JSON.parse(checkRaw);
         const folder = check.file || check;
@@ -108,14 +108,14 @@ export const fileManager = {
     let searchResult: any[] = [];
     try {
       // Usamos la sintaxis correcta: query posicional + flag --raw-query
-      const searchRaw = await runGog(`drive search "name = '${PREFERRED_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false" --raw-query --json`);
+      const searchRaw = await runGog(`drive search "name = '${PREFERRED_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false" --raw-query --json`, userId);
       
       const search = JSON.parse(searchRaw);
       searchResult = search.files || (Array.isArray(search) ? search : []);
       
       // Si no hay resultados exactos, intentamos búsqueda por 'contains' por si acaso
       if (searchResult.length === 0) {
-        const searchRaw2 = await runGog(`drive search "name contains '${PREFERRED_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false" --raw-query --json`);
+        const searchRaw2 = await runGog(`drive search "name contains '${PREFERRED_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false" --raw-query --json`, userId);
         const search2 = JSON.parse(searchRaw2);
         searchResult = search2.files || (Array.isArray(search2) ? search2 : []);
       }
@@ -133,7 +133,7 @@ export const fileManager = {
     // 3. Crear carpeta nueva SOLO si estamos seguros de que no existe
     console.log(`📁 Creando carpeta principal "${PREFERRED_NAME}"...`);
     try {
-      const createRaw = await runGog(`drive mkdir "${PREFERRED_NAME}" --json`);
+      const createRaw = await runGog(`drive mkdir "${PREFERRED_NAME}" --json`, userId);
       const create = JSON.parse(createRaw);
       const folder = create.folder || create.file || create;
       if (folder && folder.id) {
@@ -158,7 +158,8 @@ export const fileManager = {
     fileUrl: string,
     originalName: string,
     isPhoto: boolean,
-    targetFolderId?: string
+    targetFolderId?: string,
+    saveDescriptionFile: boolean = false
   ): Promise<{ descriptiveName: string; description: string; fileId: string; descriptionFileId?: string }> {
     const extension = path.extname(originalName).toLowerCase() || (isPhoto ? ".jpg" : "");
     
@@ -205,14 +206,24 @@ export const fileManager = {
       // 2. Renombrar archivo local
       finalLocalPath = path.join(path.dirname(localPath), descriptiveName);
       console.log(`📂 Renombrando archivo temporal a: ${finalLocalPath}`);
-      fs.renameSync(localPath, finalLocalPath);
+      try {
+        fs.renameSync(localPath, finalLocalPath);
+      } catch (renameErr: any) {
+        if (renameErr.code === "EXDEV") {
+          console.log("📂 Copiando archivo entre sistemas de archivos cruzados...");
+          fs.copyFileSync(localPath, finalLocalPath);
+          fs.unlinkSync(localPath);
+        } else {
+          throw renameErr;
+        }
+      }
 
       // 3. Obtener carpeta destino
-      const folderId = targetFolderId || await this.getOrCreateUploadFolder();
+      const folderId = targetFolderId || await this.getOrCreateUploadFolder(userId);
 
       // 4. Subir archivo principal a Drive
       console.log(`📤 Subiendo "${descriptiveName}" a Drive (carpeta: ${folderId})...`);
-      const uploadRaw = await runGog(`drive upload "${finalLocalPath}" --name="${descriptiveName}" --parent="${folderId}" --json`);
+      const uploadRaw = await runGog(`drive upload "${finalLocalPath}" --name="${descriptiveName}" --parent="${folderId}" --json`, userId);
       
       let fileId = "";
       try {
@@ -222,15 +233,15 @@ export const fileManager = {
         console.warn("⚠️ No se pudo obtener el ID del archivo subido desde el JSON:", (e as Error).message);
       }
 
-      // 5. SI ES IMAGEN: Guardar la descripción en un archivo .txt en la misma carpeta
+      // 5. SI ES IMAGEN: Guardar la descripción en un archivo .txt en la misma carpeta (bajo demanda)
       let descriptionFileId = "";
-      if (isPhoto && description && fileId) {
+      if (saveDescriptionFile && isPhoto && description && fileId) {
         const descFileName = `Descripcion_${descriptiveName.replace(extension, "")}.txt`;
         const descTempPath = path.join(path.dirname(localPath), `desc_${Date.now()}.txt`);
         fs.writeFileSync(descTempPath, `DESCRIPCIÓN DE LA IMAGEN: ${descriptiveName}\n\nID Drive: ${fileId}\n\nCONTENIDO:\n${description}`);
         
         console.log(`📝 Guardando descripción en Drive: ${descFileName}`);
-        const descUploadRaw = await runGog(`drive upload "${descTempPath}" --name="${descFileName}" --parent="${folderId}" --json`);
+        const descUploadRaw = await runGog(`drive upload "${descTempPath}" --name="${descFileName}" --parent="${folderId}" --json`, userId);
         try {
           const descParsed = JSON.parse(descUploadRaw);
           descriptionFileId = descParsed.id || descParsed.file?.id || "";
