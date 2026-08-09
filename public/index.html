@@ -1141,6 +1141,22 @@
       color: var(--primary);
     }
 
+    .legal-footer {
+      text-align: center;
+      font-size: 13px;
+      color: #999;
+      margin-top: 40px;
+    }
+
+    .legal-footer a {
+      color: #999;
+      text-decoration: none;
+    }
+
+    .legal-footer a:hover {
+      text-decoration: underline;
+    }
+
     /* Responsive */
     @media (max-width: 992px) {
       .hero {
@@ -1547,9 +1563,13 @@
     <div class="footer-links">
       <a href="https://t.me/{{BOT_USERNAME}}" target="_blank">Telegram Bot</a>
       <a href="#">Soporte</a>
-      <a href="#">Términos y Privacidad</a>
     </div>
     <p>&copy; 2026 Silvania CoreAgent. Diseñado para la excelencia empresarial.</p>
+  </footer>
+
+  <footer class="legal-footer">
+    <a href="/privacy.html">Política de Privacidad</a> ·
+    <a href="/terms.html">Términos de Servicio</a>
   </footer>
 
   <script>

@@ -4,6 +4,8 @@ import { dbService } from "../database/db.js";
 import { userContextStore } from "../services/context.js";
 import { parseUserTasks, formatTaskSummary } from "../services/taskParser.js";
 import { shouldTriggerMultitask } from "../services/multitaskFilter.js";
+import fs from "fs";
+import path from "path";
 
 const MAX_ITERATIONS = 10;
 
@@ -95,6 +97,38 @@ Eres capaz de gestionar de manera integral y autónoma las siguientes áreas:
 8. **PRESERVACIÓN DE ENLACES (CRÍTICO):** NUNCA alteres, resumas ni elimines ningún carácter de las URLs proporcionadas por las herramientas (especialmente guiones bajos \`_\`, guiones \`-\` o barras). Debes copiar los enlaces carácter por carácter de forma idéntica.
 9. **MULTITAREA COMPLETA:** Siempre identifica y ejecuta TODAS las tareas solicitadas en el mensaje. En multitarea, reporta el resultado de cada una de forma individual, clara y con todo su detalle.
 10. **RESPUESTAS EXPLICATIVAS EN PROSA NATURAL:** Cuando el usuario te haga preguntas conceptuales, explicaciones, solicite opiniones, resúmenes teóricos o profundizaciones, responde SIEMPRE en prosa natural, de forma conversacional y fluida. En estos casos, está estrictamente PROHIBIDO añadir cualquier sección de "Resumen Final" o formatear tu respuesta como un checklist o TODO de tareas.
+11. **Regla de Oro 11 – Creación y uso de Skills**
+- Cuando el usuario pida crear una skill y la petición contenga al menos: nombre orientativo + propósito claro, **debes crear la skill inmediatamente** usando \`create_skill\`.
+- No hagas preguntas innecesarias. Genera un \`SKILL.md\` completo y bien estructurado con valores por defecto razonables.
+- Solo pregunta si falta información crítica e imprescindible (ej: si el usuario dice solo “crea una skill” sin ningún contexto).
+- Al crear la skill debes:
+  1. Generar un \`SKILL.md\` con las secciones: Descripción, Cuándo usarla, Instrucciones paso a paso, Entregables.
+  2. Crear la carpeta de la skill en Drive.
+  3. Crear subcarpeta \`plantillas/\` si la skill genera documentos o plantillas.
+  4. Indexar la skill en \`config.installedSkills\`.
+  5. Confirmar al usuario que la skill quedó creada e indexada.
+- Cuando una skill ya exista y sea relevante, usa \`load_skill\` para seguir sus instrucciones.
+- Nunca inventes datos en la memoria de temas. Solo guarda información confirmada por el usuario.
+12. **Regla de Oro – Enlaces y archivos reales (OBLIGATORIA):**
+- NUNCA inventes, adivines ni fabricas enlaces de Google Drive, Google Sheets, Google Docs, Gmail u otros archivos.
+- Solo puedes devolver un enlace si una herramienta te ha devuelto explícitamente un fileId, webViewLink o URL real en su resultado.
+- Si la creación del archivo falló o no se ejecutó la herramienta, dilo claramente: “No se pudo crear el archivo” y explica el error. No inventes un enlace de relleno.
+- Si dices que algo se guardó en Drive, debe existir realmente. Verificar mentalmente que recibiste el resultado de la herramienta antes de afirmarlo.
+13. **Regla – Datos ya proporcionados:**
+- Si el usuario ya indicó en el mensaje el puesto, área, nivel, modalidad, ubicación u otros datos necesarios para una skill, ÚSALOS directamente.
+- No pidas confirmación de información que ya está clara en el mensaje del usuario.
+- Solo pregunta si falta un dato crítico e imprescindible que no se puede inferir razonablemente.
+14. **Regla – Cierre de skills:**
+- Si la skill requiere guardar un archivo, no emitas respuesta final hasta haber ejecutado la herramienta de creación y recibido un fileId/webViewLink real. Si falla, dilo; no afirmes que se guardó.
+- No envíes mensajes del tipo “Ahora procederé a guardar…” como respuesta final. Eso es un paso intermedio, no el cierre.
+- Si la skill requiere varios pasos, completa la cadena de herramientas en el mismo turno siempre que sea posible. Si se interrumpe, al continuar debe retomar y terminar, no reiniciar pidiendo datos otra vez.
+15. **Regla – Cero Anuncios Intermedios:**
+- NUNCA respondas al usuario diciendo cosas como “Voy a generar…”, “Procedo a buscar…”, “Un momento mientras…”, “Enseguida creo…” o textos de espera similares.
+- Si la tarea requiere herramientas, tu PRIMERA acción debe ser una o más llamadas a herramientas, no un mensaje de texto al usuario.
+- No pidas confirmación (“ok”, “continúa”, “un momento”) para seguir ejecutando pasos de la misma tarea.
+- Solo envía mensaje de texto al usuario cuando tengas el resultado final (entregable + enlace real) o un error claro.
+- Está estrictamente prohibido responder con textos de espera o anuncios intermedios. Si la tarea requiere herramientas, tu PRIMERA respuesta DEBE contener la llamada a la herramienta. Si respondes solo con texto plano sin llamadas a herramientas, el sistema considerará que has terminado, por lo que si te detienes antes de crear el entregable habrás fallado.
+16. **PROHIBIDO SIMULAR HERRAMIENTAS EN TEXTO:** Está estrictamente prohibido simular, escribir en código o inventar llamadas a herramientas en el texto de tu respuesta conversacional (ej: no escribas “tools.google_workspace(...)”, “drive_create_text_file(...)”, etc. como texto). Si estás en un modo conversacional sin herramientas y necesitas usar una, simplemente dile al usuario que no tienes acceso a la herramienta en este turno y pídele que sea más explícito en su comando.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## 📧 PROTOCOLO GMAIL
@@ -219,7 +253,7 @@ ${skillsSummary}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Si detectas un error de red o de "Conflict", informa al usuario que estás reiniciando las conexiones. Eres un agente de EJECUCIÓN, actúa siempre con los datos reales obtenidos de las herramientas.`;
 
-    // 4. Obtener historial
+    // 4. Obtener historial y prompts de la caché local
     let customPromptStr = "";
     try {
       const cachedPrompt = await dbService.getCustomPrompt(userId);
@@ -230,19 +264,59 @@ Si detectas un error de red o de "Conflict", informa al usuario que estás reini
       console.error("Error al cargar customPrompt en agent.ts:", e.message);
     }
 
+    let drivePromptsStr = "";
+    try {
+      const localPromptsDir = path.join(process.cwd(), "data", `user_${userId}`, "prompts");
+      if (fs.existsSync(localPromptsDir)) {
+        const files = fs.readdirSync(localPromptsDir);
+        for (const file of files) {
+          if (file.endsWith(".md") || file.endsWith(".txt")) {
+            const filePath = path.join(localPromptsDir, file);
+            const content = fs.readFileSync(filePath, "utf8");
+            drivePromptsStr += `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n## ⚙️ INSTRUCCIONES DE DRIVE (${file})\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${content}\n`;
+          }
+        }
+      }
+    } catch (e: any) {
+      console.error("Error leyendo prompts locales de caché:", e.message);
+    }
+
     // Ruteo de modelos: google/gemini-2.5-flash por defecto, gpt-4o-mini en cortesías ultra-simples.
     const isCourtesy = isUltraSimpleCourtesy(userMessage);
     const targetModel = isCourtesy ? "openai/gpt-4o-mini" : "google/gemini-2.5-flash";
     console.log(`🤖 [Agent] Ruteo de modelo para "${userMessage}": ${targetModel}`);
 
     let history: any[] = [
-      { role: "system", content: systemPrompt + customPromptStr },
+      { role: "system", content: systemPrompt + customPromptStr + drivePromptsStr },
       ...(await dbService.getHistory(userId))
     ];
 
     if (tasks.length <= 1) {
       // Usar chat sin herramientas si la consulta no menciona palabras clave de herramientas, búsqueda o memoria
-      let requiresTools = /crea|crear|lista|listar|busca|buscar|envia|envía|envias|envías|lee|leer|open|genera|generar|sube|subir|mueve|mover|borra|borrar|investiga|investigar|resume|resumir|transcribe|transcribir|factura|evento|correo|email|gmail|mensaje|recibido|bandeja|drive|carpeta|archivo|subir|descargar|mkdir|calendar|calendario|cita|reunion|reunión|agenda|programar|youtube|video|transcripcion|transcripción|sheets|excel|hoja|celda|fila|columna|web_search|noticia|noticias|memoria|historial|resumen|recordar|recuerdas|nombre|ayer|hablamos|primera|conversacion|conversación|dijiste|dije/i.test(userMessage);
+      let requiresTools = /crea|crear|lista|listar|busca|buscar|envia|envía|envias|envías|lee|leer|open|genera|generar|sube|subir|mueve|mover|borra|borrar|investiga|investigar|resume|resumir|transcribe|transcribir|factura|evento|correo|email|gmail|mensaje|recibido|bandeja|drive|carpeta|archivo|subir|descargar|mkdir|calendar|calendario|cita|reunion|reunión|agenda|programar|youtube|video|transcripcion|transcripción|sheets|excel|hoja|celda|fila|columna|web_search|noticia|noticias|memoria|historial|resumen|recordar|recuerdas|nombre|ayer|hablamos|primera|conversacion|conversación|dijiste|dije|skill|skills|habilidad|habilidades/i.test(userMessage);
+
+      // Heurística de UX ampliada: Si el mensaje del usuario es una confirmación u orden corta
+      // (ej: "ok", "si", "termina el trabajo", "hazlo", "procede", "genera el enlace")
+      // y el historial muestra que hay una acción pendiente o el asistente lo requirió, forzar requiresTools = true.
+      if (!requiresTools) {
+        const cleanMsg = userMessage.toLowerCase().trim();
+        const isConfirmationOrImperative = 
+          /^(ok|si|sí|vale|procede|adelante|dale|continua|continuar|listo|termina|hazlo|guárdalo|guardalo|créalo|crealo|genera el enlace)$/i.test(cleanMsg) || 
+          cleanMsg.length < 25 && /(ok|procede|adelante|continua|continuar|dale|termina|hazlo|guárdalo|guardalo|créalo|crealo|genera)/i.test(cleanMsg);
+        
+        if (isConfirmationOrImperative) {
+          const userHistory = await dbService.getHistory(userId, 5);
+          const lastAssistantMsg = [...userHistory].reverse().find(msg => msg.role === "assistant");
+          if (lastAssistantMsg && lastAssistantMsg.content) {
+            const contentLower = lastAssistantMsg.content.toLowerCase();
+            const indicatesAction = /voy a|procedo|guardar|crear|buscar|enviar|generar|un momento|espera/i.test(contentLower);
+            if (indicatesAction) {
+              console.log(`ℹ️ [Agent] Confirmación u orden corta detectada ("${userMessage}"). Forzando requiresTools = true para mantener acceso a herramientas.`);
+              requiresTools = true;
+            }
+          }
+        }
+      }
 
       // Si el bot estaba en medio de una búsqueda o proceso, forzar uso de herramientas para no abandonar la tarea
       const isAwaiting = await dbService.isAwaitingSearchResponse(userId).catch(() => false);
@@ -254,7 +328,7 @@ Si detectas un error de red o de "Conflict", informa al usuario que estás reini
       if (!requiresTools) {
         console.log(`⚡ [Agent] Optimizando latencia: consulta conversacional simple detectada. Ejecutando sin herramientas.`);
         const responseText = await llmService.chatWithoutTools(history, targetModel);
-        const finalContent = responseText || "No tengo una respuesta en este momento.";
+        const finalContent = sanitizeAlucinatedLinks(responseText || "No tengo una respuesta en este momento.", history);
         await dbService.addMessage(userId, "assistant", finalContent);
         
         // Guardar memoria actualizada en Google Drive en segundo plano (no bloqueante)
@@ -272,7 +346,8 @@ Si detectas un error de red o de "Conflict", informa al usuario que estás reini
         
         // Si no quiere usar herramientas, terminamos
         if (!response.tool_calls || response.tool_calls.length === 0) {
-          const finalContent = response.content || "No tengo una respuesta en este momento.";
+          const rawContent = response.content || "No tengo una respuesta en este momento.";
+          const finalContent = sanitizeAlucinatedLinks(rawContent, history);
           await dbService.addMessage(userId, "assistant", finalContent);
 
           // Guardar memoria actualizada en Google Drive en segundo plano (no bloqueante)
@@ -329,6 +404,7 @@ Si detectas un error de red o de "Conflict", informa al usuario que estás reini
 
       for (let i = 0; i < uniqueTasks.length; i++) {
         const task = uniqueTasks[i];
+        const originalHistoryLength = history.length;
         const taskHistory = [...history];
 
         // Reemplazar el último mensaje del historial (que es el mensaje multitarea original) con la tarea específica
@@ -390,6 +466,10 @@ Si detectas un error de red o de "Conflict", informa al usuario que estás reini
         }
 
         taskResults.push({ task, result: taskCompletedContent });
+
+        // Acumular los nuevos mensajes generados en esta tarea de vuelta al historial principal (history)
+        const newMessages = taskHistory.slice(originalHistoryLength);
+        history.push(...newMessages);
       }
 
       // 2. Compilar la respuesta final detallada uniendo el resultado de cada tarea
@@ -399,6 +479,9 @@ Si detectas un error de red o de "Conflict", informa al usuario que estás reini
         finalAgentResponse += `**${i + 1}. Tarea: ${tr.task}**\n${tr.result}\n\n`;
       }
       finalAgentResponse += `✅ Completado: ${taskResults.length}/${taskResults.length} tareas`;
+
+      // Sanitizar todo el reporte multitarea final para evitar enlaces alucinados
+      finalAgentResponse = sanitizeAlucinatedLinks(finalAgentResponse, history);
 
       // Guardar la respuesta final compilada en la DB del usuario
       await dbService.addMessage(userId, "assistant", finalAgentResponse);
@@ -446,4 +529,50 @@ export function isUltraSimpleCourtesy(text: string): boolean {
   ]);
 
   return words.every(w => courtesyWords.has(w));
+}
+
+/**
+ * Filtra y neutraliza cualquier enlace alucinado a Google Drive/Docs/Sheets en las respuestas finales.
+ */
+function sanitizeAlucinatedLinks(responseText: string, history: any[]): string {
+  const validIds = new Set<string>();
+  const idRegex = /\b([a-zA-Z0-9_-]{19,55})\b/g;
+
+  // Escanear todas las respuestas de las herramientas del historial para recopilar IDs reales y válidos
+  for (const msg of history) {
+    if (msg.role === "tool" && msg.content) {
+      let match;
+      idRegex.lastIndex = 0;
+      while ((match = idRegex.exec(msg.content)) !== null) {
+        validIds.add(match[1]);
+      }
+    }
+  }
+
+  // URLs de Drive o Docs alucinables
+  const driveLinkRegex = /(https?:\/\/(?:docs|drive)\.google\.com\/(?:spreadsheets|file|document|drive\/folders)\/[^\s)\]]+)/gi;
+  let sanitizedText = responseText;
+  const linksFound = responseText.match(driveLinkRegex) || [];
+
+  for (const link of linksFound) {
+    let linkId = "";
+    const dMatch = link.match(/\/d\/([a-zA-Z0-9_-]{19,55})/i);
+    const folderMatch = link.match(/\/folders\/([a-zA-Z0-9_-]{19,55})/i);
+
+    if (dMatch) {
+      linkId = dMatch[1];
+    } else if (folderMatch) {
+      linkId = folderMatch[1];
+    }
+
+    if (linkId) {
+      // Si el ID del enlace no fue emitido por ninguna herramienta, es inventado por el LLM
+      if (!validIds.has(linkId)) {
+        console.warn(`🚨 [Link Sanitizer] Detectada alucinación de enlace: ${link}. Neutralizando.`);
+        sanitizedText = sanitizedText.replace(link, "[Enlace no disponible - creación no ejecutada o fallida]");
+      }
+    }
+  }
+
+  return sanitizedText;
 }

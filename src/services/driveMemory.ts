@@ -16,6 +16,57 @@ export const driveMemoryService = {
   },
 
   /**
+   * Sube un archivo a Drive o lo reemplaza si ya existe, garantizando cero duplicados.
+   * Devuelve el fileId final.
+   */
+  async uploadOrReplace(
+    userId: number,
+    localPath: string,
+    remoteName: string,
+    folderId: string
+  ): Promise<string> {
+    try {
+      const searchRes = await runGog(
+        `drive search "name = '${remoteName}' and '${folderId}' in parents and trashed = false" --raw-query --json`,
+        userId
+      );
+      const parsed = JSON.parse(searchRes);
+      const files = parsed.files || (Array.isArray(parsed) ? parsed : []);
+
+      if (files.length > 0) {
+        const fileId = files[0].id;
+        console.log(`ℹ️ [Drive Memory] Reemplazando archivo existente: ${remoteName} (ID: ${fileId})`);
+        const uploadRes = await runGog(`drive upload "${localPath}" --replace=${fileId} --json`, userId);
+        try {
+          const uploadParsed = JSON.parse(uploadRes);
+          return uploadParsed.file?.id || uploadParsed.id || fileId;
+        } catch {
+          return fileId;
+        }
+      } else {
+        console.log(`ℹ️ [Drive Memory] Subiendo nuevo archivo: ${remoteName}`);
+        const uploadRes = await runGog(`drive upload "${localPath}" --parent=${folderId} --name="${remoteName}" --json`, userId);
+        try {
+          const uploadParsed = JSON.parse(uploadRes);
+          return uploadParsed.file?.id || uploadParsed.id || "";
+        } catch {
+          return "";
+        }
+      }
+    } catch (err: any) {
+      console.error(`❌ [Drive Memory] Falló uploadOrReplace para ${remoteName}:`, err.message);
+      // Fallback a subida normal
+      try {
+        const fallbackRes = await runGog(`drive upload "${localPath}" --parent=${folderId} --name="${remoteName}" --json`, userId);
+        const p = JSON.parse(fallbackRes);
+        return p.file?.id || p.id || "";
+      } catch {
+        return "";
+      }
+    }
+  },
+
+  /**
    * Obtiene la fecha actual en la zona horaria de Madrid
    */
   getMadridDate() {
@@ -37,6 +88,44 @@ export const driveMemoryService = {
     try {
       const token = await dbService.getUserToken(userId);
       if (!token) return;
+
+      // Sincronizar prompts de Drive a la caché local siempre
+      try {
+        const promptsFolderId = await this.getOrCreateFolderPath(["silvania", "prompts"], userId);
+        if (promptsFolderId !== "root") {
+          const promptsSearchRes = await runGog(
+            `drive search "'${promptsFolderId}' in parents and trashed = false" --raw-query --json`,
+            userId
+          );
+          const parsedPrompts = JSON.parse(promptsSearchRes);
+          const promptFiles = parsedPrompts.files || (Array.isArray(parsedPrompts) ? parsedPrompts : []);
+
+          const localPromptsDir = path.join(process.cwd(), "data", `user_${userId}`, "prompts");
+          if (!fs.existsSync(localPromptsDir)) {
+            fs.mkdirSync(localPromptsDir, { recursive: true });
+          }
+
+          for (const file of promptFiles) {
+            if (file.name.endsWith(".md") || file.name.endsWith(".txt")) {
+              const localFilePath = path.join(localPromptsDir, file.name);
+              let shouldDownload = true;
+              if (fs.existsSync(localFilePath)) {
+                const stats = fs.statSync(localFilePath);
+                if (stats.size === Number(file.size)) {
+                  shouldDownload = false;
+                }
+              }
+
+              if (shouldDownload) {
+                console.log(`📥 [Drive Memory] Descargando prompt '${file.name}' a la caché local...`);
+                await runGog(`drive download ${file.id} --out="${localFilePath}"`, userId);
+              }
+            }
+          }
+        }
+      } catch (promptSyncErr: any) {
+        console.error("⚠️ [Drive Memory] Falló sincronización de prompts, continuando:", promptSyncErr.message);
+      }
 
       // Optimización: si ya hay historial local, evitar crear carpetas y llamadas de red de Drive
       const localHistory = await dbService.getHistory(userId, 100);
@@ -201,24 +290,10 @@ export const driveMemoryService = {
 
       // Resolver ruta de carpeta YYYY/MM en Drive
       const folderId = await this.getOrCreateFolderPath(["silvania", "historial", YYYY, MM], userId);
-
-      // Buscar si ya existe el archivo del día en esa carpeta
       const fileName = `dia_${DD}.json`;
-      const searchRes = await runGog(`drive search "name = '${fileName}' and '${folderId}' in parents and trashed = false" --raw-query --json`, userId);
-      const parsed = JSON.parse(searchRes);
-      const files = parsed.files || (Array.isArray(parsed) ? parsed : []);
 
-      if (files.length > 0) {
-        const fileId = files[0].id;
-        try {
-          await runGog(`drive rm ${fileId}`, userId);
-        } catch (rmErr) {
-          console.warn("⚠️ Advertencia al eliminar archivo de día anterior en Drive:", rmErr);
-        }
-      }
-
-      // Subir el archivo de hoy
-      await runGog(`drive upload "${tempPath}" --parent=${folderId} --name="${fileName}"`, userId);
+      // Subir o reemplazar el archivo de hoy para evitar duplicados
+      await this.uploadOrReplace(userId, tempPath, fileName, folderId);
       console.log(`✅ [Drive Memory] Historial diario para ${YYYY}-${MM}-${DD} guardado en Drive.`);
       
       // Limpiar archivo temporal

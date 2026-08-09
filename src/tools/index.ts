@@ -3,12 +3,12 @@ import * as cheerio from "cheerio";
 import { gmailSearch, gmailList, gmailThread, gmailSend } from "./gmail.js";
 import { checkMaliciousPattern, handleSecurityAlert } from "../services/security.js";
 import { config } from "../config/config.js";
-import { driveList, driveSearch, driveMkdir, driveMove, driveUpload, driveRemove, driveReadFile } from "./drive.js";
+import { driveList, driveSearch, driveMkdir, driveMove, driveUpload, driveRemove, driveReadFile, resolveOrCreateParentId } from "./drive.js";
 import { calendarList, calendarCreate, calendarDelete, calendarUpdate } from "./calendar.js";
 import { userContextStore } from "../services/context.js";
 import { sheetsList, sheetsCreate, sheetsRead, sheetsWrite } from "./sheets.js";
 import { runGog } from "./gogWrapper.js";
-import { searchSkills, getSkill, installSkill, createSkill, loadSkills, loadSkillsSummary } from "./skills.js";
+import { searchSkills, getSkill, installSkill, createSkill, loadSkills, loadSkillsSummary, loadSkill } from "./skills.js";
 import { webSearch } from "./webSearch.js";
 import { llmService } from "../services/llm.js";
 import { youtubeGetTranscript, youtubeSearch } from "./youtube.js";
@@ -85,9 +85,10 @@ export const tools = {
     return await driveMove(file_id, parent_id, uId);
   },
   drive_upload: async ({ file_path, parent_id, name, userId }: { file_path: string; parent_id?: string; name?: string; userId?: number }) => {
-    const uId = userId || userContextStore.getStore()?.userId;
+    const uId = userId || userContextStore.getStore()?.userId || 0;
+    const resolvedParentId = await resolveOrCreateParentId(parent_id, uId);
     let cmd = `drive upload "${file_path}" --json`;
-    if (parent_id) cmd += ` --parent=${parent_id}`;
+    if (resolvedParentId && resolvedParentId !== "root") cmd += ` --parent=${resolvedParentId}`;
     if (name) cmd += ` --name="${name}"`;
     const result = await runGog(cmd, uId);
     try {
@@ -109,7 +110,8 @@ export const tools = {
     return await driveReadFile(file_id, uId);
   },
   drive_create_text_file: async ({ name, content, parent_id, userId }: { name: string; content: string; parent_id?: string; userId?: number }) => {
-    const uId = userId || userContextStore.getStore()?.userId;
+    const uId = userId || userContextStore.getStore()?.userId || 0;
+    const resolvedParentId = await resolveOrCreateParentId(parent_id, uId);
     // 1. Crear archivo temporal
     const tempName = `temp_${Date.now()}.txt`;
     const tempPath = path.join(process.cwd(), "temp", tempName);
@@ -122,7 +124,7 @@ export const tools = {
 
     // 2. Subir a Drive
     let cmd = `drive upload "${tempPath}" --name="${name}" --json`;
-    if (parent_id) cmd += ` --parent=${parent_id}`;
+    if (resolvedParentId && resolvedParentId !== "root") cmd += ` --parent=${resolvedParentId}`;
     
     const result = await runGog(cmd, uId);
     
@@ -196,10 +198,18 @@ export const tools = {
     if (!uId) return "❌ Error: Usuario no identificado.";
     return await installSkill(id, uId);
   },
-  create_skill: async ({ name, description, content, userId }: { name: string; description: string; content: string; userId?: number }) => {
+  create_skill: async ({ name, description, content, instructions, userId }: { name: string; description: string; content?: string; instructions?: string; userId?: number }) => {
     const uId = userId || userContextStore.getStore()?.userId;
     if (!uId) return "❌ Error: Usuario no identificado.";
-    return await createSkill(name, description, content, uId);
+    const finalContent = content || instructions;
+    return await createSkill(name, description, finalContent, uId);
+  },
+  load_skill: async ({ skillName, userId }: { skillName: string; userId?: number }) => {
+    const uId = userId || userContextStore.getStore()?.userId;
+    if (!uId) return "❌ Error: Usuario no identificado.";
+    const result = await loadSkill(skillName, uId);
+    if (!result) return `❌ Habilidad '${skillName}' no encontrada.`;
+    return result;
   },
 
   read_url: async ({ url }: { url: string }) => {
@@ -422,48 +432,22 @@ export const tools = {
     const uId = userId || userContextStore.getStore()?.userId;
     if (!uId) return "❌ Error: Usuario no identificado.";
     try {
-      const temasFolderId = await driveMemoryService.getOrCreateFolderPath(["silvania", "temas"], uId);
-      const cleanTopicName = topicName.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9_-]/g, "");
-      const fileName = `${cleanTopicName}.json`;
-
-      // 1. Crear archivo temporal
-      const tempDir = path.join(process.cwd(), "temp");
-      if (!fs.existsSync(tempDir)) {
-        fs.mkdirSync(tempDir, { recursive: true });
-      }
-      const tempPath = path.join(tempDir, `topic_${cleanTopicName}_${Date.now()}.json`);
-
-      let jsonContent = content;
+      let parsedTopic: any;
       try {
-        JSON.parse(content);
+        parsedTopic = JSON.parse(content);
+        if (!parsedTopic.topic) parsedTopic.topic = topicName;
       } catch {
-        jsonContent = JSON.stringify({ topic: topicName, lastUpdated: new Date().toISOString(), details: content }, null, 2);
+        parsedTopic = {
+          topic: topicName,
+          lastUpdated: new Date().toISOString(),
+          summary: content.substring(0, 100),
+          keyFacts: [content],
+          notes: content
+        };
       }
-
-      fs.writeFileSync(tempPath, jsonContent, "utf8");
-
-      // 2. Buscar si ya existe el archivo en Drive para borrarlo
-      const searchRes = await runGog(
-        `drive search "name = '${fileName}' and '${temasFolderId}' in parents and trashed = false" --raw-query --json`,
-        uId
-      );
-      const parsed = JSON.parse(searchRes);
-      const files = parsed.files || (Array.isArray(parsed) ? parsed : []);
-
-      if (files.length > 0) {
-        const existingFileId = files[0].id;
-        try {
-          await runGog(`drive rm ${existingFileId}`, uId);
-        } catch (rmErr) {
-          console.warn(`⚠️ Warning al eliminar archivo de tema anterior ${fileName}:`, rmErr);
-        }
-      }
-
-      // 3. Subir el archivo de tema nuevo
-      await runGog(`drive upload "${tempPath}" --parent=${temasFolderId} --name="${fileName}"`, uId);
-      try { if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath); } catch {}
-
-      return `✅ **Tema "${topicName}" guardado con éxito en silvania/temas/${fileName}.**`;
+      await memoryManager.saveTopic(uId, parsedTopic);
+      const cleanTopicName = topicName.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9_-]/g, "");
+      return `✅ **Tema "${topicName}" guardado con éxito en silvania/temas/${cleanTopicName}.json.**`;
     } catch (err: any) {
       return `❌ Error al guardar el tema en la memoria: ${err.message}`;
     }
@@ -550,4 +534,4 @@ export async function executeTool(name: string, args: any, userId?: number): Pro
 }
 
 // Re-export loadSkills y loadSkillsSummary para uso directo en agent.ts
-export { loadSkills, loadSkillsSummary };
+export { loadSkills, loadSkillsSummary, loadSkill };

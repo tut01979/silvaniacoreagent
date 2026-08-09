@@ -182,24 +182,7 @@ export const memoryManager = {
       
       // Buscar si ya existe el archivo
       const fileName = "memoria_conversacion.json";
-      const searchRes = await runGog(
-        `drive search "name = '${fileName}' and '${silvaniaFolderId}' in parents and trashed = false" --raw-query --json`,
-        userId
-      );
-      
-      const parsed = JSON.parse(searchRes);
-      const files = parsed.files || (Array.isArray(parsed) ? parsed : []);
-      
-      if (files.length > 0) {
-        const existingFileId = files[0].id;
-        try {
-          await runGog(`drive rm ${existingFileId}`, userId);
-        } catch (rmErr) {
-          console.warn("⚠️ [Memory Manager] Advertencia al eliminar memoria_conversacion.json anterior:", rmErr);
-        }
-      }
-      
-      await runGog(`drive upload "${tempPath}" --parent=${silvaniaFolderId} --name="${fileName}"`, userId);
+      await driveMemoryService.uploadOrReplace(userId, tempPath, fileName, silvaniaFolderId);
       console.log(`✅ [Memory Manager] memoria_conversacion.json subido con éxito.`);
       
       try {
@@ -707,6 +690,91 @@ No incluyas explicaciones, saludos ni formateo de markdown (no uses triple comil
       console.error(`❌ [Memory Manager] Falló auto-actualización del resumen de memoria:`, err.message);
     } finally {
       summaryLocks.set(userId, false);
+    }
+  },
+
+  /**
+   * Obtiene un tema específico desde la carpeta silvania/temas/ en Drive.
+   */
+  async getTopic(userId: number, topicName: string): Promise<any | null> {
+    try {
+      const temasFolderId = await driveMemoryService.getOrCreateFolderPath(["silvania", "temas"], userId);
+      const cleanTopicName = topicName.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9_-]/g, "");
+      const fileName = `${cleanTopicName}.json`;
+
+      const searchRes = await runGog(
+        `drive search "name = '${fileName}' and '${temasFolderId}' in parents and trashed = false" --raw-query --json`,
+        userId
+      );
+      const parsed = JSON.parse(searchRes);
+      const files = parsed.files || [];
+
+      if (files.length === 0) return null;
+
+      const fileId = files[0].id;
+      const tempDir = path.join(process.cwd(), "temp");
+      if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+      const tempPath = path.join(tempDir, `topic_get_${Date.now()}.json`);
+
+      try {
+        await runGog(`drive download ${fileId} --out="${tempPath}"`, userId);
+        if (fs.existsSync(tempPath)) {
+          const content = fs.readFileSync(tempPath, "utf8");
+          try { fs.unlinkSync(tempPath); } catch {}
+          return JSON.parse(content);
+        }
+      } catch (err: any) {
+        console.error(`❌ Error descargando tema ${fileName}:`, err.message);
+      }
+    } catch (err: any) {
+      console.error("❌ Error en getTopic:", err.message);
+    }
+    return null;
+  },
+
+  /**
+   * Guarda o actualiza un tema en Drive (silvania/temas/) utilizando uploadOrReplace.
+   */
+  async saveTopic(userId: number, topic: any): Promise<void> {
+    try {
+      const temasFolderId = await driveMemoryService.getOrCreateFolderPath(["silvania", "temas"], userId);
+      const cleanTopicName = topic.topic.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9_-]/g, "");
+      const fileName = `${cleanTopicName}.json`;
+
+      const tempDir = path.join(process.cwd(), "temp");
+      if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+      const tempPath = path.join(tempDir, `topic_save_${Date.now()}.json`);
+
+      topic.lastUpdated = new Date().toISOString();
+      fs.writeFileSync(tempPath, JSON.stringify(topic, null, 2), "utf8");
+
+      // Subir o reemplazar para evitar duplicados
+      await driveMemoryService.uploadOrReplace(userId, tempPath, fileName, temasFolderId);
+      
+      try { if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath); } catch {}
+      console.log(`✅ [Memory Manager] Tema '${topic.topic}' guardado con éxito en Drive.`);
+    } catch (err: any) {
+      console.error("❌ Error en saveTopic:", err.message);
+      throw err;
+    }
+  },
+
+  /**
+   * Lista los nombres de los temas existentes en Drive.
+   */
+  async listTopics(userId: number): Promise<string[]> {
+    try {
+      const temasFolderId = await driveMemoryService.getOrCreateFolderPath(["silvania", "temas"], userId);
+      const searchRes = await runGog(
+        `drive search "'${temasFolderId}' in parents and trashed = false" --raw-query --json`,
+        userId
+      );
+      const parsed = JSON.parse(searchRes);
+      const files = parsed.files || [];
+      return files.map((f: any) => f.name.replace(".json", ""));
+    } catch (err: any) {
+      console.error("❌ Error en listTopics:", err.message);
+      return [];
     }
   }
 };

@@ -2,16 +2,25 @@ import { dbService } from "../database/db.js";
 import { runGog } from "../tools/gogWrapper.js";
 import { criticalLogService } from "./criticalLog.js";
 import { folderCacheService } from "./folderCache.js";
+import { driveMemoryService } from "./driveMemory.js";
 import fs from "fs";
 import path from "path";
 
-const CURRENT_VERSION = 1;
+const CURRENT_VERSION = 2;
 
 export interface UserConfig {
   version: number;
   customPrompt: string;
   muteVoice: boolean;
   installedSkills: string[];
+  memory?: {
+    topicsEnabled: boolean;
+    topicsPath: string;
+    dailyHistoryPath: string;
+    summaryFile: string;
+  };
+  skillsPath?: string;
+  promptsPath?: string;
 }
 
 export const configManager = {
@@ -101,8 +110,8 @@ export const configManager = {
             fs.mkdirSync(path.dirname(tempPath), { recursive: true });
           }
           
-          await runGog(`drive download ${driveFile.id} --dest="${path.dirname(tempPath)}" --name="${tempName}"`, userId);
-          const downloadedPath = path.join(path.dirname(tempPath), tempName);
+          await runGog(`drive download ${driveFile.id} --out="${tempPath}"`, userId);
+          const downloadedPath = tempPath;
           
           if (fs.existsSync(downloadedPath)) {
             const content = fs.readFileSync(downloadedPath, "utf8");
@@ -200,30 +209,12 @@ export const configManager = {
       }
       fs.writeFileSync(localConfigPath, configStr, "utf8");
       
-      // Eliminar el archivo de configuración existente para sobreescribir
-      const searchRes = await runGog(
-        `drive search "name = '${fileName}' and '${silvaniaFolderId}' in parents and trashed = false" --raw-query --json`,
-        userId
-      );
-      const parsed = JSON.parse(searchRes);
-      const files = parsed.files || (Array.isArray(parsed) ? parsed : []);
-      
-      if (files.length > 0) {
-        const fileId = files[0].id;
-        try {
-          await runGog(`drive rm ${fileId}`, userId);
-        } catch {}
-      }
-      
-      // Subir nueva configuración
-      const uploadRes = await runGog(`drive upload "${tempPath}" --parent=${silvaniaFolderId} --name="${fileName}" --json`, userId);
+      // Subir o reemplazar configuración
+      const uploadRes = await driveMemoryService.uploadOrReplace(userId, tempPath, fileName, silvaniaFolderId);
       try { fs.unlinkSync(tempPath); } catch {}
 
       // Consultar y actualizar metadatos locales de sincronización tras la subida exitosa
       try {
-        const uploadParsed = JSON.parse(uploadRes);
-        const uploadedFile = uploadParsed.file || uploadParsed;
-        
         // Buscar el archivo subido de nuevo para obtener modifiedTime exacto asignado por Google Drive
         const checkRes = await runGog(
           `drive search "name = '${fileName}' and '${silvaniaFolderId}' in parents and trashed = false" --raw-query --json`,
@@ -256,7 +247,15 @@ export const configManager = {
       version: CURRENT_VERSION,
       customPrompt: oldConfig.customPrompt || oldConfig.agentInstructions || "",
       muteVoice: !!(oldConfig.muteVoice),
-      installedSkills: Array.isArray(oldConfig.installedSkills) ? oldConfig.installedSkills : []
+      installedSkills: Array.isArray(oldConfig.installedSkills) ? oldConfig.installedSkills : [],
+      memory: {
+        topicsEnabled: oldConfig.memory?.topicsEnabled !== undefined ? oldConfig.memory.topicsEnabled : true,
+        topicsPath: oldConfig.memory?.topicsPath || "silvania/temas",
+        dailyHistoryPath: oldConfig.memory?.dailyHistoryPath || "silvania/historial",
+        summaryFile: oldConfig.memory?.summaryFile || "silvania/memoria_conversacion.json"
+      },
+      skillsPath: oldConfig.skillsPath || "silvania/skills",
+      promptsPath: oldConfig.promptsPath || "silvania/prompts"
     };
   }
 };

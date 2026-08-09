@@ -1,6 +1,7 @@
 import { runGog, stripAnsi } from "./gogWrapper.js";
 import { generateDriveLink, generateDriveSearchLink } from "../services/linkGenerator.js";
 import { formatFolderLink, formatFileLink } from "../services/linkFormatter.js";
+import { driveMemoryService } from "../services/driveMemory.js";
 import fs from "fs";
 import path from "path";
 
@@ -243,17 +244,44 @@ export const driveSearch = async (query: string, page = 0, parentId?: string, us
   }
 };
 
+export async function resolveOrCreateParentId(parentId: string | undefined, userId: number): Promise<string> {
+  if (!parentId || parentId === "." || parentId === "root") {
+    return "root";
+  }
+
+  // Si parece un file/folder ID de Drive (alfanumérico largo sin barras "/") -> usarlo tal cual.
+  const isDriveId = /^[a-zA-Z0-9_-]{15,}$/.test(parentId) && !parentId.includes("/");
+  if (isDriveId) {
+    return parentId;
+  }
+
+  // Si contiene "/" o es una ruta tipo silvania/skills/... -> resolver y crear la jerarquía con getOrCreateFolderPath.
+  console.log(`📂 [Drive Tool] Detectada ruta de carpeta en parentId: "${parentId}". Resolviendo/Creando...`);
+  const parts = parentId.split("/").filter(p => p.trim().length > 0);
+  if (parts.length === 0) return "root";
+
+  try {
+    return await driveMemoryService.getOrCreateFolderPath(parts, userId);
+  } catch (err: any) {
+    console.error("❌ [Drive Tool] Error resolviendo ruta jerárquica:", err.message);
+    return "root";
+  }
+}
+
 export const driveMkdir = async (name: string, parentId?: string, userId?: number) => {
+  const uId = userId || 0;
+  const resolvedParentId = await resolveOrCreateParentId(parentId, uId);
+
   // Primero buscar si ya existe para evitar duplicados (petición del usuario)
   console.log(`🔍 Verificando si la carpeta "${name}" ya existe...`);
   const escapedName = name.replace(/'/g, "\\'");
   let searchQuery = `name = '${escapedName}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
-  if (parentId && parentId !== "root") {
-    searchQuery += ` and '${parentId}' in parents`;
+  if (resolvedParentId && resolvedParentId !== "root") {
+    searchQuery += ` and '${resolvedParentId}' in parents`;
   }
   
   try {
-    const searchRes = await runGog(`drive search "${searchQuery}" --raw-query --json`, userId);
+    const searchRes = await runGog(`drive search "${searchQuery}" --raw-query --json`, uId);
     const parsed = JSON.parse(searchRes);
     const files = parsed.files || (Array.isArray(parsed) ? parsed : []);
     
@@ -267,11 +295,11 @@ export const driveMkdir = async (name: string, parentId?: string, userId?: numbe
   }
 
   let cmd = `drive mkdir "${name}" --json`;
-  if (parentId && parentId !== "." && parentId !== "root") {
-    cmd += ` --parent=${parentId}`;
+  if (resolvedParentId && resolvedParentId !== "." && resolvedParentId !== "root") {
+    cmd += ` --parent=${resolvedParentId}`;
   }
   
-  const result = await runGog(cmd, userId);
+  const result = await runGog(cmd, uId);
   try {
     const parsed = JSON.parse(result);
     const folder = parsed.folder || parsed;
@@ -285,17 +313,22 @@ export const driveMkdir = async (name: string, parentId?: string, userId?: numbe
 
 
 export const driveMove = async (fileId: string, parentId: string, userId?: number) => {
-  const result = await runGog(`drive move ${fileId} --parent=${parentId}`, userId);
-  const link = generateDriveLink(parentId, true);
+  const uId = userId || 0;
+  const resolvedParentId = await resolveOrCreateParentId(parentId, uId);
+  const result = await runGog(`drive move ${fileId} --parent=${resolvedParentId}`, uId);
+  const link = generateDriveLink(resolvedParentId, true);
   const linkStr = formatFolderLink("Carpeta Destino", link);
-  return `✅ **Elemento movido correctamente**\n\n${linkStr}\n> 🆔 **Archivo:** \`${fileId}\`\n> 📂 **Nueva Carpeta:** \`${parentId}\`\n\n*Resultado:* ${result}`;
+  return `✅ **Elemento movido correctamente**\n\n${linkStr}\n> 🆔 **Archivo:** \`${fileId}\`\n> 📂 **Nueva Carpeta:** \`${resolvedParentId}\`\n\n*Resultado:* ${result}`;
 };
 
 export const driveUpload = async (filePath: string, parentId?: string, name?: string, userId?: number) => {
+  const uId = userId || 0;
+  const resolvedParentId = await resolveOrCreateParentId(parentId, uId);
+
   let cmd = `drive upload "${filePath}" --json`;
-  if (parentId) cmd += ` --parent=${parentId}`;
+  if (resolvedParentId && resolvedParentId !== "root") cmd += ` --parent=${resolvedParentId}`;
   if (name) cmd += ` --name="${name}"`;
-  const result = await runGog(cmd, userId);
+  const result = await runGog(cmd, uId);
   try {
     const parsed = JSON.parse(result);
     const file = parsed.file || parsed;

@@ -521,15 +521,29 @@ export const llmService = {
         type: "function",
         function: {
           name: "create_skill",
-          description: "Crea e instala una nueva habilidad personalizada para el agente. Úsala cuando el agente necesite aprender algo nuevo que no existe en el catálogo.",
+          description: "Crea una nueva skill en Drive (carpeta + SKILL.md). Usa esta herramienta cuando el usuario pida crear una skill y la petición sea suficientemente clara. Debes generar un SKILL.md completo con valores por defecto razonables a partir de la descripción del usuario. NO pidas confirmación ni detalles adicionales a menos que la petición sea demasiado vaga (ej: solo 'crea una skill').",
           parameters: {
             type: "object",
             properties: {
-              name: { type: "string", description: "Nombre único para la habilidad (ej: 'gestion-notion')" },
-              description: { type: "string", description: "Descripción de cuándo activar esta habilidad" },
-              content: { type: "string", description: "Contenido completo de la habilidad en formato Markdown (instrucciones, herramientas disponibles, ejemplos)" }
+              name: { type: "string", description: "Nombre técnico de la skill en kebab-case (ej: 'rrhh-perfil-contratacion')" },
+              description: { type: "string", description: "Descripción corta del propósito de la habilidad" },
+              instructions: { type: "string", description: "(Opcional) Instrucciones adicionales. Si no se proporcionan, genera unas buenas por defecto." }
             },
-            required: ["name", "description", "content"]
+            required: ["name", "description"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "load_skill",
+          description: "Carga el contenido de las instrucciones (SKILL.md) de una habilidad específica instalada.",
+          parameters: {
+            type: "object",
+            properties: {
+              skillName: { type: "string", description: "Nombre o ID de la habilidad a cargar" }
+            },
+            required: ["skillName"]
           }
         }
       },

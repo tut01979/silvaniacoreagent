@@ -207,18 +207,40 @@ export async function installSkill(id: string, userId: number) {
   }
 }
 
-export async function createSkill(name: string, description: string, content: string, userId: number): Promise<string> {
-  const folderName = name.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase();
+export async function createSkill(name: string, description: string, content: string | undefined, userId: number): Promise<string> {
+  const folderName = name.trim().replace(/[^a-zA-Z0-9]/g, "-").toLowerCase();
   const userSkillsDir = getUserSkillsDir(userId);
   
   try {
-    const skillMd = `---\nname: ${name}\ndescription: ${description}\n---\n\n${content}`;
+    let skillMd = "";
+    if (!content) {
+      skillMd = `## Descripción\n${description}\n\n## Cuándo usarla\nÚsala cuando el usuario solicite tareas relacionadas con ${name.toLowerCase()}.\n\n## Instrucciones paso a paso para el agente\n1. Analizar la solicitud del usuario detalladamente.\n2. Recopilar la información necesaria utilizando las herramientas de búsqueda web, Gmail o Drive si aplica.\n3. Aplicar las directrices de la habilidad para procesar la información.\n4. Estructurar el resultado final siguiendo el propósito: "${description}".\n\n## Entregables que debe generar\nDocumentos, informes o respuestas estructuradas guardados en Drive o entregados al usuario de forma clara.`;
+    } else {
+      const hasStructure = content.includes("## Descripción") && content.includes("## Cuándo usarla");
+      if (!hasStructure) {
+        skillMd = `## Descripción\n${description}\n\n## Cuándo usarla\nÚsala cuando el usuario solicite tareas relacionadas con ${name.toLowerCase()}.\n\n## Instrucciones paso a paso para el agente\n${content}\n\n## Entregables que debe generar\nReportes, archivos o confirmaciones de las acciones tomadas en base a las instrucciones.`;
+      } else {
+        skillMd = content;
+      }
+    }
+
+    const fullSkillContent = `---\nname: ${name}\ndescription: ${description}\n---\n\n# ${name}\n\n${skillMd}`;
 
     // Crear en habilidades activas locales del usuario
     const activeTargetDir = path.join(userSkillsDir, folderName);
     if (!fs.existsSync(activeTargetDir)) fs.mkdirSync(activeTargetDir, { recursive: true });
-    fs.writeFileSync(path.join(activeTargetDir, "SKILL.md"), skillMd);
+    fs.writeFileSync(path.join(activeTargetDir, "SKILL.md"), fullSkillContent);
     
+    // Crear subcarpeta de plantillas opcional si lo sugiere la descripción
+    const needsTemplates = /plantilla|plantillas|template|templates|factura|invoice/i.test(name + " " + description);
+    if (needsTemplates) {
+      const templatesDir = path.join(activeTargetDir, "plantillas");
+      if (!fs.existsSync(templatesDir)) {
+        fs.mkdirSync(templatesDir, { recursive: true });
+      }
+      fs.writeFileSync(path.join(templatesDir, "README.txt"), "Carpeta para plantillas de la habilidad.");
+    }
+
     // Subir a Drive para persistencia
     await uploadSkillToDrive(userId, folderName, activeTargetDir);
     
@@ -226,6 +248,46 @@ export async function createSkill(name: string, description: string, content: st
   } catch (err: any) {
     return `❌ Error creando la habilidad: ${err.message}`;
   }
+}
+
+export async function loadSkill(skillName: string, userId: number): Promise<string | null> {
+  const folderName = skillName.trim().replace(/[^a-zA-Z0-9]/g, "-").toLowerCase();
+  const userSkillsDir = getUserSkillsDir(userId);
+  const localSkillMdPath = path.join(userSkillsDir, folderName, "SKILL.md");
+
+  // 1. Intentar cargar desde caché local
+  if (fs.existsSync(localSkillMdPath)) {
+    try {
+      return fs.readFileSync(localSkillMdPath, "utf8");
+    } catch {}
+  }
+
+  // 2. Si no está local, intentar descargarlo desde Drive de forma dinámica (lazy)
+  try {
+    const skillDriveFolderId = await configManager.getOrCreateFolderPath(userId, ["silvania", "skills", folderName]);
+    
+    const searchRes = await runGog(
+      `drive search "name = 'SKILL.md' and '${skillDriveFolderId}' in parents and trashed = false" --raw-query --json`,
+      userId
+    );
+    const parsed = JSON.parse(searchRes);
+    const driveFiles = parsed.files || [];
+    
+    if (driveFiles.length > 0) {
+      const fileId = driveFiles[0].id;
+      const targetDir = path.dirname(localSkillMdPath);
+      if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+      
+      await runGog(`drive download ${fileId} --out="${localSkillMdPath}"`, userId);
+      if (fs.existsSync(localSkillMdPath)) {
+        return fs.readFileSync(localSkillMdPath, "utf8");
+      }
+    }
+  } catch (err: any) {
+    console.error(`⚠️ [Skills] Error cargando skill '${skillName}' de Drive:`, err.message);
+  }
+
+  return null;
 }
 
 export async function loadSkills(userId: number): Promise<string[]> {
@@ -292,20 +354,42 @@ async function uploadSkillToDrive(userId: number, folderName: string, localFolde
     const files = fs.readdirSync(localFolder);
     for (const file of files) {
       const localFilePath = path.join(localFolder, file);
-      if (fs.statSync(localFilePath).isFile()) {
-        // Buscar si ya existe para sobreescribir
+      const stats = fs.statSync(localFilePath);
+
+      if (stats.isFile()) {
         const searchRes = await runGog(
           `drive search "name = '${file}' and '${skillDriveFolderId}' in parents and trashed = false" --raw-query --json`,
           userId
         );
         const parsed = JSON.parse(searchRes);
         const driveFiles = parsed.files || (Array.isArray(parsed) ? parsed : []);
+        
         if (driveFiles.length > 0) {
-          try {
-            await runGog(`drive rm ${driveFiles[0].id}`, userId);
-          } catch {}
+          await runGog(`drive upload "${localFilePath}" --replace=${driveFiles[0].id}`, userId);
+        } else {
+          await runGog(`drive upload "${localFilePath}" --parent=${skillDriveFolderId} --name="${file}"`, userId);
         }
-        await runGog(`drive upload "${localFilePath}" --parent=${skillDriveFolderId} --name="${file}"`, userId);
+      } else if (stats.isDirectory() && file === "plantillas") {
+        // Sincronizar subcarpeta plantillas
+        const templatesDriveId = await configManager.getOrCreateFolderPath(userId, ["silvania", "skills", folderName, "plantillas"]);
+        const templateFiles = fs.readdirSync(localFilePath);
+        for (const tf of templateFiles) {
+          const tfLocalPath = path.join(localFilePath, tf);
+          if (fs.statSync(tfLocalPath).isFile()) {
+            const searchTf = await runGog(
+              `drive search "name = '${tf}' and '${templatesDriveId}' in parents and trashed = false" --raw-query --json`,
+              userId
+            );
+            const parsedTf = JSON.parse(searchTf);
+            const driveTfFiles = parsedTf.files || [];
+            
+            if (driveTfFiles.length > 0) {
+              await runGog(`drive upload "${tfLocalPath}" --replace=${driveTfFiles[0].id}`, userId);
+            } else {
+              await runGog(`drive upload "${tfLocalPath}" --parent=${templatesDriveId} --name="${tf}"`, userId);
+            }
+          }
+        }
       }
     }
     
