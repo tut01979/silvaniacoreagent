@@ -38,18 +38,8 @@ export function shouldTriggerMultitask(message: string): boolean {
     return false;
   }
 
-  // 3. Evaluar los disparadores clásicos de multitarea una vez que sabemos que hay múltiples acciones
-  // Frase de tarea explícita
-  if (lower.includes("haz las siguientes tareas")) {
-    return true;
-  }
-
-  // Conector "además" o "también"
-  if (/\b(adem[áa]s|tambi[ée]n)\b/i.test(lower)) {
-    return true;
-  }
-
-  // Listas numeradas o con viñetas
+  // 3. Evaluar los disparadores estrictos de multitarea:
+  // Solo se divide si el usuario incluye listas numeradas o con viñetas físicas de al menos 2 elementos.
   const lines = message.split("\n").map(line => line.trim());
   let listItemsCount = 0;
   for (const line of lines) {
@@ -61,10 +51,11 @@ export function shouldTriggerMultitask(message: string): boolean {
     return true;
   }
 
-  // Conector "y"
-  if (/\by\b/i.test(lower)) {
+  // Frase explícita que denote independencia de tareas
+  if (lower.includes("haz las siguientes tareas independientes") || lower.includes("ejecuta en paralelo")) {
     return true;
   }
 
+  // En cualquier otro caso, procesar como una única instrucción integrada para evitar fragmentación artificial
   return false;
 }

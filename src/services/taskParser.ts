@@ -1,3 +1,4 @@
+import { shouldTriggerMultitask } from "./multitaskFilter.js";
 import { llmService } from "./llm.js";
 
 /**
@@ -9,6 +10,11 @@ import { llmService } from "./llm.js";
  */
 export async function parseUserTasks(userMessage: string): Promise<string[]> {
   if (!userMessage || !userMessage.trim()) return [];
+
+  // Si el filtro determinista indica que no es multitarea, devolver el mensaje íntegro de inmediato
+  if (!shouldTriggerMultitask(userMessage)) {
+    return [userMessage.trim()];
+  }
 
   const prompt = `Analiza detenidamente el siguiente mensaje del usuario y divídelo en una lista ordenada de TODAS las tareas o instrucciones individuales que pide realizar.
 Instrucciones estrictas:

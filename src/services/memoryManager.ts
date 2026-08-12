@@ -7,6 +7,7 @@ import fs from "fs";
 import path from "path";
 
 const summaryLocks = new Map<number, boolean>();
+const lastSummaryUpdates = new Map<number, number>();
 
 export interface MemorySummary {
   version: number;
@@ -615,6 +616,15 @@ ${matches.length > 0 ? matches.map(m => `[${m.date}] [${m.role === 'user' ? 'Jes
    * y los fusiona de manera inteligente con el archivo memoria_conversacion.json existente.
    */
   async autoUpdateSummary(userId: number): Promise<void> {
+    const lastUpdate = lastSummaryUpdates.get(userId) || 0;
+    const now = Date.now();
+    const FIFTEEN_MINUTES = 15 * 60 * 1000;
+    
+    if (now - lastUpdate < FIFTEEN_MINUTES) {
+      console.log(`ℹ️ [Memory Manager] Omitiendo autoUpdateSummary para usuario ${userId}: throttle de 15 minutos activo.`);
+      return;
+    }
+
     if (summaryLocks.get(userId)) {
       console.log(`ℹ️ [Memory Manager] Omitiendo autoUpdateSummary para usuario ${userId}: ya hay una actualización de memoria en progreso.`);
       return;
@@ -682,6 +692,7 @@ No incluyas explicaciones, saludos ni formateo de markdown (no uses triple comil
         };
         
         await this.updateConversationSummary(userId, updatedSummary);
+        lastSummaryUpdates.set(userId, Date.now());
         console.log(`✅ [Memory Manager] Memoria de conversación memoria_conversacion.json actualizada correctamente.`);
       } catch (jsonErr: any) {
         console.error(`❌ [Memory Manager] Error al parsear el JSON generado por el LLM:`, jsonErr.message, "\nContenido recibido:", responseContent);

@@ -3,6 +3,26 @@ import { formatFolderLink } from "../services/linkFormatter.js";
 
 const SEP = "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
 
+function isValidSpreadsheetId(id?: string): boolean {
+  if (!id || typeof id !== "string") return false;
+  const clean = id.trim();
+  if (clean.length < 20 || clean.length > 80) return false;
+  if (!/^[A-Za-z0-9_-]+$/.test(clean)) return false;
+
+  // Detección de patrones repetidos (mismo bloque de 8+ caracteres repetido 3+ veces)
+  for (let len = 8; len <= clean.length / 3; len++) {
+    for (let i = 0; i <= clean.length - len * 3; i++) {
+      const chunk = clean.substring(i, i + len);
+      const rest = clean.substring(i + len);
+      if (rest.startsWith(chunk + chunk) || rest.startsWith(chunk + "-" + chunk)) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
 function formatSheetsList(raw: any): string {
   const sheets: any[] = raw.sheets || raw.spreadsheets || (Array.isArray(raw) ? raw : []);
   if (!sheets || sheets.length === 0) return "📊 No se encontraron hojas de cálculo.";
@@ -54,6 +74,9 @@ export const sheetsCreate = async (title: string, userId?: number) => {
 };
 
 export const sheetsRead = async (spreadsheetId: string, range: string, userId?: number) => {
+  if (!isValidSpreadsheetId(spreadsheetId)) {
+    return `❌ Error: spreadsheet_id inválido o alucinado.`;
+  }
   try {
     const result = await runGog(`sheets get ${spreadsheetId} "${range}"`, userId);
     if (!result || result.includes("error")) throw new Error(result);
@@ -74,19 +97,44 @@ export const sheetsRead = async (spreadsheetId: string, range: string, userId?: 
   }
 };
 
-export const sheetsWrite = async (spreadsheetId: string, range: string, values: string, userId?: number) => {
-  const processedValues = values.replace(/0,21/g, "21%").replace(/0\.21/g, "21%");
-  const rows = processedValues.split("\n").filter(r => r.trim() !== "");
-  const matrix = rows.map(row => {
-    const separator = row.includes("|") ? "|" : ",";
-    return row.split(separator).map(cell => {
-      const trimmed = cell.trim();
-      if (trimmed !== "" && !isNaN(Number(trimmed))) {
-        return Number(trimmed);
+export const sheetsWrite = async (spreadsheetId: string, range: string, values: string | any[][], userId?: number) => {
+  if (!isValidSpreadsheetId(spreadsheetId)) {
+    return `❌ Error: spreadsheet_id inválido o alucinado.`;
+  }
+  let matrix: any[][];
+
+  if (Array.isArray(values)) {
+    matrix = values.map(row => {
+      if (Array.isArray(row)) {
+        return row.map(cell => {
+          if (cell === null || cell === undefined) return "";
+          const trimmed = String(cell).trim();
+          if (trimmed !== "" && !isNaN(Number(trimmed))) {
+            return Number(trimmed);
+          }
+          return trimmed;
+        });
       }
-      return trimmed;
+      const trimmed = String(row).trim();
+      if (trimmed !== "" && !isNaN(Number(trimmed))) {
+        return [Number(trimmed)];
+      }
+      return [trimmed];
     });
-  });
+  } else {
+    const processedValues = String(values).replace(/0,21/g, "21%").replace(/0\.21/g, "21%");
+    const rows = processedValues.split("\n").filter(r => r.trim() !== "");
+    matrix = rows.map(row => {
+      const separator = row.includes("|") ? "|" : ",";
+      return row.split(separator).map(cell => {
+        const trimmed = cell.trim();
+        if (trimmed !== "" && !isNaN(Number(trimmed))) {
+          return Number(trimmed);
+        }
+        return trimmed;
+      });
+    });
+  }
 
   const jsonVal = JSON.stringify(matrix);
 

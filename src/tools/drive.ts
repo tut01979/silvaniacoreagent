@@ -41,18 +41,17 @@ function formatDriveList(raw: any, query?: string): string {
     else if (isPdf) icon = "📕";
     else if (isImage) icon = "🖼️";
 
-    const name = sanitizeMarkdown(f.name);
+    const baseName = f.name.split(/[/\\]/).pop() || f.name;
+    const name = sanitizeMarkdown(baseName);
     const dateStr = f.modifiedTime ? new Date(f.modifiedTime).toLocaleDateString("es-ES") : "";
     
-    if (isFolder) {
-      out += `📁 ${name}\n`;
-      out += `https://drive.google.com/drive/folders/${f.id}\n`;
-    } else {
-      out += `📄 ${name}\n`;
-      out += `https://drive.google.com/file/d/${f.id}/view\n`;
-    }
+    const link = isFolder 
+      ? `https://drive.google.com/drive/folders/${f.id}` 
+      : `https://drive.google.com/file/d/${f.id}/view`;
+
+    out += `${icon} ${name} · 🔗 [Abrir](${link})\n`;
     if (dateStr) {
-      out += `📅 ${dateStr}\n\n`;
+      out += `> 📅 Modificado: ${dateStr}\n\n`;
     } else {
       out += `\n`;
     }
@@ -169,10 +168,12 @@ export const driveList = async (parentId?: string, all = false, page = 0, userId
         else if (isPdf) icon = "📕";
         else if (isImage) icon = "🖼️";
         const link = generateDriveLink(f.id, isFolder);
+        const baseName = f.name.split(/[/\\]/).pop() || f.name;
+        const name = sanitizeMarkdown(baseName);
         if (isFolder) {
-          out += formatFolderLink(sanitizeMarkdown(f.name), link) + "\n\n";
+          out += formatFolderLink(name, link) + "\n\n";
         } else {
-          out += formatFileLink(sanitizeMarkdown(f.name), link) + "\n\n";
+          out += formatFileLink(name, link) + "\n\n";
         }
       }
 

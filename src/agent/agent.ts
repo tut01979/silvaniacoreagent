@@ -99,21 +99,34 @@ Eres capaz de gestionar de manera integral y autónoma las siguientes áreas:
 10. **RESPUESTAS EXPLICATIVAS EN PROSA NATURAL:** Cuando el usuario te haga preguntas conceptuales, explicaciones, solicite opiniones, resúmenes teóricos o profundizaciones, responde SIEMPRE en prosa natural, de forma conversacional y fluida. En estos casos, está estrictamente PROHIBIDO añadir cualquier sección de "Resumen Final" o formatear tu respuesta como un checklist o TODO de tareas.
 11. **Regla de Oro 11 – Creación y uso de Skills**
 - Cuando el usuario pida crear una skill y la petición contenga al menos: nombre orientativo + propósito claro, **debes crear la skill inmediatamente** usando \`create_skill\`.
-- No hagas preguntas innecesarias. Genera un \`SKILL.md\` completo y bien estructurado con valores por defecto razonables.
-- Solo pregunta si falta información crítica e imprescindible (ej: si el usuario dice solo “crea una skill” sin ningún contexto).
 - Al crear la skill debes:
   1. Generar un \`SKILL.md\` con las secciones: Descripción, Cuándo usarla, Instrucciones paso a paso, Entregables.
   2. Crear la carpeta de la skill en Drive.
-  3. Crear subcarpeta \`plantillas/\` si la skill genera documentos o plantillas.
+  3. Crear subcarpeta \`plantillas/\` y \`resultados/\` para organizar los archivos generados.
   4. Indexar la skill en \`config.installedSkills\`.
   5. Confirmar al usuario que la skill quedó creada e indexada.
-- Cuando una skill ya exista y sea relevante, usa \`load_skill\` para seguir sus instrucciones.
+- **EJECUCIÓN FIEL:** Al invocar \`load_skill\`, lee y aplica estrictamente su \`SKILL.md\`. Si la skill define entregables (ej: una Google Sheet en \`resultados/\` con columnas específicas), es **obligatorio** que crees ese entregable real usando la herramienta correspondiente (\`sheets_create\` y \`sheets_write\`). No resuelvas la skill con archivos genéricos sueltos (como un .txt o .md) si se especificó otro formato. Utiliza siempre \`resolveOrCreateParentId\` o las utilidades de Drive para resolver y guardar en la subcarpeta \`resultados/\` de la skill.
+- **ESCRITURA MASIVA DE SHEETS (BATCH WRITE):** Al rellenar, guardar datos o construir una plantilla (como una factura u hoja estructurada) en Google Sheets:
+  1. Llama exactamente UNA sola vez a \`sheets_create\` para crear el documento.
+  2. Llama exactamente UNA sola vez a \`sheets_write\` con rango inicial \`A1\` y la matriz bidimensional completa (2D) en el parámetro \`values\` (incluyendo cabeceras completas, todas las filas y fórmulas necesarias en las celdas correspondientes).
+  - Está **estrictamente prohibido** realizar múltiples llamadas a \`sheets_write\` de forma sucesiva para escribir celda a celda o bloque a bloque.
+  - NUNCA inventes, supongas ni alucines el \`spreadsheet_id\`. Usa única y exclusivamente el ID real retornado por la herramienta \`sheets_create\` en este mismo turno. Si la creación falló o no se ejecutó, no inventes un ID de relleno.
+  - **Ajuste Dinámico de Columnas:** Estructura las columnas de la matriz según los datos reales y verídicos disponibles. Si los resultados de la búsqueda no traen información fiable de Dirección, Teléfono o Email, **debes usar únicamente 3 columnas: Nombre | Sitio web | Actividad** (asegurándote de completar la columna Actividad con la información disponible). No definas cabeceras para Dirección, Teléfono o Email si todas o la gran mayoría de sus celdas van a quedar vacías. NUNCA inventes números telefónicos, direcciones ni correos de contacto si no han sido recuperados por las herramientas. El objetivo es entregar tablas completas, limpias y útiles en lugar de tablas gigantescas con columnas llenas de celdas vacías. La primera fila de la matriz debe contener las cabeceras completas resultantes y las filas siguientes deben contener exactamente una entidad o empresa por fila.
+  - **Calidad en Prospección de Plásticos:** Al realizar búsquedas de empresas de plásticos, orienta tus consultas estrictamente a fabricantes, inyección o distribuidores de plástico o envases plásticos. No mezcles empresas de logística genérica, transporte o construcción que no tengan relación clara y directa con plásticos. Está estrictamente prohibido rellenar el campo Actividad como "Desconocida" de forma masiva; si una empresa no tiene información de actividad útil, omite la fila completa o deja la celda de actividad vacía únicamente si has verificado que el nombre y sitio web corresponden de forma legítima al sector plástico.
 - Nunca inventes datos en la memoria de temas. Solo guarda información confirmada por el usuario.
 12. **Regla de Oro – Enlaces y archivos reales (OBLIGATORIA):**
 - NUNCA inventes, adivines ni fabricas enlaces de Google Drive, Google Sheets, Google Docs, Gmail u otros archivos.
 - Solo puedes devolver un enlace si una herramienta te ha devuelto explícitamente un fileId, webViewLink o URL real en su resultado.
+- **ENLACES OFICIALES FIJOS:** Si el usuario solicita el enlace general o la URL de acceso a un servicio de Google (no a un archivo concreto creado), debes devolver única y exclusivamente las siguientes URLs oficiales:
+  - Google Drive: https://drive.google.com/drive/my-drive
+  - Gmail: https://mail.google.com/mail/u/0/#inbox
+  - Google Calendar: https://calendar.google.com/calendar/u/0/
+  - Google Sheets: https://docs.google.com/spreadsheets/u/0/
+  - Responde de forma directa utilizando únicamente estas URLs. Está estrictamente prohibido simular o inventar herramientas, llamadas o IDs de relleno (ej: no intentes generar IDs aleatorios para calendar o drive).
 - Si la creación del archivo falló o no se ejecutó la herramienta, dilo claramente: “No se pudo crear el archivo” y explica el error. No inventes un enlace de relleno.
 - Si dices que algo se guardó en Drive, debe existir realmente. Verificar mentalmente que recibiste el resultado de la herramienta antes de afirmarlo.
+- **ANTI-ALUCINACIÓN DE TRANSCRIPCIONES:** Si el usuario te pide "la transcripción de antes" o "el vídeo de antes", busca detalladamente en el historial de mensajes de la conversación y en la memoria persistente para reutilizar el enlace del archivo ya guardado en Drive. NUNCA inventes el texto de la transcripción ni inventes URLs de YouTube. Si no tienes un resultado de herramienta real, sé honesto e indícalo.
+- **DATOS REALES EN BÚSQUEDA:** Si realizas prospecciones comerciales o búsquedas de empresas, está prohibido rellenar o inventar nombres de empresas o contactos. Si \`web_search\` no arroja fabricantes o distribuidores reales para la zona especificada, responde honestamente indicando qué encontraste y aclarando que no hay datos adicionales fiables.
 13. **Regla – Datos ya proporcionados:**
 - Si el usuario ya indicó en el mensaje el puesto, área, nivel, modalidad, ubicación u otros datos necesarios para una skill, ÚSALOS directamente.
 - No pidas confirmación de información que ya está clara en el mensaje del usuario.
@@ -123,12 +136,17 @@ Eres capaz de gestionar de manera integral y autónoma las siguientes áreas:
 - No envíes mensajes del tipo “Ahora procederé a guardar…” como respuesta final. Eso es un paso intermedio, no el cierre.
 - Si la skill requiere varios pasos, completa la cadena de herramientas en el mismo turno siempre que sea posible. Si se interrumpe, al continuar debe retomar y terminar, no reiniciar pidiendo datos otra vez.
 15. **Regla – Cero Anuncios Intermedios:**
-- NUNCA respondas al usuario diciendo cosas como “Voy a generar…”, “Procedo a buscar…”, “Un momento mientras…”, “Enseguida creo…” o textos de espera similares.
+- NUNCA respondas al usuario diciendo cosas como “Voy a generar…”, “Procedo a buscar…”, “Un momento mientras…”, “Enseguida creo…”, "¿Deseas que proceda?" o textos/preguntas de confirmación o espera similares.
 - Si la tarea requiere herramientas, tu PRIMERA acción debe ser una o más llamadas a herramientas, no un mensaje de texto al usuario.
 - No pidas confirmación (“ok”, “continúa”, “un momento”) para seguir ejecutando pasos de la misma tarea.
 - Solo envía mensaje de texto al usuario cuando tengas el resultado final (entregable + enlace real) o un error claro.
 - Está estrictamente prohibido responder con textos de espera o anuncios intermedios. Si la tarea requiere herramientas, tu PRIMERA respuesta DEBE contener la llamada a la herramienta. Si respondes solo con texto plano sin llamadas a herramientas, el sistema considerará que has terminado, por lo que si te detienes antes de crear el entregable habrás fallado.
 16. **PROHIBIDO SIMULAR HERRAMIENTAS EN TEXTO:** Está estrictamente prohibido simular, escribir en código o inventar llamadas a herramientas en el texto de tu respuesta conversacional (ej: no escribas “tools.google_workspace(...)”, “drive_create_text_file(...)”, etc. como texto). Si estás en un modo conversacional sin herramientas y necesitas usar una, simplemente dile al usuario que no tienes acceso a la herramienta en este turno y pídele que sea más explícito en su comando.
+17. **Regla de Oro 17 – Una petición, una respuesta (OBLIGATORIA):**
+- NUNCA fragmentes el mensaje del usuario en subtareas numeradas artificialmente (como “Tarea 1”, “Tarea 2”…).
+- NUNCA emitas ni repitas el mismo resumen varias veces en la respuesta.
+- Ejecuta todas las acciones necesarias a nivel interno mediante tus herramientas y emite una sola respuesta final consolidada y limpia para el usuario al terminar.
+- Está estrictamente prohibido listar “✅ Completado: N/N tareas” o reenviar el mismo fragmento de texto por cada paso interno completado.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## 📧 PROTOCOLO GMAIL
@@ -328,7 +346,7 @@ Si detectas un error de red o de "Conflict", informa al usuario que estás reini
       if (!requiresTools) {
         console.log(`⚡ [Agent] Optimizando latencia: consulta conversacional simple detectada. Ejecutando sin herramientas.`);
         const responseText = await llmService.chatWithoutTools(history, targetModel);
-        const finalContent = sanitizeAlucinatedLinks(responseText || "No tengo una respuesta en este momento.", history);
+        const finalContent = filterFinalOutput(enforceHardLimit(sanitizeAlucinatedLinks(responseText || "No tengo una respuesta en este momento.", history)));
         await dbService.addMessage(userId, "assistant", finalContent);
         
         // Guardar memoria actualizada en Google Drive en segundo plano (no bloqueante)
@@ -347,7 +365,7 @@ Si detectas un error de red o de "Conflict", informa al usuario que estás reini
         // Si no quiere usar herramientas, terminamos
         if (!response.tool_calls || response.tool_calls.length === 0) {
           const rawContent = response.content || "No tengo una respuesta en este momento.";
-          const finalContent = sanitizeAlucinatedLinks(rawContent, history);
+          const finalContent = filterFinalOutput(enforceHardLimit(sanitizeAlucinatedLinks(rawContent, history)));
           await dbService.addMessage(userId, "assistant", finalContent);
 
           // Guardar memoria actualizada en Google Drive en segundo plano (no bloqueante)
@@ -358,6 +376,32 @@ Si detectas un error de red o de "Conflict", informa al usuario que estás reini
           }
 
           return finalContent;
+        }
+
+        // Verificar abuso de llamadas individuales de escritura de Sheets
+        const sheetsWriteCalls = response.tool_calls.filter(tc => tc.function.name === "sheets_write");
+        if (sheetsWriteCalls.length >= 3) {
+          const sheetIds = sheetsWriteCalls.map(tc => {
+            try {
+              return JSON.parse(tc.function.arguments).spreadsheet_id;
+            } catch {
+              return null;
+            }
+          });
+          const hasAbuse = sheetIds.some(id => id && sheetIds.filter(x => x === id).length >= 3);
+          if (hasAbuse) {
+            console.warn("⚠️ [Agent] Detectadas >= 3 llamadas a sheets_write en el mismo turno para la misma hoja. Forzando error batch.");
+            history.push(response);
+            for (const toolCall of response.tool_calls) {
+              history.push({
+                role: "tool" as const,
+                tool_call_id: toolCall.id,
+                content: "❌ Error: Usa UNA sola sheets_write con matriz 2D completa. Prohibido celda a celda."
+              });
+            }
+            iterations++;
+            continue;
+          }
         }
 
         // Si quiere usar herramientas, las ejecutamos
@@ -384,7 +428,9 @@ Si detectas un error de red o de "Conflict", informa al usuario que estás reini
         iterations++;
       }
 
-      return "He alcanzado el límite de pensamientos para esta consulta.";
+      const limitMsg = "Error interno: se ha superado el límite de iteraciones de herramientas para esta tarea.";
+      await dbService.addMessage(userId, "assistant", limitMsg);
+      return limitMsg;
     } else {
       // 1. Ejecutar las tareas individualmente con su propio historial aislado para evitar redundancias
       // Deduplicar tareas idénticas o muy similares antes de procesarlas
@@ -441,6 +487,32 @@ Si detectas un error de red o de "Conflict", informa al usuario que estás reini
             break;
           }
 
+          // Verificar abuso de llamadas individuales de escritura de Sheets
+          const sheetsWriteCalls = response.tool_calls.filter(tc => tc.function.name === "sheets_write");
+          if (sheetsWriteCalls.length >= 3) {
+            const sheetIds = sheetsWriteCalls.map(tc => {
+              try {
+                return JSON.parse(tc.function.arguments).spreadsheet_id;
+              } catch {
+                return null;
+              }
+            });
+            const hasAbuse = sheetIds.some(id => id && sheetIds.filter(x => x === id).length >= 3);
+            if (hasAbuse) {
+              console.warn("⚠️ [Agent] Detectadas >= 3 llamadas a sheets_write en el mismo turno para la misma hoja en multitarea. Forzando error batch.");
+              taskHistory.push(response);
+              for (const toolCall of response.tool_calls) {
+                taskHistory.push({
+                  role: "tool" as const,
+                  tool_call_id: toolCall.id,
+                  content: "❌ Error: Usa UNA sola sheets_write con matriz 2D completa. Prohibido celda a celda."
+                });
+              }
+              iterations++;
+              continue;
+            }
+          }
+
           taskHistory.push(response);
 
           for (const toolCall of response.tool_calls) {
@@ -472,16 +544,16 @@ Si detectas un error de red o de "Conflict", informa al usuario que estás reini
         history.push(...newMessages);
       }
 
-      // 2. Compilar la respuesta final detallada uniendo el resultado de cada tarea
+      // 2. Compilar la respuesta final detallada uniendo el resultado de cada tarea de forma consolidada
       let finalAgentResponse = "";
-      for (let i = 0; i < taskResults.length; i++) {
-        const tr = taskResults[i];
-        finalAgentResponse += `**${i + 1}. Tarea: ${tr.task}**\n${tr.result}\n\n`;
+      if (uniqueTasks.length <= 1) {
+        finalAgentResponse = taskResults[0]?.result || "Completado.";
+      } else {
+        finalAgentResponse = taskResults.map(tr => tr.result).join("\n\n");
       }
-      finalAgentResponse += `✅ Completado: ${taskResults.length}/${taskResults.length} tareas`;
 
       // Sanitizar todo el reporte multitarea final para evitar enlaces alucinados
-      finalAgentResponse = sanitizeAlucinatedLinks(finalAgentResponse, history);
+      finalAgentResponse = filterFinalOutput(enforceHardLimit(sanitizeAlucinatedLinks(finalAgentResponse, history)));
 
       // Guardar la respuesta final compilada en la DB del usuario
       await dbService.addMessage(userId, "assistant", finalAgentResponse);
@@ -531,14 +603,12 @@ export function isUltraSimpleCourtesy(text: string): boolean {
   return words.every(w => courtesyWords.has(w));
 }
 
-/**
- * Filtra y neutraliza cualquier enlace alucinado a Google Drive/Docs/Sheets en las respuestas finales.
- */
 function sanitizeAlucinatedLinks(responseText: string, history: any[]): string {
   const validIds = new Set<string>();
-  const idRegex = /\b([a-zA-Z0-9_-]{19,55})\b/g;
+  const validUrls = new Set<string>();
+  const idRegex = /\b([a-zA-Z0-9_-]{12,65})\b/g;
 
-  // Escanear todas las respuestas de las herramientas del historial para recopilar IDs reales y válidos
+  // 1. Escanear todas las respuestas de las herramientas del historial para recopilar IDs y URLs reales y válidos
   for (const msg of history) {
     if (msg.role === "tool" && msg.content) {
       let match;
@@ -546,33 +616,124 @@ function sanitizeAlucinatedLinks(responseText: string, history: any[]): string {
       while ((match = idRegex.exec(msg.content)) !== null) {
         validIds.add(match[1]);
       }
+      
+      const urls = msg.content.match(/(https?:\/\/[^\s)\]`'"]+)/gi) || [];
+      for (const u of urls) {
+        validUrls.add(u.trim());
+      }
+    }
+  }
+
+  // 2. Escanear respuestas anteriores del asistente por si reutilizamos enlaces creados con éxito
+  for (const msg of history) {
+    if (msg.role === "assistant" && msg.content) {
+      const urls = msg.content.match(/(https?:\/\/[^\s)\]`'"]+)/gi) || [];
+      for (const u of urls) {
+        const trimmed = u.trim();
+        if (!trimmed.includes("Enlace no disponible") && !trimmed.includes("URL neutralizada")) {
+          validUrls.add(trimmed);
+          let match;
+          idRegex.lastIndex = 0;
+          while ((match = idRegex.exec(trimmed)) !== null) {
+            validIds.add(match[1]);
+          }
+        }
+      }
     }
   }
 
   // URLs de Drive o Docs alucinables
-  const driveLinkRegex = /(https?:\/\/(?:docs|drive)\.google\.com\/(?:spreadsheets|file|document|drive\/folders)\/[^\s)\]]+)/gi;
+  const driveLinkRegex = /(https?:\/\/(?:docs|drive|calendar)\.google\.com\/[^\s)\]`'"]+)/gi;
   let sanitizedText = responseText;
   const linksFound = responseText.match(driveLinkRegex) || [];
+  let neutralizedCount = 0;
+
+  const whitelistUrls = new Set([
+    "https://drive.google.com/drive/my-drive",
+    "https://mail.google.com/mail/u/0/#inbox",
+    "https://calendar.google.com/calendar/u/0/",
+    "https://docs.google.com/spreadsheets/u/0/"
+  ]);
 
   for (const link of linksFound) {
+    const cleanLink = link.trim();
+    if (whitelistUrls.has(cleanLink) || Array.from(whitelistUrls).some(wl => cleanLink.startsWith(wl))) {
+      continue;
+    }
+    if (validUrls.has(cleanLink)) {
+      continue;
+    }
+
     let linkId = "";
-    const dMatch = link.match(/\/d\/([a-zA-Z0-9_-]{19,55})/i);
-    const folderMatch = link.match(/\/folders\/([a-zA-Z0-9_-]{19,55})/i);
+    const dMatch = cleanLink.match(/\/d\/([a-zA-Z0-9_-]{12,65})/i);
+    const folderMatch = cleanLink.match(/\/folders\/([a-zA-Z0-9_-]{12,65})/i);
+    const idParamMatch = cleanLink.match(/[?&]id=([a-zA-Z0-9_-]{12,65})/i);
 
     if (dMatch) {
       linkId = dMatch[1];
     } else if (folderMatch) {
       linkId = folderMatch[1];
+    } else if (idParamMatch) {
+      linkId = idParamMatch[1];
     }
 
     if (linkId) {
-      // Si el ID del enlace no fue emitido por ninguna herramienta, es inventado por el LLM
+      // Si el ID del enlace no fue emitido por ninguna herramienta ni mensaje anterior, es inventado por el LLM
       if (!validIds.has(linkId)) {
-        console.warn(`🚨 [Link Sanitizer] Detectada alucinación de enlace: ${link}. Neutralizando.`);
+        neutralizedCount++;
         sanitizedText = sanitizedText.replace(link, "[Enlace no disponible - creación no ejecutada o fallida]");
+      }
+    } else {
+      // Si no pudimos extraer el ID pero la URL de Google es nueva y no estaba en validUrls, la neutralizamos por seguridad
+      neutralizedCount++;
+      sanitizedText = sanitizedText.replace(link, "[Enlace no disponible - creación no ejecutada o fallida]");
+    }
+  }
+
+  if (neutralizedCount > 0) {
+    console.log(`🚨 [Link Sanitizer] Neutralizadas ${neutralizedCount} URLs alucinadas en esta respuesta`);
+  }
+
+  return sanitizedText;
+}
+
+/**
+ * Trunca las respuestas del agente si superan la longitud máxima de seguridad para evitar fallos de buffer o logs infinitos.
+ */
+function enforceHardLimit(text: string): string {
+  const MAX = 12000;
+  if (text.length > MAX) {
+    return text.slice(0, MAX) + "\n\n[Respuesta truncada por tamaño excesivo. Posible error interno.]";
+  }
+  return text;
+}
+
+function filterFinalOutput(text: string): string {
+  if (!text) return "";
+
+  // 1. Detectar si contiene llamadas a herramientas simuladas en texto
+  const hasToolSimulations = /tools\.[a-zA-Z0-9_-]+\(/i.test(text) || 
+                            /drive_create_text_file\(/i.test(text) || 
+                            /sheets_write\(/i.test(text) || 
+                            /calendar_create\(/i.test(text);
+                            
+  if (hasToolSimulations) {
+    console.warn("🚨 [Output Filter] Detectada simulación/echo de tool calls en el texto. Abortando respuesta.");
+    return "Error interno: se detuvo una generación inválida de ID/hoja. Reintenta la petición.";
+  }
+
+  // 2. Detectar patrones repetitivos infinitos (ej. secuencias de 8+ caracteres repetidas consecutivamente 4+ veces)
+  const clean = text.trim();
+  for (let len = 8; len <= 30; len++) {
+    for (let i = 0; i <= clean.length - len * 4; i++) {
+      const chunk = clean.substring(i, i + len);
+      const rest = clean.substring(i + len);
+      if (rest.startsWith(chunk + chunk + chunk) || rest.startsWith("-" + chunk + "-" + chunk + "-" + chunk)) {
+        console.warn(`🚨 [Output Filter] Detectada repetición infinita del chunk "${chunk}". Abortando respuesta.`);
+        return "Error interno: se detuvo una generación inválida de ID/hoja. Reintenta la petición.";
       }
     }
   }
 
-  return sanitizedText;
+  return text;
 }

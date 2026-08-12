@@ -4,6 +4,25 @@ import { formatEventLink } from "../services/linkFormatter.js";
 
 const SEP = "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
 
+function safeCalendarLink(link?: string): string | undefined {
+  if (!link) return undefined;
+  if (typeof link !== "string") return undefined;
+
+  // Evitar enlaces corruptos o infinitos
+  if (link.length > 500) return undefined;
+
+  // Solo aceptar dominios legítimos de Google Calendar
+  if (!link.startsWith("https://www.google.com/calendar/") && !link.startsWith("https://calendar.google.com/")) {
+    return undefined;
+  }
+
+  // Evitar patrones repetitivos (base64 corrupto)
+  const repeated = /(2czY5|YzYxNnI2Z28)/i;
+  if (repeated.test(link)) return undefined;
+
+  return link;
+}
+
 function formatCalendarEvents(items: any[]): string {
   if (!items || items.length === 0) return "📅 No hay eventos próximos.";
 
@@ -14,7 +33,7 @@ function formatCalendarEvents(items: any[]): string {
     const start = e.start?.dateTime || e.start?.date || "";
     const end   = e.end?.dateTime || e.end?.date || "";
     const location = e.location || "";
-    const link  = e.htmlLink || "";
+    const link  = safeCalendarLink(e.htmlLink || undefined) || "";
     const id    = e.id || "";
     
     let timeStr = "";
@@ -102,7 +121,8 @@ export const calendarCreate = async (
       timeZone: "Europe/Madrid", weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit"
     });
 
-    const linkStr = formatEventLink(eventData.summary || summary, eventData.htmlLink || "");
+    const safeLink = safeCalendarLink(eventData.htmlLink || undefined) || "";
+    const linkStr = formatEventLink(eventData.summary || summary, safeLink);
     return `✅ **EVENTO PROGRAMADO CON ÉXITO**\n${SEP}\n\n` +
            `${linkStr}\n` +
            `> ⏰ **Cuándo:** ${startStr}\n` +

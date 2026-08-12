@@ -177,7 +177,7 @@ export const tools = {
     const uId = userId || userContextStore.getStore()?.userId;
     return await sheetsRead(spreadsheet_id, range, uId);
   },
-  sheets_write: async ({ spreadsheet_id, range, values, userId }: { spreadsheet_id: string; range: string; values: string; userId?: number }) => {
+  sheets_write: async ({ spreadsheet_id, range, values, userId }: { spreadsheet_id: string; range: string; values: string | any[][]; userId?: number }) => {
     const uId = userId || userContextStore.getStore()?.userId;
     return await sheetsWrite(spreadsheet_id, range, values, uId);
   },
@@ -233,8 +233,9 @@ export const tools = {
     }
   },
 
-  youtube_get_transcript: async ({ url }: { url: string }) => {
-    return await youtubeGetTranscript(url);
+  youtube_get_transcript: async ({ url, save_to_drive, userId }: { url: string; save_to_drive?: boolean; userId?: number }) => {
+    const uId = userId || userContextStore.getStore()?.userId;
+    return await youtubeGetTranscript(url, uId, !!save_to_drive);
   },
 
   youtube_search: async ({ query, max_results }: { query: string; max_results?: number }) => {

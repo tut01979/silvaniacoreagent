@@ -1,6 +1,8 @@
 import { YoutubeTranscript } from "youtube-transcript";
 import axios from "axios";
 import { formatVideoLink } from "../services/linkFormatter.js";
+import fs from "fs";
+import path from "path";
 
 const RE_YOUTUBE = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
 
@@ -16,8 +18,42 @@ function retrieveVideoId(urlOrId: string): string | null {
 /**
  * Obtiene la transcripción (subtítulos) de un video de YouTube dada su URL o ID.
  */
-export async function youtubeGetTranscript(urlOrId: string): Promise<string> {
+function cleanupDuplicateLines(text: string): string {
+  if (!text) return "";
+  
+  // 1. Dividir por líneas para colapsar líneas duplicadas consecutivas
+  const lines = text.split(/\r?\n/);
+  const cleanedLines: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const current = lines[i].trim();
+    if (!current) continue;
+    if (cleanedLines.length > 0 && cleanedLines[cleanedLines.length - 1].trim() === current) {
+      continue;
+    }
+    cleanedLines.push(lines[i]);
+  }
+
+  let result = cleanedLines.join("\n");
+
+  // 2. Colapsar palabras consecutivas repetidas en el texto continuo
+  const words = result.split(/\s+/);
+  if (words.length === 0) return "";
+
+  let textClean = words.join(" ");
+  // Colapsar frases repetidas consecutivas de hasta 50 caracteres (ej: "Hola a todos Hola a todos")
+  textClean = textClean.replace(/\b([\w\sáéíóúÁÉÍÓÚñÑüÜ]{3,50})\s+\1\b/gi, "$1");
+  textClean = textClean.replace(/\b([\w\sáéíóúÁÉÍÓÚñÑüÜ]{3,50})\s+\1\b/gi, "$1"); // Doble pasada para triplicados
+
+  return textClean;
+}
+
+/**
+ * Obtiene la transcripción (subtítulos) de un video de YouTube dada su URL o ID.
+ * Procesa el texto eliminando repeticiones y guarda el entregable completo en Drive.
+ */
+export async function youtubeGetTranscript(urlOrId: string, userId?: number, saveToDrive = false): Promise<string> {
   const videoId = retrieveVideoId(urlOrId);
+  let rawText = "";
   
   try {
     console.log(`📥 Obteniendo transcripción de YouTube para: ${urlOrId} (ID: ${videoId})`);
@@ -32,15 +68,14 @@ export async function youtubeGetTranscript(urlOrId: string): Promise<string> {
     }
     
     if (transcript && transcript.length > 0) {
-      const fullText = transcript.map(t => t.text).join(" ");
-      return `🎥 **Transcripción de YouTube:**\n\n${fullText}`;
+      rawText = transcript.map(t => t.text).join(" ");
     }
   } catch (error: any) {
     console.warn(`⚠️ [youtube] Error en scraper directo (${error.message}). Intentando fallback en youtube-transcript.ai...`);
   }
 
   // Fallback a API de youtube-transcript.ai
-  if (videoId) {
+  if (!rawText && videoId) {
     try {
       // Intentar primero en español (lang=es)
       console.log(`📥 [youtube] Intentando obtener transcripción en español (lang=es)...`);
@@ -53,7 +88,7 @@ export async function youtubeGetTranscript(urlOrId: string): Promise<string> {
       });
 
       if (textEs && textEs.trim().length > 0 && !textEs.includes("We're sorry, YouTube is currently blocking us")) {
-        return `🎥 **Transcripción de YouTube:**\n\n${textEs}`;
+        rawText = textEs;
       }
     } catch (fallbackEsErr: any) {
       console.warn(`⚠️ [youtube] Fallback en español falló (${fallbackEsErr.message}), intentando sin filtro de idioma...`);
@@ -67,12 +102,60 @@ export async function youtubeGetTranscript(urlOrId: string): Promise<string> {
         });
 
         if (textDefault && textDefault.trim().length > 0 && !textDefault.includes("We're sorry, YouTube is currently blocking us")) {
-          return `🎥 **Transcripción de YouTube:**\n\n${textDefault}`;
+          rawText = textDefault;
         }
       } catch (fallbackDefaultErr: any) {
         console.error("❌ [youtube] Todos los fallbacks de youtube-transcript.ai fallaron:", fallbackDefaultErr.message);
       }
     }
+  }
+
+  if (rawText) {
+    const cleanedTranscript = cleanupDuplicateLines(rawText);
+    
+    // Guardar el texto completo en Google Drive SOLO si el usuario lo solicitó expresamente
+    let driveLinkMsg = "";
+    if (saveToDrive && userId) {
+      try {
+        console.log(`📁 [youtube] Guardando transcripción completa en Google Drive (solicitud explícita del usuario)...`);
+        const { driveMemoryService } = await import("../services/driveMemory.js");
+        const folderId = await driveMemoryService.getOrCreateFolderPath(["silvania", "transcripciones"], userId);
+        
+        const fileName = `transcripcion_${videoId}.md`;
+        const tempName = `temp_yt_${videoId}.md`;
+        const tempPath = path.join(process.cwd(), "temp", tempName);
+        
+        if (!fs.existsSync(path.join(process.cwd(), "temp"))) {
+          fs.mkdirSync(path.join(process.cwd(), "temp"), { recursive: true });
+        }
+        
+        const fileContent = `# Transcripción de YouTube\n\n**Video:** https://www.youtube.com/watch?v=${videoId}\n\n${cleanedTranscript}`;
+        fs.writeFileSync(tempPath, fileContent);
+        
+        const { driveUpload } = await import("./drive.js");
+        const uploadRes = await driveUpload(tempPath, folderId, fileName, userId);
+        
+        const linkMatch = uploadRes.match(/🔗 \*\*Enlace:\*\* \[.*?\]\((.*?)\)/i) || 
+                          uploadRes.match(/\[.*?\]\((.*?)\)/i) || 
+                          uploadRes.match(/(https?:\/\/drive\.google\.com\S+)/i);
+                          
+        if (linkMatch) {
+          driveLinkMsg = `\n\n📂 **Archivo completo guardado en Drive:** [Abrir Transcripción](${linkMatch[1]})`;
+        }
+        
+        try { if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath); } catch {}
+      } catch (driveErr: any) {
+        console.error("❌ [youtube] Error guardando transcripción en Drive:", driveErr.message);
+      }
+    }
+
+    if (saveToDrive) {
+      const summarySnippet = cleanedTranscript.slice(0, 800) + "...";
+      return `🎥 **Transcripción de YouTube (Resumen)**\n\n**Video:** https://www.youtube.com/watch?v=${videoId}\n\n${summarySnippet}${driveLinkMsg}`;
+    }
+
+    // Retornar la transcripción limpia completa directamente al LLM si no se solicitó Drive
+    return `🎥 **Transcripción de YouTube:**\n\n**Video:** https://www.youtube.com/watch?v=${videoId}\n\n${cleanedTranscript}`;
   }
 
   return `❌ La transcripción no está disponible para este video (puede ser debido a que no tiene subtítulos generados o YouTube está bloqueando el acceso de red para este video).\n\n💡 **Alternativas disponibles:**\n1. Puedo buscar otros videos de este mismo canal si me lo solicitas.\n2. Si me indicas el tema general, puedo buscar información relacionada en la web o consultar otro video.`;
