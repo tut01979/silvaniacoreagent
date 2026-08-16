@@ -6,7 +6,7 @@ import { config } from "../config/config.js";
 import { driveList, driveSearch, driveMkdir, driveMove, driveUpload, driveRemove, driveReadFile, resolveOrCreateParentId } from "./drive.js";
 import { calendarList, calendarCreate, calendarDelete, calendarUpdate } from "./calendar.js";
 import { userContextStore } from "../services/context.js";
-import { sheetsList, sheetsCreate, sheetsRead, sheetsWrite } from "./sheets.js";
+import { sheetsList, sheetsCreate, sheetsRead, sheetsWrite, sheetsCreateInvoice } from "./sheets.js";
 import { runGog } from "./gogWrapper.js";
 import { searchSkills, getSkill, installSkill, createSkill, loadSkills, loadSkillsSummary, loadSkill } from "./skills.js";
 import { webSearch } from "./webSearch.js";
@@ -180,6 +180,10 @@ export const tools = {
   sheets_write: async ({ spreadsheet_id, range, values, userId }: { spreadsheet_id: string; range: string; values: string | any[][]; userId?: number }) => {
     const uId = userId || userContextStore.getStore()?.userId;
     return await sheetsWrite(spreadsheet_id, range, values, uId);
+  },
+  sheets_create_invoice: async ({ title, number, date, locale, userId }: { title: string; number?: string; date?: string; locale?: "es" | "en"; userId?: number }) => {
+    const uId = userId || userContextStore.getStore()?.userId;
+    return await sheetsCreateInvoice({ title, number, date, locale, userId: uId });
   },
 
   // ─── SKILLS ───

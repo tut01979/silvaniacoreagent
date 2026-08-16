@@ -309,8 +309,28 @@ export async function loadSkills(userId: number): Promise<string[]> {
 }
 
 export async function loadSkillsSummary(userId: number): Promise<string> {
-  let summary = "";
   const userSkillsDir = getUserSkillsDir(userId);
+  
+  // Si la carpeta local no existe o no tiene subcarpetas, intentar sincronizar desde Drive proactivamente
+  let localSkillsCount = 0;
+  if (fs.existsSync(userSkillsDir)) {
+    const folders = fs.readdirSync(userSkillsDir);
+    localSkillsCount = folders.filter(f => {
+      try { return fs.statSync(path.join(userSkillsDir, f)).isDirectory(); } catch { return false; }
+    }).length;
+  }
+
+  if (localSkillsCount === 0) {
+    console.log(`ℹ️ [Skills] No se encontraron habilidades locales para usuario ${userId}. Buscando en Drive...`);
+    try {
+      const { skillLoader } = await import("../services/skillLoader.js");
+      await skillLoader.syncSkillsFromDrive(userId);
+    } catch (err: any) {
+      console.error("⚠️ [Skills] Error sincronizando de Drive al cargar resumen:", err.message);
+    }
+  }
+
+  let summary = "";
   if (fs.existsSync(userSkillsDir)) {
     const folders = fs.readdirSync(userSkillsDir);
     for (const folder of folders) {

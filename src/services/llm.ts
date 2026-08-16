@@ -473,6 +473,22 @@ export const llmService = {
           }
         }
       },
+      {
+        type: "function",
+        function: {
+          name: "sheets_create_invoice",
+          description: "Única herramienta permitida para crear facturas o plantillas de factura. No uses sheets_create + sheets_write manuales para facturas.",
+          parameters: {
+            type: "object",
+            properties: {
+              title: { type: "string", description: "Título de la hoja de cálculo de la factura (obligatorio)" },
+              number: { type: "string", description: "Número de la factura (ej: '001', opcional)" },
+              date: { type: "string", description: "Fecha de la factura (ej: '2026-08-16', opcional)" }
+            },
+            required: ["title"]
+          }
+        }
+      },
       // ─── SKILLS ───
       {
         type: "function",

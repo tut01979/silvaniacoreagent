@@ -161,3 +161,98 @@ export const sheetsWrite = async (spreadsheetId: string, range: string, values: 
     return `❌ **Error al escribir en la hoja:** ${error.message}`;
   }
 };
+
+export function buildInvoiceMatrix(opts?: { number?: string; date?: string; locale?: "es" | "en" }): (string | number)[][] {
+  const isEn = opts?.locale === "en";
+  const invoiceNum = opts?.number || "001";
+  const invoiceDate = opts?.date || (isEn ? "=TODAY()" : "=HOY()");
+
+  const sumFormula = isEn ? "=SUM(D12:D14)" : "=SUMA(D12:D14)";
+  const ivaFormula = isEn ? "=D16*0.21" : "=D16*0,21";
+
+  return [
+    ["FACTURA", "", "", ""],
+    ["Número de Factura:", invoiceNum, "Fecha:", invoiceDate],
+    ["", "", "", ""],
+    ["DATOS DEL EMISOR", "", "DATOS DEL CLIENTE", ""],
+    ["Nombre:", "", "Nombre:", ""],
+    ["NIF/CIF:", "", "NIF/CIF:", ""],
+    ["Dirección:", "", "Dirección:", ""],
+    ["Teléfono:", "", "Teléfono:", ""],
+    ["Email:", "", "Email:", ""],
+    ["", "", "", ""],
+    ["Concepto", "Cantidad", "Precio unitario", "Importe"],
+    ["Producto / Servicio 1", 1, 100, "=B12*C12"],
+    ["Producto / Servicio 2", 1, 50, "=B13*C13"],
+    ["Producto / Servicio 3", 1, 30, "=B14*C14"],
+    ["", "", "", ""],
+    ["", "", "Subtotal", sumFormula],
+    ["", "", "IVA 21%", ivaFormula],
+    ["", "", "TOTAL", "=D16+D17"]
+  ];
+}
+
+export const sheetsCreateInvoice = async (opts: { title: string; number?: string; date?: string; locale?: "es" | "en"; userId?: number }) => {
+  const title = opts.title || "Factura";
+  const userId = opts.userId;
+
+  try {
+    // 1. Crear la hoja de cálculo
+    const createRes = await sheetsCreate(title, userId);
+    if (createRes.includes("Error al crear")) {
+      return createRes;
+    }
+
+    // Extraer el ID de la respuesta
+    const idMatch = createRes.match(/(?:spreadsheetId|ID):\s*([A-Za-z0-9_-]{20,80})/i);
+    const spreadsheetId = idMatch ? idMatch[1] : null;
+    if (!spreadsheetId) {
+      return `❌ Error: No se pudo extraer el spreadsheetId de la hoja creada. Detalles: ${createRes}`;
+    }
+
+    // 2. Rellenar con la matriz fija en una sola escritura (español por defecto)
+    const baseLocale = opts.locale || "es";
+    let matrix = buildInvoiceMatrix({ number: opts.number, date: opts.date, locale: baseLocale });
+    let writeRes = await sheetsWrite(spreadsheetId, "A1", matrix, userId);
+
+    if (writeRes.includes("Error al escribir")) {
+      return `⚠️ Hoja creada pero falló la escritura: ${writeRes}`;
+    }
+
+    // 3. Verificar si falló (es decir, si el locale real es inglés y dio #NAME? / #VALUE!)
+    let checkLocaleFailed = false;
+    try {
+      const readRes = await sheetsRead(spreadsheetId, "D16:D17", userId);
+      if (
+        readRes.includes("#NAME?") ||
+        readRes.includes("#VALUE!") ||
+        readRes.includes("#NAME") ||
+        readRes.includes("#VALOR") ||
+        readRes.includes("#ERROR!")
+      ) {
+        checkLocaleFailed = true;
+      }
+    } catch (err) {
+      console.warn("⚠️ No se pudo verificar la validez de las fórmulas tras la escritura:", err);
+    }
+
+    // Si falló, reintentar una vez con locale inglés
+    if (checkLocaleFailed && baseLocale === "es") {
+      console.log("⚠️ Fórmulas rotas detectadas en español. Reintentando con locale inglés...");
+      matrix = buildInvoiceMatrix({ number: opts.number, date: opts.date, locale: "en" });
+      const rewriteRes = await sheetsWrite(spreadsheetId, "A1", matrix, userId);
+      if (rewriteRes.includes("Error al escribir")) {
+        return `⚠️ Hoja creada pero falló el reintento de escritura en inglés: ${rewriteRes}`;
+      }
+    }
+
+    const editLink = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
+    return `✅ **FACTURA CREADA Y CONFIGURADA CON ÉXITO**\n${SEP}\n\n` +
+           `📊 **Documento:** [${title}](${editLink})\n` +
+           `🆔 **spreadsheetId:** \`${spreadsheetId}\`\n` +
+           `📍 **Rango inicial:** \`A1\` (matriz 2D escrita de una sola vez)\n\n` +
+           `*Se han volcado las fórmulas automáticas vivas de Importe (=B12*C12, etc.), Subtotal, IVA 21% y Total de forma correcta.*`;
+  } catch (error: any) {
+    return `❌ **Error al crear la factura estructurada:** ${error.message}`;
+  }
+};

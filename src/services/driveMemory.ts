@@ -127,6 +127,19 @@ export const driveMemoryService = {
         console.error("⚠️ [Drive Memory] Falló sincronización de prompts, continuando:", promptSyncErr.message);
       }
 
+      // Sincronizar configuraciones y habilidades desde Drive con fallbacks ya protegidos en configManager/skillLoader siempre
+      try {
+        await configManager.loadConfig(userId);
+      } catch (confErr: any) {
+        console.error("⚠️ [Drive Memory] Falló loadConfig, continuando con fallback local:", confErr.message);
+      }
+
+      try {
+        await skillLoader.syncSkillsFromDrive(userId);
+      } catch (skillErr: any) {
+        console.error("⚠️ [Drive Memory] Falló syncSkillsFromDrive, continuando con fallback local:", skillErr.message);
+      }
+
       // Optimización: si ya hay historial local, evitar crear carpetas y llamadas de red de Drive
       const localHistory = await dbService.getHistory(userId, 100);
       if (localHistory.length > 0) {
@@ -148,18 +161,7 @@ export const driveMemoryService = {
         // Continuamos de todas formas ya que los gestores configManager/skillLoader tienen sus propios fallbacks
       }
 
-      // 2. Sincronizar configuraciones y habilidades desde Drive con fallbacks ya protegidos en configManager/skillLoader
-      try {
-        await configManager.loadConfig(userId);
-      } catch (confErr: any) {
-        console.error("⚠️ [Drive Memory] Falló loadConfig, continuando con fallback local:", confErr.message);
-      }
-
-      try {
-        await skillLoader.syncSkillsFromDrive(userId);
-      } catch (skillErr: any) {
-        console.error("⚠️ [Drive Memory] Falló syncSkillsFromDrive, continuando con fallback local:", skillErr.message);
-      }
+      // 2. Sincronización de configuraciones y habilidades movida a la parte superior (siempre activa)
 
       // 3. Sincronizar historial de chat
       try {
