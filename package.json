@@ -15,7 +15,7 @@
   "dependencies": {
     "@aws-sdk/client-polly": "^3.1028.0",
     "axios": "^1.7.7",
-    "better-sqlite3": "^11.5.0",
+    "better-sqlite3": "^11.8.0",
     "cheerio": "^1.0.0",
     "dotenv": "^16.4.5",
     "edge-tts": "^1.0.1",
@@ -37,5 +37,8 @@
     "@types/better-sqlite3": "^7.6.11",
     "@types/express": "^5.0.6",
     "@types/node": "^22.7.5"
+  },
+  "engines": {
+    "node": "20.x"
   }
 }

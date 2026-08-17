@@ -51,12 +51,11 @@ export const skillLoader = {
             }
 
             // Descargar el SKILL.md a temp y moverlo a la carpeta local del usuario
-            await runGog(`drive download ${skillFileId} --dest="${path.dirname(tempDownloadPath)}" --name="download_skill_${userId}_${folderName}.md"`, userId);
+            await runGog(`drive download ${skillFileId} --out="${tempDownloadPath}"`, userId);
             
-            const downloadedFile = path.join(path.dirname(tempDownloadPath), `download_skill_${userId}_${folderName}.md`);
-            if (fs.existsSync(downloadedFile)) {
-              fs.copyFileSync(downloadedFile, path.join(localFolder, "SKILL.md"));
-              try { fs.unlinkSync(downloadedFile); } catch {}
+            if (fs.existsSync(tempDownloadPath)) {
+              fs.copyFileSync(tempDownloadPath, path.join(localFolder, "SKILL.md"));
+              try { fs.unlinkSync(tempDownloadPath); } catch {}
             }
           }
         }
