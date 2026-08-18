@@ -756,8 +756,7 @@ app.get("/cancel", (req: any, res: any) => {
 });
 
 // Servir archivos estáticos después de los endpoints dinámicos
-app.use("/privacy", express.static("privacy"));
-app.use("/terms", express.static("terms"));
+app.get("/privacy", (req: any, res: any) => res.sendFile(path.join(process.cwd(), "public", "privacy.html")));
 app.use(express.static("public"));
 
 // Endpoint para recibir reportes de violaciones de CSP
