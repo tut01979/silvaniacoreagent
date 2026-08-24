@@ -31,6 +31,47 @@ export async function runAgent(userId: number, userMessage: string) {
     // 1. Guardar mensaje del usuario
     await dbService.addMessage(userId, "user", userMessage);
 
+    // Obtener estado real de conexión de Google
+    const email = await dbService.getUserEmail(userId);
+    const token = await dbService.getUserToken(userId);
+    const isLinked = !!token;
+    const googleStatusStr = isLinked
+      ? `Estado Google: VINCULADO (${email || "email desconocido"})`
+      : `Estado Google: NO VINCULADO`;
+
+    // Intercepción de ruteo rápido para enlaces directos de Google si ya está vinculado
+    if (isLinked) {
+      const cleanMsg = userMessage.toLowerCase().trim();
+      if (!/\b(auth|vincular|conectar|cambiar)\b/i.test(cleanMsg)) {
+        const hasDrive = /\b(drive|disco)\b/i.test(cleanMsg);
+        const hasCalendar = /\b(calendar|calendario|agenda|reunion|reuniones)\b/i.test(cleanMsg);
+        const hasGmail = /\b(gmail|correo|mail|inbox|bandeja)\b/i.test(cleanMsg);
+        const hasSheets = /\b(sheets|hojas|excel|spreadsheets)\b/i.test(cleanMsg);
+        
+        const isAskingForLink = /\b(enlace|link|url|acceso|abre|abrir|ir|entrar|acceder|dirección|direccion|dame|pasa|pasame|pásame|muestra|muéstrame|muestrame|ver|dónde|donde|cómo|como)\b/i.test(cleanMsg) || cleanMsg.length <= 15;
+        const hasComplexAction = /\b(busca|buscar|encuentra|crea|crear|borra|eliminar|mueve|mover|lista|listar|lee|leer|escribe|escribir|adjunta|sube|subir|descarga|descargar|factura|transcripcion|analiza)\b/i.test(cleanMsg);
+        
+        if (!hasComplexAction && (isAskingForLink || cleanMsg.includes("drive") || cleanMsg.includes("calendar") || cleanMsg.includes("gmail") || cleanMsg.includes("sheets"))) {
+          const parts: string[] = [];
+          if (hasDrive) parts.push(`📁 **Google Drive:** https://drive.google.com/drive/my-drive`);
+          if (hasGmail) parts.push(`✉️ **Gmail:** https://mail.google.com/mail/u/0/#inbox`);
+          if (hasCalendar) parts.push(`📅 **Google Calendar:** https://calendar.google.com/calendar/u/0/`);
+          if (hasSheets) parts.push(`📊 **Google Sheets:** https://docs.google.com/spreadsheets/`);
+          
+          if (parts.length > 0) {
+            const finalContent = `Aquí tienes tus accesos directos oficiales:\n\n${parts.join("\n")}`;
+            await dbService.addMessage(userId, "assistant", finalContent);
+            
+            import("../services/driveMemory.js")
+              .then(({ driveMemoryService }) => driveMemoryService.syncToDrive(userId))
+              .catch(err => console.error("Error al guardar memoria en Drive (ruteo rápido intercepción):", err.message));
+              
+            return finalContent;
+          }
+        }
+      }
+    }
+
     // Parsear tareas si cumple con los criterios de multitarea, de lo contrario procesar como una única tarea
     const tasks = shouldTriggerMultitask(userMessage)
       ? await parseUserTasks(userMessage)
@@ -62,6 +103,11 @@ Formato ISO local: ${isoLocal}
 Zona horaria: UTC+2 (CEST). Usa esta fecha (y su offset) para crear eventos o calcular fechas. NO llames a get_current_time.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 🔷 ESTADO DE LA CONEXIÓN DE GOOGLE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${googleStatusStr}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## 🔷 IDENTIDAD DEL AGENTE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Eres Silvania CoreAgent, un asistente ejecutivo modular que opera desde Telegram y ejecuta acciones explícitas del usuario.
@@ -75,6 +121,30 @@ Tu función principal es:
 2. Delegar tareas a skills o módulos internos.
 3. Crear skills nuevas cuando el usuario las describe en lenguaje natural.
 4. Mantener estabilidad, precisión y trazabilidad.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 🔷 REGLA ENLACES GOOGLE (OBLIGATORIA)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Si el usuario pide enlace, acceso o abrir Drive, Gmail, Calendar o Sheets:
+1. Si la cuenta YA está vinculada (ver Estado de Google arriba) → responde ÚNICAMENTE con estas URLs, sin más texto de autorización:
+   - Drive: https://drive.google.com/drive/my-drive
+   - Gmail: https://mail.google.com/mail/u/0/#inbox
+   - Calendar: https://calendar.google.com/calendar/u/0/
+   - Sheets: https://docs.google.com/spreadsheets/
+2. Prohibido llamar a generate_authorization_link salvo que el usuario diga explícitamente /auth, 'vincular', 'conectar cuenta', 'cambiar de cuenta' o 'genera enlace de autorizacion'.
+3. Prohibido decir 'necesito que autorices' si la cuenta ya está vinculada.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 🔷 CAPACIDADES DE VOZ Y LECTURA EN VOZ ALTA (TTS)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tienes plena capacidad para hablar, leer textos y enviar audios o notas de voz a través del motor de TTS (Text-to-Speech) integrado en la plataforma.
+1. Si el usuario te pide: "habla", "léeme esto", "leeme", "di en voz alta", "reproduce", "audio", "lee la respuesta anterior" o frases similares:
+   - Está STRICTLY PROHIBIDO que digas "no puedo hablar", "no tengo capacidad para enviar audios" o "soy un modelo de lenguaje y no puedo".
+   - Tu respuesta debe ser el texto exacto que el usuario quiere que leas o digas en voz alta. 
+   - El sistema automáticamente tomará tu texto de respuesta y lo sintetizará en un mensaje de voz enviado al chat.
+2. Si te pide "lee la respuesta anterior":
+   - Busca en el historial de conversación el último mensaje que tú (el asistente) enviaste al usuario.
+   - Responde con el texto exacto de ese último mensaje. No añadas introducciones o explicaciones adicionales como "Aquí está la respuesta anterior:". Limítate a devolver la respuesta para que el motor la lea fluidamente.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## 🔷 SISTEMA DE SKILLS (PLANTILLA GENÉRICA)
@@ -111,6 +181,8 @@ Después de crear la skill, la instalas en el sistema y queda disponible para us
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 - Si recibes un ID, úsalo directamente.
 - Si la API no devuelve webViewLink, dilo: “La API no devolvió enlace. Necesito ID o enlace manual.”
+- Enlace web general a Google Drive: https://drive.google.com/drive/my-drive
+- Si el usuario pide enlace a Drive y la cuenta está vinculada, proporciona el enlace web oficial directo (https://drive.google.com/drive/my-drive). NO solicites vinculación ni ejecutes generate_authorization_link salvo que el usuario pida vincular/cambiar de cuenta.
 - Nunca inventes enlaces.
 - Para carpetas anidadas:
   1. Verificar existencia.
@@ -656,15 +728,24 @@ function sanitizeAlucinatedLinks(responseText: string, history: any[]): string {
   let neutralizedCount = 0;
 
   const whitelistUrls = new Set([
+    "https://drive.google.com",
+    "https://drive.google.com/",
+    "https://drive.google.com/drive",
     "https://drive.google.com/drive/my-drive",
+    "https://mail.google.com",
+    "https://mail.google.com/",
+    "https://mail.google.com/mail",
     "https://mail.google.com/mail/u/0/#inbox",
+    "https://calendar.google.com",
+    "https://calendar.google.com/",
+    "https://calendar.google.com/calendar",
     "https://calendar.google.com/calendar/u/0/",
-    "https://docs.google.com/spreadsheets/u/0/"
+    "https://docs.google.com/spreadsheets"
   ]);
 
   for (const link of linksFound) {
     const cleanLink = link.trim();
-    if (whitelistUrls.has(cleanLink) || Array.from(whitelistUrls).some(wl => cleanLink.startsWith(wl))) {
+    if (whitelistUrls.has(cleanLink) || Array.from(whitelistUrls).some(wl => cleanLink.startsWith(wl) || wl.startsWith(cleanLink))) {
       continue;
     }
     if (validUrls.has(cleanLink)) {

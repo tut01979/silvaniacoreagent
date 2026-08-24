@@ -28,6 +28,7 @@ import { criticalLogService } from "./services/criticalLog.js";
 import { generateDriveLink } from "./services/linkGenerator.js";
 import { getAuthUrl } from "./services/authHelper.js";
 import { checkCourtesyGreeting } from "./services/courtesyHelper.js";
+import { EVA_EXERCISES_DATABASE, EVA_LESSONS } from "./config/evaExercises.js";
 
 if (process.env.GOOGLE_CREDS_JSON) {
   try {
@@ -199,11 +200,12 @@ app.use((req: any, res: any, next: any) => {
   res.setHeader(
     "Content-Security-Policy-Report-Only",
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline'; " +
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; " +
     "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; " +
     "img-src 'self' data:; " +
-    "connect-src 'self'; " +
+    "worker-src 'self' blob:; " +
+    "connect-src 'self' https://cdn.jsdelivr.net; " +
     "report-uri /api/security/csp-report;"
   );
   next();
@@ -755,9 +757,51 @@ app.get("/cancel", (req: any, res: any) => {
   `);
 });
 
-// Servir archivos estáticos después de los endpoints dinámicos
+// Servir archivos estáticos y rutas amigables
 app.get("/privacy", (req: any, res: any) => res.sendFile(path.join(process.cwd(), "public", "privacy.html")));
+app.get("/eva", (req: any, res: any) => res.sendFile(path.join(process.cwd(), "public", "eva.html")));
+app.get("/evaagent", (req: any, res: any) => res.sendFile(path.join(process.cwd(), "public", "eva.html")));
+app.get("/coreagent", (req: any, res: any) => res.sendFile(path.join(process.cwd(), "public", "index.html")));
 app.use(express.static("public"));
+
+// Endpoint para la interacción conversacional en tiempo real con Eva (Logopedia & Pronunciación)
+app.post("/api/eva-chat", rateLimiter(40, 60000), express.json(), async (req: any, res: any) => {
+  try {
+    const { message, history, exerciseContext } = req.body;
+    if (!message) {
+      return res.status(400).json({ error: "Falta el mensaje del usuario." });
+    }
+
+    const systemPrompt = `Eres Eva, una logopeda y entrenadora de voz de Inteligencia Artificial creada por Ananova.
+Tu objetivo es ayudar al usuario a practicar el habla, la dicción, la vocalización y la pronunciación.
+- Sé extremadamente paciente, empática, motivadora y profesional.
+- Si el usuario está practicando un ejercicio (ejercicio activo: "${exerciseContext || "Práctica libre"}"), evalúa amablemente su dicción y dale consejos prácticos para colocar la lengua, los labios o controlar el aire.
+- MANTÉN TUS RESPUESTAS CORTAS Y FLUIDAS (máximo 1 a 3 frases) para que la lectura por voz (TTS) en la web sea rápida, dinámica y natural.
+- Responde siempre en español. No uses caracteres especiales ni formatos toscos de markdown.`;
+
+    const formattedMessages = [
+      { role: "system", content: systemPrompt },
+      ...(Array.isArray(history) ? history.slice(-6) : []),
+      { role: "user", content: message }
+    ];
+
+    const replyText = await llmService.chatEva(formattedMessages);
+    const finalReply = replyText || "¡Muy bien! Sigamos practicando.";
+
+    res.json({ reply: finalReply });
+  } catch (err: any) {
+    console.error("❌ Error en endpoint /api/eva-chat:", err.message);
+    res.status(500).json({ error: "Ocurrió un error procesando la voz con Eva." });
+  }
+});
+
+// Endpoint para obtener la biblioteca completa de ejercicios y lecciones guiadas de 20-25 min
+app.get("/api/eva-exercises", rateLimiter(60, 60000), (req: any, res: any) => {
+  res.json({
+    exercises: EVA_EXERCISES_DATABASE,
+    lessons: EVA_LESSONS
+  });
+});
 
 // Endpoint para recibir reportes de violaciones de CSP
 app.post(
@@ -1559,8 +1603,13 @@ bot.on("message:text", async (ctx) => {
     // OPCIONAL: Enviar también audio (TTS) si se solicita o hay palabras clave y el bot no está silenciado
     const isMuted = await dbService.getMuteVoice(userId);
     if (!isMuted) {
-      const voiceKeywords = ["habla", "léeme", "leeme", "di ", "di,", "reproduce", "voz", "audio", "escucha", "pronuncia", "lee ", "lee,", "lee\n"];
-      const shouldSendVoice = voiceKeywords.some(keyword => textLower.includes(keyword)) || textLower === "lee";
+      const voiceKeywords = [
+        "habla", "léeme", "leeme", "di ", "di,", "reproduce", "voz", "audio", 
+        "escucha", "pronuncia", "lee ", "lee,", "lee\n", "lee la", "léela", 
+        "leela", "léelo", "leelo", "reprodúcelo", "reproducilo", "dilo", 
+        "di en voz alta", "voz alta", "lee esto", "léeme esto", "leeme esto"
+      ];
+      const shouldSendVoice = voiceKeywords.some(keyword => textLower.includes(keyword)) || textLower === "lee" || textLower === "léeme" || textLower === "leeme";
 
       if (shouldSendVoice) {
         const cleanText = cleanTextForTTS(response);

@@ -88,6 +88,19 @@ export const llmService = {
     }
   },
 
+  async chatSimple(messages: any[], model?: string) {
+    try {
+      const response = await openRouter.chat.completions.create({
+        messages,
+        model: model || "google/gemini-2.5-flash",
+      });
+      return response.choices[0].message;
+    } catch (error: any) {
+      console.error("❌ Error en llmService.chatSimple:", error.message);
+      throw error;
+    }
+  },
+
   async chat(messages: any[], model?: string, userId?: number) {
     const targetModel = model || "google/gemini-2.5-flash";
     const adminId = config.telegram.allowedUsers[0] || 1572946817;
@@ -605,7 +618,7 @@ export const llmService = {
         type: "function",
         function: {
           name: "generate_authorization_link",
-          description: "Genera el enlace de autorización de Google para que el usuario vincule su cuenta.",
+          description: "Genera el enlace OAuth para VINCULAR o CAMBIAR la cuenta de Google (/auth). SOLO usar si la cuenta NO está vinculada o si el usuario pide explícitamente vincular, autorizar o cambiar de cuenta. NO usar para dar acceso web a Google Drive, Google Calendar o Gmail cuando el usuario solo pide abrir o ver la interfaz de su cuenta ya vinculada.",
           parameters: { type: "object", properties: {} }
         }
       },
@@ -738,40 +751,51 @@ export const llmService = {
       });
       return response.choices[0].message;
     } catch (error: any) {
-      console.warn("⚠️ OpenRouter falló:", error.message);
+      console.warn("⚠️ OpenRouter principal falló:", error.message);
       try {
-        const cleanMessages = messages.map(m => {
-          if (typeof m === "object" && m !== null) {
-            const copy = { ...m };
-            delete (copy as any).refusal;
-            if (copy.role === "tool" && typeof copy.content === "string" && copy.content.length > 2500) {
-              copy.content = copy.content.substring(0, 2500) + "\n...[contenido truncado para optimizar tokens]";
-            }
-            return copy;
-          }
-          return m;
-        });
-
-        // Garantizar que la llamada a Groq no supere los 12k tokens (System Message + últimos 8 mensajes)
-        let groqMessages = cleanMessages;
-        if (cleanMessages.length > 10) {
-          const sys = cleanMessages[0]?.role === "system" ? [cleanMessages[0]] : [];
-          const tail = cleanMessages.slice(-8);
-          groqMessages = [...sys, ...tail];
-        }
-
-        const response = await groq.chat.completions.create({
-          messages: groqMessages as any,
-          model: "llama-3.3-70b-versatile",
+        console.log(`🤖 [LLM] Intentando fallback con meta-llama/llama-3.3-70b-instruct en OpenRouter...`);
+        const response = await openRouter.chat.completions.create({
+          messages,
+          model: "meta-llama/llama-3.3-70b-instruct",
           temperature: 0.5,
           tools,
         });
-        const msg = response.choices[0].message;
-        delete (msg as any).refusal;
-        return msg;
-      } catch (fallbackError: any) {
-        console.error("❌ Modelos fallaron:", fallbackError.message);
-        throw fallbackError;
+        return response.choices[0].message;
+      } catch (openRouterFallbackError: any) {
+        console.warn("⚠️ OpenRouter fallback secundario falló:", openRouterFallbackError.message);
+        try {
+          const cleanMessages = messages.map(m => {
+            if (typeof m === "object" && m !== null) {
+              const copy = { ...m };
+              delete (copy as any).refusal;
+              if (copy.role === "tool" && typeof copy.content === "string" && copy.content.length > 2500) {
+                copy.content = copy.content.substring(0, 2500) + "\n...[contenido truncado para optimizar tokens]";
+              }
+              return copy;
+            }
+            return m;
+          });
+
+          let groqMessages = cleanMessages;
+          if (cleanMessages.length > 10) {
+            const sys = cleanMessages[0]?.role === "system" ? [cleanMessages[0]] : [];
+            const tail = cleanMessages.slice(-8);
+            groqMessages = [...sys, ...tail];
+          }
+
+          const response = await groq.chat.completions.create({
+            messages: groqMessages as any,
+            model: "llama-3.1-70b-versatile",
+            temperature: 0.5,
+            tools,
+          });
+          const msg = response.choices[0].message;
+          delete (msg as any).refusal;
+          return msg;
+        } catch (fallbackError: any) {
+          console.error("❌ Todos los modelos de LLM fallaron:", fallbackError.message);
+          throw fallbackError;
+        }
       }
     }
   },
@@ -787,17 +811,82 @@ export const llmService = {
       });
       return response.choices[0].message.content || "";
     } catch (error: any) {
-      console.warn("⚠️ OpenRouter chat sin herramientas falló:", error.message);
+      console.warn("⚠️ OpenRouter principal sin herramientas falló:", error.message);
       try {
-        const response = await groq.chat.completions.create({
+        const response = await openRouter.chat.completions.create({
           messages,
-          model: "llama-3.3-70b-versatile",
+          model: "meta-llama/llama-3.3-70b-instruct",
           temperature: 0.3,
         });
         return response.choices[0].message.content || "";
       } catch (fallbackError: any) {
-        console.error("❌ Ambos modelos fallaron en chat sin herramientas:", fallbackError.message);
-        throw fallbackError;
+        console.warn("⚠️ Fallback secundario de OpenRouter falló, probando Gemini 2.0 Flash:", fallbackError.message);
+        try {
+          const response = await openRouter.chat.completions.create({
+            messages,
+            model: "google/gemini-2.0-flash-001",
+            temperature: 0.3,
+          });
+          return response.choices[0].message.content || "";
+        } catch (err3: any) {
+          console.error("❌ Todos los fallbacks de chat sin herramientas fallaron:", err3.message);
+          throw err3;
+        }
+      }
+    }
+  },
+
+  async chatEva(messages: any[]): Promise<string> {
+    // 1. Modelo Principal: openai/gpt-4o-mini
+    try {
+      console.log(`🤖 [Eva LLM] Usando modelo principal openai/gpt-4o-mini en OpenRouter...`);
+      const response = await openRouter.chat.completions.create({
+        messages,
+        model: "openai/gpt-4o-mini",
+        temperature: 0.4,
+      });
+      return response.choices[0]?.message?.content || "";
+    } catch (err1: any) {
+      console.warn("⚠️ [Eva LLM] GPT-4o Mini falló, probando google/gemini-2.0-flash:", err1.message);
+      
+      // 2. Fallback 1: google/gemini-2.0-flash
+      try {
+        console.log(`🤖 [Eva LLM] Usando fallback google/gemini-2.0-flash en OpenRouter...`);
+        const response = await openRouter.chat.completions.create({
+          messages,
+          model: "google/gemini-2.0-flash",
+          temperature: 0.4,
+        });
+        return response.choices[0]?.message?.content || "";
+      } catch (err2: any) {
+        console.warn("⚠️ [Eva LLM] Gemini 2.0 Flash falló, probando google/gemini-2.5-flash:", err2.message);
+
+        // 3. Fallback 2: google/gemini-2.5-flash
+        try {
+          console.log(`🤖 [Eva LLM] Usando fallback google/gemini-2.5-flash en OpenRouter...`);
+          const response = await openRouter.chat.completions.create({
+            messages,
+            model: "google/gemini-2.5-flash",
+            temperature: 0.4,
+          });
+          return response.choices[0]?.message?.content || "";
+        } catch (err3: any) {
+          console.warn("⚠️ [Eva LLM] Gemini 2.5 Flash falló, cambiando a Llama 3.3 70B Instruct:", err3.message);
+          
+          // 4. Fallback 3: meta-llama/llama-3.3-70b-instruct
+          try {
+            console.log(`🤖 [Eva LLM] Usando fallback meta-llama/llama-3.3-70b-instruct en OpenRouter...`);
+            const response = await openRouter.chat.completions.create({
+              messages,
+              model: "meta-llama/llama-3.3-70b-instruct",
+              temperature: 0.4,
+            });
+            return response.choices[0]?.message?.content || "";
+          } catch (err4: any) {
+            console.error("❌ [Eva LLM] Todos los modelos de Eva fallaron:", err4.message);
+            throw err4;
+          }
+        }
       }
     }
   }

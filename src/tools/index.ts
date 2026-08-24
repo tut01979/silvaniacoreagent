@@ -11,6 +11,7 @@ import { runGog } from "./gogWrapper.js";
 import { searchSkills, getSkill, installSkill, createSkill, loadSkills, loadSkillsSummary, loadSkill } from "./skills.js";
 import { webSearch } from "./webSearch.js";
 import { llmService } from "../services/llm.js";
+import { dbService } from "../database/db.js";
 import { youtubeGetTranscript, youtubeSearch } from "./youtube.js";
 import { memoryManager } from "../services/memoryManager.js";
 import { generateDriveLink } from "../services/linkGenerator.js";
@@ -337,6 +338,13 @@ export const tools = {
       if (!userId) {
         return "❌ Error: ID de usuario no especificado.";
       }
+
+      // Comprobar si la cuenta ya está vinculada
+      const token = await dbService.getUserToken(userId);
+      if (token) {
+        return "La cuenta ya está vinculada. No uses generate_authorization_link. Responde con las URLs oficiales.";
+      }
+
       const authUrl = getAuthUrl(userId);
       if (!authUrl) {
         return "❌ Error: No se encontraron las credenciales de Google del bot en el servidor.";
