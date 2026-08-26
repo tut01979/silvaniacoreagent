@@ -983,6 +983,7 @@
     let lastSpokenByEva = "";
     let evaSpokenHistory = [];
     let isRecognitionRunning = false;
+    let lastFacemeshLandmarks = null;
 
     function cleanSpanishText(str) {
       if (!str) return "";
@@ -1152,7 +1153,8 @@
           body: JSON.stringify({
             message: userText,
             exerciseContext: currentExerciseName + ": " + currentExerciseText,
-            history: chatHistory
+            history: chatHistory,
+            cameraActive: isCameraActive
           })
         });
         const data = await res.json();
@@ -1306,22 +1308,38 @@
 
     async function startCameraProcessing() {
       const videoElement = document.getElementById('webcam-video');
-      if (!window.FaceMesh) return;
-
-      if (!faceMeshInstance) {
-        faceMeshInstance = new window.FaceMesh({
-          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
-        });
-        faceMeshInstance.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.5 });
-        faceMeshInstance.onResults(onFaceMeshResults);
+      if (!window.FaceMesh) {
+        console.error("❌ MediaPipe FaceMesh no está cargado.");
+        return;
       }
 
-      if (!cameraInstance && window.Camera) {
-        cameraInstance = new window.Camera(videoElement, {
-          onFrame: async () => { if (isCameraActive && faceMeshInstance) await faceMeshInstance.send({ image: videoElement }); },
-          width: 640, height: 480
-        });
-        await cameraInstance.start();
+      try {
+        if (!faceMeshInstance) {
+          faceMeshInstance = new window.FaceMesh({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+          });
+          faceMeshInstance.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.5 });
+          faceMeshInstance.onResults(onFaceMeshResults);
+        }
+
+        if (!cameraInstance && window.Camera) {
+          cameraInstance = new window.Camera(videoElement, {
+            onFrame: async () => {
+              if (isCameraActive && faceMeshInstance) {
+                try {
+                  await faceMeshInstance.send({ image: videoElement });
+                } catch (err) {
+                  console.error("❌ Error enviando fotograma a FaceMesh:", err);
+                }
+              }
+            },
+            width: 640, height: 480
+          });
+          await cameraInstance.start();
+        }
+      } catch (err) {
+        console.error("❌ Error inicializando cámara/FaceMesh:", err);
+        throw err;
       }
     }
 
@@ -1332,6 +1350,7 @@
 
       if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
         const landmarks = results.multiFaceLandmarks[0];
+        lastFacemeshLandmarks = landmarks;
         const topLip = landmarks[13]; const bottomLip = landmarks[14];
         const leftCorner = landmarks[78]; const rightCorner = landmarks[308];
 
@@ -1346,18 +1365,15 @@
         else tipEl.innerText = "🟨 Labios juntos: Abre más la boca para vocalizar la 'A' o 'O'.";
 
         drawLipLandmarksOverlay(landmarks);
+      } else {
+        lastFacemeshLandmarks = null;
       }
     }
 
-    function drawLipLandmarksOverlay(landmarks) {
-      const canvas = document.getElementById('wave-canvas');
-      const ctx = canvas.getContext('2d');
-      if (isCalling) return;
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    function drawLipsOnContext(ctx, landmarks, width, height) {
       const lipIndices = [78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 308, 324, 318, 402, 317, 14, 87, 178, 88, 95];
       ctx.beginPath();
-      const center = canvas.width / 2; const scale = 140;
+      const center = width / 2; const scale = 140;
 
       lipIndices.forEach((idx, i) => {
         const pt = landmarks[idx];
@@ -1371,11 +1387,91 @@
       ctx.stroke();
     }
 
-    function stopCameraProcessing() {
-      if (cameraInstance) { try { cameraInstance.stop(); } catch(e){} cameraInstance = null; }
+    function drawLipLandmarksOverlay(landmarks) {
+      if (isCalling) return; // handled by visualizer animation loop
       const canvas = document.getElementById('wave-canvas');
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawLipsOnContext(ctx, landmarks, canvas.width, canvas.height);
+    }
+
+    function stopCameraProcessing() {
+      if (cameraInstance) { try { cameraInstance.stop(); } catch(e){} cameraInstance = null; }
+      lastFacemeshLandmarks = null;
+      const canvas = document.getElementById('wave-canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    async function startAudioVisualizer() {
+      if (!audioContext) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        audioContext = new AudioContextClass();
+      }
+
+      if (analyser) return;
+
+      try {
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        const canvas = document.getElementById('wave-canvas');
+        const ctx = canvas.getContext('2d');
+
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch(() => null);
+          if (stream) {
+            const source = audioContext.createMediaStreamSource(stream);
+            source.connect(analyser);
+          }
+        }
+
+        function draw() {
+          if (!analyser) return;
+          visualizerAnimId = requestAnimationFrame(draw);
+
+          analyser.getByteFrequencyData(dataArray);
+
+          ctx.fillStyle = '#030712';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          const barWidth = (canvas.width / bufferLength) * 2.5;
+          let barHeight;
+          let x = 0;
+
+          for (let i = 0; i < bufferLength; i++) {
+            barHeight = dataArray[i] / 2;
+            ctx.fillStyle = `rgb(${barHeight + 100}, 85, 247)`;
+            ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+            x += barWidth + 1;
+          }
+
+          if (isCameraActive && lastFacemeshLandmarks) {
+            drawLipsOnContext(ctx, lastFacemeshLandmarks, canvas.width, canvas.height);
+          }
+        }
+
+        draw();
+      } catch (err) {
+        console.warn("No se pudo iniciar el visualizador de audio:", err);
+      }
+    }
+
+    function stopAudioVisualizer() {
+      if (visualizerAnimId) {
+        cancelAnimationFrame(visualizerAnimId);
+        visualizerAnimId = null;
+      }
+      analyser = null;
+      const canvas = document.getElementById('wave-canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      if (isCameraActive && lastFacemeshLandmarks) {
+        drawLipsOnContext(ctx, lastFacemeshLandmarks, canvas.width, canvas.height);
+      }
     }
 
     function setCallStatus(text, dotClass, color) {
