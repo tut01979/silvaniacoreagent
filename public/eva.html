@@ -967,6 +967,12 @@
     let recognition = null;
     let ttsVoice = null;
     let chatHistory = [];
+    let userProfile = {
+      name: localStorage.getItem('eva_profile_name') || "",
+      age: localStorage.getItem('eva_profile_age') || "",
+      difficulty: localStorage.getItem('eva_profile_difficulty') || "",
+      style: localStorage.getItem('eva_profile_style') || ""
+    };
     let currentExerciseText = "El perro de San Roque no tiene rabo porque Ramón Ramírez se lo ha robado.";
     let currentExerciseName = "El fonema R";
     let audioContext = null;
@@ -1101,9 +1107,16 @@
         const timeSinceEvaSpoke = Date.now() - evaFinishedSpeakingTime;
 
         if (!isRepeatingExercise) {
-          // Regla 1 & 3: Bloqueo mientras Eva habla O han pasado menos de 1200ms
-          if (isEvaSpeaking || isSpeakingTTS || timeSinceEvaSpoke < 1200) {
-            console.log("ECO DETECTADO Y DESCARTADO: " + transcript);
+          // BARGE-IN: Si el usuario habla mientras Eva está reproduciendo sonido
+          if (isEvaSpeaking || isSpeakingTTS) {
+            console.log("⚡ Barge-in activado: El usuario interrumpió la voz de Eva.");
+            if (window.speechSynthesis) window.speechSynthesis.cancel();
+            isSpeakingTTS = false;
+            isEvaSpeaking = false;
+            const avatar = document.getElementById('vocal-avatar');
+            if (avatar) avatar.classList.remove('speaking');
+          } else if (timeSinceEvaSpoke < 600) {
+            console.log("ECO DETECTADO Y DESCARTADO (tiempo): " + transcript);
             return;
           }
 
@@ -1154,10 +1167,18 @@
             message: userText,
             exerciseContext: currentExerciseName + ": " + currentExerciseText,
             history: chatHistory,
-            cameraActive: isCameraActive
+            cameraActive: isCameraActive,
+            userProfile: userProfile
           })
         });
         const data = await res.json();
+        if (data.updatedProfile) {
+          userProfile = { ...userProfile, ...data.updatedProfile };
+          localStorage.setItem('eva_profile_name', userProfile.name);
+          localStorage.setItem('eva_profile_age', userProfile.age);
+          localStorage.setItem('eva_profile_difficulty', userProfile.difficulty);
+          localStorage.setItem('eva_profile_style', userProfile.style);
+        }
         const responseText = data.reply || "¡Muy bien hecho! Continuemos practicando.";
         
         chatHistory.push({ role: "user", content: userText });
@@ -1527,12 +1548,12 @@
           isSpeakingTTS = false;
           isEvaSpeaking = false;
           evaFinishedSpeakingTime = Date.now();
-          console.log("🤫 TTS terminado - esperando 700ms antes de activar mic");
+          console.log("🤫 TTS terminado - esperando 600ms antes de activar mic");
           setTimeout(() => {
             console.log("🎙️ Micrófono activado - TE ESCUCHO");
             if (isCalling) safeStartRecognition();
             resolve();
-          }, 700);
+          }, 600);
           return resolve();
         }
 
@@ -1545,7 +1566,7 @@
           if (avatar) avatar.classList.remove('speaking');
 
           evaFinishedSpeakingTime = Date.now();
-          console.log("🤫 TTS terminado - esperando 700ms antes de activar mic");
+          console.log("🤫 TTS terminado - esperando 600ms antes de activar mic");
 
           setTimeout(() => {
             isSpeakingTTS = false;
@@ -1556,7 +1577,7 @@
               safeStartRecognition();
             }
             resolve();
-          }, 700);
+          }, 600);
         };
 
         const safetyTimer = setTimeout(done, 20000);
