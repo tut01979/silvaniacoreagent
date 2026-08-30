@@ -978,6 +978,9 @@
     let audioContext = null;
     let analyser = null;
     let visualizerAnimId = null;
+    let rawExercisesDatabase = [];
+    let exerciseAttemptCount = 0;
+    let sessionScoresHistory = [];
 
     let isCameraActive = false;
     let cameraInstance = null;
@@ -1151,13 +1154,34 @@
     }
 
     async function processUserInput(userText) {
-      logMessage("user", userText);
+      if (userText !== "INICIAR_LLAMADA") {
+        logMessage("user", userText);
+      }
       setCallStatus("Eva pensando...", "pulse-dot", "#3b82f6");
       
       safeStopRecognition();
 
-      const score = evaluatePronunciation(userText, currentExerciseText);
-      showScoreFeedback(score);
+      let currentScore = null;
+      if (userText !== "INICIAR_LLAMADA") {
+        currentScore = evaluatePronunciation(userText, currentExerciseText);
+        showScoreFeedback(currentScore);
+        
+        sessionScoresHistory.push({
+          exerciseName: currentExerciseName,
+          targetText: currentExerciseText,
+          userText: userText,
+          score: currentScore,
+          timestamp: Date.now()
+        });
+
+        exerciseAttemptCount++;
+        
+        if (exerciseAttemptCount >= 3) {
+          console.log("🔄 Límite de 3 intentos alcanzado. Rotando al siguiente ejercicio...");
+          rotateToNextExercise();
+          exerciseAttemptCount = 0;
+        }
+      }
 
       try {
         const res = await fetch("/api/eva-chat", {
@@ -1168,7 +1192,8 @@
             exerciseContext: currentExerciseName + ": " + currentExerciseText,
             history: chatHistory,
             cameraActive: isCameraActive,
-            userProfile: userProfile
+            userProfile: userProfile,
+            sessionScoresHistory: sessionScoresHistory
           })
         });
         const data = await res.json();
@@ -1181,16 +1206,42 @@
         }
         const responseText = data.reply || "¡Muy bien hecho! Continuemos practicando.";
         
-        chatHistory.push({ role: "user", content: userText });
+        if (userText !== "INICIAR_LLAMADA") {
+          chatHistory.push({ role: "user", content: userText });
+        }
         chatHistory.push({ role: "assistant", content: responseText });
         if (chatHistory.length > 10) chatHistory = chatHistory.slice(-10);
 
         logMessage("eva", responseText);
         await speak(responseText);
       } catch (err) {
-        const fallbackText = `Obtuviste un ${score}% de precisión. ¡Excelente vocalización!`;
+        let fallbackText = "¡Excelente intento! Sigamos con la lección.";
+        if (currentScore !== null) {
+          fallbackText = `Obtuviste un ${currentScore}% de precisión. ¡Excelente vocalización!`;
+        }
         logMessage("eva", fallbackText);
         await speak(fallbackText);
+      }
+    }
+
+    function rotateToNextExercise() {
+      if (!rawExercisesDatabase || rawExercisesDatabase.length === 0) return;
+      
+      const currentEx = rawExercisesDatabase.find(ex => ex.targetText === currentExerciseText || ex.name === currentExerciseName);
+      const targetCategory = currentEx ? currentEx.category : "Rotacismo";
+
+      let candidates = rawExercisesDatabase.filter(ex => ex.category === targetCategory && ex.targetText !== currentExerciseText);
+      if (candidates.length === 0) {
+        candidates = rawExercisesDatabase.filter(ex => ex.targetText !== currentExerciseText);
+      }
+
+      if (candidates.length > 0) {
+        const nextEx = candidates[Math.floor(Math.random() * candidates.length)];
+        currentExerciseText = nextEx.targetText;
+        currentExerciseName = nextEx.name;
+        console.log(`🎯 Rotado automáticamente a: [${nextEx.category}] "${nextEx.name}"`);
+        logMessage("eva", `Pasemos a otro ejercicio: "${nextEx.name}". Intenta decir: "${nextEx.targetText}"`);
+        document.getElementById('score-container').style.display = "none";
       }
     }
 
@@ -1264,7 +1315,6 @@
         btn.className = "btn-control btn-call-end";
         btn.innerHTML = '<i class="fa-solid fa-phone-slash"></i>';
         
-        logMessage("eva", `Llamada iniciada con Eva Agent. Por favor lee: "${currentExerciseText}"`);
         await startAudioVisualizer();
 
         if (window.speechSynthesis) {
@@ -1276,15 +1326,24 @@
           setCallStatus("Sin soporte de voz", "", "#ef4444");
         }
 
-        // Emitir bienvenida y luego encender micrófono de forma segura
-        speak(`Hola, soy Eva Agent. Comencemos. Por favor lee en voz alta: ${currentExerciseText}`);
-        safeStartRecognition();
+        exerciseAttemptCount = 0;
+        sessionScoresHistory = [];
+
+        processUserInput("INICIAR_LLAMADA");
       } else {
         isCalling = false;
         btn.className = "btn-control btn-call-start";
         btn.innerHTML = '<i class="fa-solid fa-phone"></i>';
         setCallStatus("Llamada finalizada", "", "#9ca3af");
         logMessage("eva", "Llamada finalizada. ¡Buen trabajo hoy!");
+
+        if (sessionScoresHistory.length > 0) {
+          const totalExercises = sessionScoresHistory.length;
+          const avgScore = Math.round(sessionScoresHistory.reduce((acc, curr) => acc + curr.score, 0) / totalExercises);
+          const feedbackLog = `📊 Reporte de Sesión: Realizaste ${totalExercises} ejercicios con un promedio de precisión de ${avgScore}%. ¡Sigue así!`;
+          logMessage("eva", feedbackLog);
+        }
+
         stopAudioVisualizer();
         if (window.speechSynthesis) window.speechSynthesis.cancel();
         safeStopRecognition();
@@ -1654,7 +1713,10 @@
         const res = await fetch("/api/eva-exercises");
         const data = await res.json();
         if (data.lessons) renderLessons(data.lessons);
-        if (data.exercises) renderExercises(data.exercises);
+        if (data.exercises) {
+          rawExercisesDatabase = data.exercises;
+          renderExercises(data.exercises);
+        }
       } catch (err) { console.warn("Error cargando lecciones:", err); }
     }
 
