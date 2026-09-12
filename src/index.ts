@@ -1095,14 +1095,21 @@ async function safeReply(ctx: any, text: string) {
  */
 async function bootstrapUserDriveFolders(userId: number): Promise<void> {
   try {
-    console.log(`🚀 [Drive Bootstrap] Iniciando bootstrap de carpetas canónicas para usuario ${userId}...`);
+    const now = new Date();
+    const madridTime = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Madrid" }));
+    const YYYY = madridTime.getFullYear().toString();
+    const MM = (madridTime.getMonth() + 1).toString().padStart(2, "0");
+
     const standardPaths = [
       ["silvania"],
       ["silvania", "skills"],
       ["silvania", "historial"],
+      ["silvania", "historial", YYYY],
+      ["silvania", "historial", YYYY, MM],
       ["silvania", "prompts"],
       ["silvania", "documentos"],
-      ["silvania", "temas"]
+      ["silvania", "temas"],
+      ["silvania", "transcripciones"]
     ];
 
     for (const p of standardPaths) {
