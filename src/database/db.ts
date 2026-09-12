@@ -96,6 +96,21 @@ const migrations: { [version: number]: () => void } = {
     } catch (e: any) {
       console.warn("⚠️ Columna customPrompt ya existía en user_settings:", e.message);
     }
+  },
+  4: () => {
+    try {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS drive_folders (
+          userId INTEGER NOT NULL,
+          path TEXT NOT NULL,
+          folderId TEXT NOT NULL,
+          createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (userId, path)
+        )
+      `);
+    } catch (e: any) {
+      console.warn("⚠️ Error creando tabla drive_folders:", e.message);
+    }
   }
 };
 
@@ -254,6 +269,41 @@ export const dbService = {
     const stmt = db.prepare("SELECT token FROM user_tokens WHERE userId = ?");
     const row = stmt.get(userId) as { token: string } | undefined;
     return row ? JSON.parse(row.token) : null;
+  },
+
+  deleteUserToken: async (userId: number): Promise<void> => {
+    const stmt = db.prepare("DELETE FROM user_tokens WHERE userId = ?");
+    stmt.run(userId);
+
+    if (config.db.useFirebase) {
+      await firestoreService.deleteUserToken(userId);
+    }
+  },
+
+  saveDriveFolder: async (userId: number, pathStr: string, folderId: string): Promise<void> => {
+    try {
+      const stmt = db.prepare("INSERT INTO drive_folders (userId, path, folderId) VALUES (?, ?, ?) ON CONFLICT(userId, path) DO UPDATE SET folderId = excluded.folderId");
+      stmt.run(userId, pathStr, folderId);
+    } catch (e: any) {
+      console.warn("⚠️ Error guardando carpeta de Drive en DB:", e.message);
+    }
+  },
+
+  getDriveFolder: async (userId: number, pathStr: string): Promise<string | null> => {
+    try {
+      const stmt = db.prepare("SELECT folderId FROM drive_folders WHERE userId = ? AND path = ?");
+      const row = stmt.get(userId, pathStr) as { folderId: string } | undefined;
+      return row ? row.folderId : null;
+    } catch {
+      return null;
+    }
+  },
+
+  clearDriveFolders: async (userId: number): Promise<void> => {
+    try {
+      const stmt = db.prepare("DELETE FROM drive_folders WHERE userId = ?");
+      stmt.run(userId);
+    } catch {}
   },
 
   getMuteVoice: async (userId: number): Promise<boolean> => {

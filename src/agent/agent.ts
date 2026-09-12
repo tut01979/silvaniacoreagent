@@ -123,16 +123,38 @@ Tu función principal es:
 4. Mantener estabilidad, precisión y trazabilidad.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-## 🔷 REGLA ENLACES GOOGLE (OBLIGATORIA)
+## 🔷 REGLAS ESTRICTAS ANTI-ALUCINACIÓN Y ENLACES (OBLIGATORIA)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Si el usuario pide enlace, acceso o abrir Drive, Gmail, Calendar o Sheets:
-1. Si la cuenta YA está vinculada y el usuario solo pide acceso o enlace web para entrar a Drive/Gmail/Calendar/Sheets → responde ÚNICAMENTE con estas URLs oficiales web, sin texto de autorización:
+1. NUNCA INVENTES identificadores (\`fileId\`, \`messageId\`, \`folderId\`) ni enlaces de Google Drive (\`drive.google.com/drive/folders/...\`) o Gmail (\`#inbox/...\`).
+2. SOLO puedes proporcionar enlaces específicos o IDs que hayan sido devueltos EXPLÍCITAMENTE por una herramienta (\`drive_list\`, \`drive_search\`, \`gmail_list\`, \`web_search\`, \`read_url\`) en esta conversación, o las URLs oficiales raíz canónicas:
    - Drive: https://drive.google.com/drive/my-drive
    - Gmail: https://mail.google.com/mail/u/0/#inbox
    - Calendar: https://calendar.google.com/calendar/u/0/
    - Sheets: https://docs.google.com/spreadsheets/
-2. Si el usuario pide explícitamente "enlace de autorización", "vincular Google", "conectar cuenta", "cambiar de cuenta" o "/auth": DEBES llamar obligatoriamente a la herramienta \`generate_authorization_link\`. NUNCA inventes enlaces de autorización ni utilices otros client_id ajenos al sistema.
-3. Prohibido decir 'necesito que autorices' si la cuenta ya está vinculada, salvo que una herramienta devuelva que la sesión expiró o el usuario lo pida explícitamente.
+   - Web oficial: https://silvania.ai
+3. Si una herramienta no devolvió un enlace directo o ID para un elemento, o la búsqueda no arrojó resultados, indícalo con honestidad ("Enlace directo no disponible" o "No encontrado"). NUNCA fabriques URLs simuladas.
+4. ESTRICTAMENTE PROHIBIDO inventar URLs de Google Maps (\`google.com/maps/place/...\`), Páginas Amarillas (\`paginasamarillas.es/...\`), e-Informa o directorios empresariales. Solo se permiten enlaces web que provengan textualmente de los resultados de \`web_search\` o \`read_url\`.
+5. ESTRICTAMENTE PROHIBIDO emitir fragmentos de código o pseudo-llamadas a herramientas como \`print(gmail_list(...))\`, \`print(web_search(...))\`, o \`tools.drive_list\`. Ejecuta las herramientas exclusivamente mediante function calling; NUNCA imprimas pseudo-llamadas en el texto de cara al usuario.
+6. PROTOCOLO DE INVESTIGACIÓN EMPRESARIAL:
+   - Al investigar empresas, autónomos o sitios web, ejecuta búsquedas reales con \`web_search\` y consulta páginas relevantes con \`read_url\`.
+   - Divide la respuesta obligatoriamente en dos bloques:
+     * **Datos Verificados**: solo lo confirmado directamente por las herramientas, citando las fuentes/URLs reales encontradas.
+     * **No Encontrado / Pendiente de Verificación**: aspectos que no pudieron verificarse de manera fidedigna (ej. si no hay CIF, teléfono comprobado o ficha oficial). Jamás inventes datos.
+7. Si el usuario pide "enlace de autorización", "vincular Google", "conectar cuenta", "cambiar de cuenta" o "/auth": DEBES llamar obligatoriamente a la herramienta \`generate_authorization_link\`. NUNCA inventes enlaces de autorización ni utilices otros client_id ajenos al sistema.
+8. Prohibido decir 'necesito que autorices' si la cuenta ya está vinculada, salvo que una herramienta devuelva que la sesión expiró o el usuario lo pida explícitamente.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 🌐 CAPACIDADES DE NAVEGACIÓN WEB E INVESTIGACIÓN (OBLIGATORIO)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Tu plataforma y web materna oficial es https://silvania.ai.
+2. Tienes herramientas de navegación e investigación web en tiempo real:
+   - \`read_url\`: Para entrar y leer directamente el contenido completo de cualquier sitio web, página o dominio (incluyendo https://silvania.ai).
+   - \`web_search\`: Para buscar información en internet, noticias y negocios locales.
+3. Está ESTRICTAMENTE PROHIBIDO que respondas con excusas como:
+   - "Soy un modelo de lenguaje y no puedo entrar en la web / no puedo navegar"
+   - "No tengo web materna"
+   - "No puedo acceder a silvania.ai"
+4. Si el usuario te pide entrar, leer, consultar o investigar cualquier web, URL o dominio (ej. "silvania.ai", "entra a la web...", "lee esta url..."), DEBES llamar INMEDIATAMENTE a \`read_url\` o \`web_search\` para leer su contenido en tiempo real y responder con los datos encontrados.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## 🔷 CAPACIDADES DE VOZ Y LECTURA EN VOZ ALTA (TTS)
@@ -363,28 +385,33 @@ Si detectas un error de red o de "Conflict", informa al usuario que estás reini
     ];
 
     if (tasks.length <= 1) {
-      // Usar chat sin herramientas si la consulta no menciona palabras clave de herramientas, búsqueda o memoria
-      let requiresTools = /crea|crear|lista|listar|busca|buscar|envia|envía|envias|envías|lee|leer|open|genera|generar|sube|subir|mueve|mover|borra|borrar|investiga|investigar|resume|resumir|transcribe|transcribir|factura|evento|correo|email|gmail|mensaje|recibido|bandeja|drive|carpeta|archivo|subir|descargar|mkdir|calendar|calendario|cita|reunion|reunión|agenda|programar|youtube|video|transcripcion|transcripción|sheets|excel|hoja|celda|fila|columna|web_search|noticia|noticias|memoria|historial|resumen|recordar|recuerdas|nombre|ayer|hablamos|primera|conversacion|conversación|dijiste|dije|skill|skills|habilidad|habilidades/i.test(userMessage);
+      // Usar chat sin herramientas si la consulta no menciona palabras clave de herramientas, búsqueda, navegación o memoria
+      let requiresTools = /crea|crear|lista|listar|busca|buscar|envia|envía|envias|envías|lee|leer|open|genera|generar|sube|subir|mueve|mover|borra|borrar|investiga|investigar|resume|resumir|transcribe|transcribir|factura|evento|correo|email|gmail|mensaje|recibido|bandeja|drive|carpeta|archivo|subir|descargar|mkdir|calendar|calendario|cita|reunion|reunión|agenda|programar|youtube|video|transcripcion|transcripción|sheets|excel|hoja|celda|fila|columna|web_search|read_url|noticia|noticias|memoria|historial|resumen|recordar|recuerdas|nombre|ayer|hablamos|primera|conversacion|conversación|dijiste|dije|skill|skills|habilidad|habilidades|entra|entrar|visita|visitar|accede|acceder|mira|mirar|consulta|consultar|url|urls|web|sitio|pagina|página|portal|internet|link|enlace|silvania|sylvania|https?:\/\/|[a-zA-Z0-9-]+\.(ai|com|es|org|net|io|co|dev|app)\b/i.test(userMessage);
 
-      // Heurística de UX ampliada: Si el mensaje del usuario es una confirmación u orden corta
-      // (ej: "ok", "si", "termina el trabajo", "hazlo", "procede", "genera el enlace")
-      // y el historial muestra que hay una acción pendiente o el asistente lo requirió, forzar requiresTools = true.
+      // Anti-fast-path regex para garantizar acceso a herramientas en investigación, enlaces y operaciones de Google
+      const antiFastPathRegex = /investig|protocolo|empresa|paleplast|maps|correo|gmail|drive|list|enlace|intent|ejecut|autoriz|gmail_list|drive_list|read_url|web_search/i;
+      if (antiFastPathRegex.test(userMessage)) {
+        requiresTools = true;
+      }
+
+      // Heurística de UX ampliada: Si el mensaje del usuario es una confirmación, orden corta o reintento
+      // (ej: "ok", "si", "inténtalo de nuevo", "otra vez", "hazlo", "procede", "ejecútalo", "como que no?")
+      // y el historial muestra que hubo actividad de herramientas o acción pendiente, forzar requiresTools = true.
       if (!requiresTools) {
         const cleanMsg = userMessage.toLowerCase().trim();
         const isConfirmationOrImperative = 
-          /^(ok|si|sí|vale|procede|adelante|dale|continua|continuar|listo|termina|hazlo|guárdalo|guardalo|créalo|crealo|genera el enlace)$/i.test(cleanMsg) || 
-          cleanMsg.length < 25 && /(ok|procede|adelante|continua|continuar|dale|termina|hazlo|guárdalo|guardalo|créalo|crealo|genera)/i.test(cleanMsg);
+          /^(ok|si|sí|vale|procede|adelante|dale|continua|continuar|listo|termina|hazlo|guárdalo|guardalo|créalo|crealo|genera el enlace|int[eé]ntalo|otra vez|vuelve|ejec[uú]talo|como que no\??)$/i.test(cleanMsg) || 
+          cleanMsg.length < 35 && /(ok|procede|adelante|continua|continuar|dale|termina|hazlo|guárdalo|guardalo|créalo|crealo|genera|int[eé]ntalo|otra vez|vuelve|ejec[uú]talo)/i.test(cleanMsg);
         
         if (isConfirmationOrImperative) {
-          const userHistory = await dbService.getHistory(userId, 5);
+          const userHistory = await dbService.getHistory(userId, 6);
+          const hadToolActivity = userHistory.some(msg => /gmail|drive|correo|investig|web_search|read_url|empresa|archivo|carpeta|lista|enlace|búsqueda|busqueda/i.test(msg.content || ""));
           const lastAssistantMsg = [...userHistory].reverse().find(msg => msg.role === "assistant");
-          if (lastAssistantMsg && lastAssistantMsg.content) {
-            const contentLower = lastAssistantMsg.content.toLowerCase();
-            const indicatesAction = /voy a|procedo|guardar|crear|buscar|enviar|generar|un momento|espera/i.test(contentLower);
-            if (indicatesAction) {
-              console.log(`ℹ️ [Agent] Confirmación u orden corta detectada ("${userMessage}"). Forzando requiresTools = true para mantener acceso a herramientas.`);
-              requiresTools = true;
-            }
+          const indicatesAction = lastAssistantMsg?.content && /voy a|procedo|guardar|crear|buscar|enviar|generar|un momento|espera/i.test(lastAssistantMsg.content);
+
+          if (hadToolActivity || indicatesAction) {
+            console.log(`ℹ️ [Agent] Reintento u orden continuada detectada ("${userMessage}"). Forzando requiresTools = true.`);
+            requiresTools = true;
           }
         }
       }
@@ -685,12 +712,13 @@ export function isUltraSimpleCourtesy(text: string): boolean {
   return words.every(w => courtesyWords.has(w));
 }
 
-function sanitizeAlucinatedLinks(responseText: string, history: any[]): string {
+export function sanitizeAlucinatedLinks(responseText: string, history: any[]): string {
   const validIds = new Set<string>();
   const validUrls = new Set<string>();
-  const idRegex = /\b([a-zA-Z0-9_-]{12,65})\b/g;
+  const idRegex = /\b([a-zA-Z0-9_-]{8,65})\b/g;
 
-  // 1. Escanear todas las respuestas de las herramientas del historial para recopilar IDs y URLs reales y válidos
+  // 1. Escanear SOLO las respuestas de herramientas (role === "tool") de la sesión/turno actual
+  // para recopilar IDs y URLs verificados y legítimos
   for (const msg of history) {
     if (msg.role === "tool" && msg.content) {
       let match;
@@ -706,78 +734,83 @@ function sanitizeAlucinatedLinks(responseText: string, history: any[]): string {
     }
   }
 
-  // 2. Escanear respuestas anteriores del asistente por si reutilizamos enlaces creados con éxito
-  for (const msg of history) {
-    if (msg.role === "assistant" && msg.content) {
-      const urls = msg.content.match(/(https?:\/\/[^\s)\]`'"]+)/gi) || [];
-      for (const u of urls) {
-        const trimmed = u.trim();
-        if (!trimmed.includes("Enlace no disponible") && !trimmed.includes("URL neutralizada")) {
-          validUrls.add(trimmed);
-          let match;
-          idRegex.lastIndex = 0;
-          while ((match = idRegex.exec(trimmed)) !== null) {
-            validIds.add(match[1]);
-          }
-        }
-      }
-    }
-  }
+  // Whitelist estricta oficial (URLs fijas canónicas sin ID inventado)
+  const canonicalWhitelist = [
+    "https://drive.google.com/drive/my-drive",
+    "https://drive.google.com",
+    "https://mail.google.com/mail/u/0/#inbox",
+    "https://mail.google.com/mail",
+    "https://mail.google.com",
+    "https://calendar.google.com/calendar/u/0/",
+    "https://calendar.google.com",
+    "https://docs.google.com/spreadsheets",
+    "https://silvania.ai"
+  ];
 
-  // URLs de Drive o Docs alucinables
-  const driveLinkRegex = /(https?:\/\/(?:docs|drive|calendar)\.google\.com\/[^\s)\]`'"]+)/gi;
   let sanitizedText = responseText;
-  const linksFound = responseText.match(driveLinkRegex) || [];
   let neutralizedCount = 0;
 
-  const whitelistUrls = new Set([
-    "https://drive.google.com",
-    "https://drive.google.com/",
-    "https://drive.google.com/drive",
-    "https://drive.google.com/drive/my-drive",
-    "https://mail.google.com",
-    "https://mail.google.com/",
-    "https://mail.google.com/mail",
-    "https://mail.google.com/mail/u/0/#inbox",
-    "https://calendar.google.com",
-    "https://calendar.google.com/",
-    "https://calendar.google.com/calendar",
-    "https://calendar.google.com/calendar/u/0/",
-    "https://docs.google.com/spreadsheets"
-  ]);
+  // Regex para todas las URLs http/https del texto
+  const allUrlsRegex = /(https?:\/\/[^\s)\]`'"]+)/gi;
+  const linksFound = responseText.match(allUrlsRegex) || [];
 
   for (const link of linksFound) {
-    const cleanLink = link.trim();
-    if (whitelistUrls.has(cleanLink) || Array.from(whitelistUrls).some(wl => cleanLink.startsWith(wl) || wl.startsWith(cleanLink))) {
+    const cleanLink = link.trim().replace(/[.,;:]+$/, ""); // Limpiar puntuación al final
+
+    // A. Si coincide exactamente con la whitelist canónica, se permite
+    if (canonicalWhitelist.includes(cleanLink)) {
       continue;
     }
-    if (validUrls.has(cleanLink)) {
+
+    // B. Si la URL completa vino explícitamente en el resultado de una tool, se permite
+    if (validUrls.has(cleanLink) || Array.from(validUrls).some(u => u === cleanLink || cleanLink.startsWith(u))) {
       continue;
     }
 
-    let linkId = "";
-    const dMatch = cleanLink.match(/\/d\/([a-zA-Z0-9_-]{12,65})/i);
-    const folderMatch = cleanLink.match(/\/folders\/([a-zA-Z0-9_-]{12,65})/i);
-    const idParamMatch = cleanLink.match(/[?&]id=([a-zA-Z0-9_-]{12,65})/i);
-
-    if (dMatch) {
-      linkId = dMatch[1];
-    } else if (folderMatch) {
-      linkId = folderMatch[1];
-    } else if (idParamMatch) {
-      linkId = idParamMatch[1];
-    }
-
-    if (linkId) {
-      // Si el ID del enlace no fue emitido por ninguna herramienta ni mensaje anterior, es inventado por el LLM
-      if (!validIds.has(linkId)) {
-        neutralizedCount++;
-        sanitizedText = sanitizedText.replace(link, "[Enlace no disponible - creación no ejecutada o fallida]");
+    // C. Verificación de enlaces de Google Workspace (Gmail, Drive, Docs, Sheets)
+    const isGoogleService = /(?:mail|drive|docs|calendar)\.google\.com/i.test(cleanLink);
+    if (isGoogleService) {
+      // 1. Enlaces individuales de Gmail: https://mail.google.com/mail/u/0/#inbox/{id}
+      const gmailMatch = cleanLink.match(/#inbox\/([a-zA-Z0-9_-]{8,65})/i);
+      if (gmailMatch) {
+        const msgId = gmailMatch[1];
+        if (!validIds.has(msgId)) {
+          neutralizedCount++;
+          sanitizedText = sanitizedText.replace(link, "[Enlace no disponible — no devuelto por la herramienta]");
+          continue;
+        }
       }
-    } else {
-      // Si no pudimos extraer el ID pero la URL de Google es nueva y no estaba en validUrls, la neutralizamos por seguridad
+
+      // 2. Enlaces individuales de Drive / Docs / Sheets: /folders/{id} o /file/d/{id} o /d/{id} o ?id={id}
+      let driveId = "";
+      const dMatch = cleanLink.match(/\/d\/([a-zA-Z0-9_-]{12,65})/i);
+      const folderMatch = cleanLink.match(/\/folders\/([a-zA-Z0-9_-]{12,65})/i);
+      const idParamMatch = cleanLink.match(/[?&]id=([a-zA-Z0-9_-]{12,65})/i);
+
+      if (dMatch) driveId = dMatch[1];
+      else if (folderMatch) driveId = folderMatch[1];
+      else if (idParamMatch) driveId = idParamMatch[1];
+
+      if (driveId) {
+        if (!validIds.has(driveId)) {
+          neutralizedCount++;
+          sanitizedText = sanitizedText.replace(link, "[Enlace no disponible — no devuelto por la herramienta]");
+          continue;
+        }
+      } else {
+        // Enlace de Google desconocido o sospechoso que no está en whitelist ni tiene ID verificado
+        neutralizedCount++;
+        sanitizedText = sanitizedText.replace(link, "[Enlace no disponible — no devuelto por la herramienta]");
+        continue;
+      }
+    }
+
+    // D. Verificación de directorios y mapas (Google Maps place, Páginas Amarillas, eInforma)
+    const isDirectoryOrMaps = /(?:google\.[a-z.]+\/maps\/place|paginasamarillas\.es\/(?!resultados)|informa\.es\/(?!buscador)|einforma\.com)/i.test(cleanLink);
+    if (isDirectoryOrMaps && !validUrls.has(cleanLink)) {
       neutralizedCount++;
-      sanitizedText = sanitizedText.replace(link, "[Enlace no disponible - creación no ejecutada o fallida]");
+      sanitizedText = sanitizedText.replace(link, "[Enlace no disponible — no devuelto por la herramienta]");
+      continue;
     }
   }
 
@@ -799,26 +832,39 @@ function enforceHardLimit(text: string): string {
   return text;
 }
 
-function filterFinalOutput(text: string): string {
+export function filterFinalOutput(text: string): string {
   if (!text) return "";
 
-  // 1. Detectar si contiene llamadas a herramientas simuladas en texto
-  const hasToolSimulations = /tools\.[a-zA-Z0-9_-]+\(/i.test(text) || 
-                            /drive_create_text_file\(/i.test(text) || 
-                            /sheets_write\(/i.test(text) || 
-                            /calendar_create\(/i.test(text);
+  // 1. Limpiar bloques de código o pseudo-código simulando llamadas a herramientas (print(...), tools., etc.)
+  let cleaned = text;
+
+  // Eliminar bloques ```python o ```typescript que contengan print( o tools.
+  cleaned = cleaned.replace(/```(?:python|javascript|typescript|bash|sh)?\s*(?:print\(|tools\.|await\s+tools\.)[\s\S]*?```/gi, "");
+
+  // Eliminar líneas individuales sueltas que simulen ejecución de tools
+  cleaned = cleaned.replace(/^\s*(?:print\([^\n]+\)|tools\.[a-zA-Z0-9_-]+\([^\n]*\)|await\s+tools\.[a-zA-Z0-9_-]+\([^\n]*\))\s*$/gmi, "");
+
+  // 2. Detectar si aún contiene simulaciones crudas residuales de tool calls
+  const hasToolSimulations = /tools\.[a-zA-Z0-9_-]+\(/i.test(cleaned) || 
+                            /print\((?:gmail_list|web_search|drive_list|read_url|sheets_|calendar_)[^)]*\)/i.test(cleaned) ||
+                            /drive_create_text_file\(/i.test(cleaned) || 
+                            /sheets_write\(/i.test(cleaned) || 
+                            /calendar_create\(/i.test(cleaned);
                             
   if (hasToolSimulations) {
-    console.warn("🚨 [Output Filter] Detectada simulación/echo de tool calls en el texto. Abortando respuesta.");
-    return "Error interno: se detuvo una generación inválida de ID/hoja. Reintenta la petición.";
+    console.warn("🚨 [Output Filter] Detectada simulación/echo de tool calls en el texto. Purgando llamadas simuladas.");
+    cleaned = cleaned.replace(/[a-zA-Z0-9_.]+\((?:\{[\s\S]*?\}|[^\n)]*)\)/gi, "").trim();
+    if (!cleaned) {
+      return "He procesado tu solicitud. Por favor, indícame si deseas que realice una acción específica con los datos.";
+    }
   }
 
-  // 2. Detectar patrones repetitivos infinitos (ej. secuencias de 8+ caracteres repetidas consecutivamente 4+ veces)
-  const clean = text.trim();
+  // 3. Detectar patrones repetitivos infinitos (ej. secuencias de 8+ caracteres repetidas consecutivamente 4+ veces)
+  const cleanTrimmed = cleaned.trim();
   for (let len = 8; len <= 30; len++) {
-    for (let i = 0; i <= clean.length - len * 4; i++) {
-      const chunk = clean.substring(i, i + len);
-      const rest = clean.substring(i + len);
+    for (let i = 0; i <= cleanTrimmed.length - len * 4; i++) {
+      const chunk = cleanTrimmed.substring(i, i + len);
+      const rest = cleanTrimmed.substring(i + len);
       if (rest.startsWith(chunk + chunk + chunk) || rest.startsWith("-" + chunk + "-" + chunk + "-" + chunk)) {
         console.warn(`🚨 [Output Filter] Detectada repetición infinita del chunk "${chunk}". Abortando respuesta.`);
         return "Error interno: se detuvo una generación inválida de ID/hoja. Reintenta la petición.";
@@ -826,7 +872,7 @@ function filterFinalOutput(text: string): string {
     }
   }
 
-  return text;
+  return cleaned.trim();
 }
 
 function isProgressMessage(text: string): boolean {

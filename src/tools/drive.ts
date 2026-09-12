@@ -49,7 +49,8 @@ function formatDriveList(raw: any, query?: string): string {
       ? `https://drive.google.com/drive/folders/${f.id}` 
       : `https://drive.google.com/file/d/${f.id}/view`;
 
-    out += `${icon} ${name} · 🔗 [Abrir](${link})\n`;
+    out += `${icon} **${name}** · 🔗 [Abrir](${link})\n`;
+    out += `> 🆔 ID: \`${f.id}\` | 🌐 Enlace: ${link}\n`;
     if (dateStr) {
       out += `> 📅 Modificado: ${dateStr}\n\n`;
     } else {
@@ -171,9 +172,9 @@ export const driveList = async (parentId?: string, all = false, page = 0, userId
         const baseName = f.name.split(/[/\\]/).pop() || f.name;
         const name = sanitizeMarkdown(baseName);
         if (isFolder) {
-          out += formatFolderLink(name, link) + "\n\n";
+          out += formatFolderLink(name, link) + `\n> 🆔 ID: \`${f.id}\` | 🌐 Enlace: ${link}\n\n`;
         } else {
-          out += formatFileLink(name, link) + "\n\n";
+          out += formatFileLink(name, link) + `\n> 🆔 ID: \`${f.id}\` | 🌐 Enlace: ${link}\n\n`;
         }
       }
 
@@ -224,11 +225,9 @@ export const driveSearch = async (query: string, page = 0, parentId?: string, us
         if (!f?.id) continue;
         const isFolder = f.mimeType === "application/vnd.google-apps.folder";
         const link = generateDriveLink(f.id, isFolder);
-        if (isFolder) {
-          out += formatFolderLink(sanitizeMarkdown(f.name), link) + "\n\n";
-        } else {
-          out += formatFileLink(sanitizeMarkdown(f.name), link) + "\n\n";
-        }
+        const icon = isFolder ? "📁" : "📄";
+        out += `${icon} **${sanitizeMarkdown(f.name)}** · 🔗 [Abrir](${link})\n`;
+        out += `> 🆔 ID: \`${f.id}\` | 🌐 Enlace: ${link}\n\n`;
       }
 
       if (end < files.length) {

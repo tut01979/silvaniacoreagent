@@ -9,7 +9,7 @@ import { userContextStore } from "../services/context.js";
 import { sheetsList, sheetsCreate, sheetsRead, sheetsWrite, sheetsCreateInvoice } from "./sheets.js";
 import { runGog } from "./gogWrapper.js";
 import { searchSkills, getSkill, installSkill, createSkill, loadSkills, loadSkillsSummary, loadSkill } from "./skills.js";
-import { webSearch } from "./webSearch.js";
+import { webSearch, readUrl } from "./webSearch.js";
 import { llmService } from "../services/llm.js";
 import { dbService } from "../database/db.js";
 import { youtubeGetTranscript, youtubeSearch } from "./youtube.js";
@@ -34,8 +34,6 @@ export const tools = {
   web_search: async ({ query, search_type, max_results }: { query: string; search_type?: string; max_results?: number }) => {
     return await webSearch(query, search_type || "web", max_results || 5);
   },
-
-
 
   execute_command: async ({ command }: { command: string }) => {
     try {
@@ -218,24 +216,7 @@ export const tools = {
   },
 
   read_url: async ({ url }: { url: string }) => {
-    try {
-      const resp = await axios.get(url, { timeout: 15000, headers: { "User-Agent": "Mozilla/5.0" } });
-      const $ = cheerio.load(resp.data);
-      
-      // Eliminar scripts, estilos, cabeceras de metadatos, iframes y elementos visuales no textuales
-      $("script, style, head, noscript, iframe, svg").remove();
-      
-      let text = $("body").text();
-      
-      // Limpiar emojis, iconos y caracteres extraños, manteniendo letras (\p{L}), números (\p{N}), 
-      // espacios (\s), puntuación común y el símbolo '@' (excluyendo separadores raros, emojis, etc.)
-      text = text.replace(/[^\p{L}\p{N}\s.,:;¡!¿?()'"\-\/ @$%&=+*]/gu, "");
-      
-      const cleanText = text.replace(/\s+/g, " ").trim().slice(0, 8000);
-      return `📄 **Contenido de:** ${url}\n\n${cleanText}`;
-    } catch (e: any) {
-      return `❌ No se pudo leer la URL: ${e.message}`;
-    }
+    return await readUrl(url);
   },
 
   youtube_get_transcript: async ({ url, save_to_drive, userId }: { url: string; save_to_drive?: boolean; userId?: number }) => {
@@ -335,21 +316,16 @@ export const tools = {
 
   generate_authorization_link: async ({ userId }: { userId?: number }) => {
     try {
-      if (!userId) {
+      const uId = userId || userContextStore.getStore()?.userId;
+      if (!uId) {
         return "❌ Error: ID de usuario no especificado.";
       }
 
-      // Comprobar si la cuenta ya está vinculada
-      const token = await dbService.getUserToken(userId);
-      if (token) {
-        return "La cuenta ya está vinculada. No uses generate_authorization_link. Responde con las URLs oficiales.";
-      }
-
-      const authUrl = getAuthUrl(userId);
+      const authUrl = getAuthUrl(uId);
       if (!authUrl) {
         return "❌ Error: No se encontraron las credenciales de Google del bot en el servidor.";
       }
-      return `🔗 **Enlace de Vinculación de Google:**\n\n[Haz clic aquí para conectar tu cuenta de Google](${authUrl})\n\nEste enlace te redirigirá a Google para que elijas qué cuenta deseas conectar de forma segura y automática.`;
+      return `🔗 **Enlace Oficial de Vinculación de Google:**\n\n[Haz clic aquí para conectar tu cuenta de Google](${authUrl})\n\nEste enlace te redirigirá a Google para que elijas qué cuenta deseas conectar de forma segura y automática.`;
     } catch (err: any) {
       return `❌ Error generando el enlace de autorización: ${err.message}`;
     }

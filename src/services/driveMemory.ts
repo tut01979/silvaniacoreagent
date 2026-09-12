@@ -293,10 +293,13 @@ export const driveMemoryService = {
       // Resolver ruta de carpeta YYYY/MM en Drive
       const folderId = await this.getOrCreateFolderPath(["silvania", "historial", YYYY, MM], userId);
       const fileName = `dia_${DD}.json`;
-
       // Subir o reemplazar el archivo de hoy para evitar duplicados
-      await this.uploadOrReplace(userId, tempPath, fileName, folderId);
-      console.log(`✅ [Drive Memory] Historial diario para ${YYYY}-${MM}-${DD} guardado en Drive.`);
+      const fileId = await this.uploadOrReplace(userId, tempPath, fileName, folderId);
+      if (fileId) {
+        console.log(`✅ [Drive Memory] Historial diario para ${YYYY}-${MM}-${DD} guardado en Drive.`);
+      } else {
+        console.warn(`⚠️ [Drive Memory] No se pudo guardar historial diario en Drive para ${YYYY}-${MM}-${DD}. Permanece seguro en almacenamiento local.`);
+      }
       
       // Limpiar archivo temporal
       if (fs.existsSync(tempPath)) {

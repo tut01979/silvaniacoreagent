@@ -956,7 +956,12 @@ function correctTranscription(text: string): string {
   if (!text) return "";
   let corrected = text;
   
-  // Reemplazos insensibles a mayúsculas/minúsculas para Spania, Chilpania, chipania, etc.
+  // Reemplazos insensibles a mayúsculas/minúsculas para Spania, Chilpania, chipania, Sylvania, etc.
+  corrected = corrected.replace(/\bsylvania\.ai\b/gi, "silvania.ai");
+  corrected = corrected.replace(/\bsilvania\s+ai\b/gi, "silvania.ai");
+  corrected = corrected.replace(/\bsylvania\s+ai\b/gi, "silvania.ai");
+  corrected = corrected.replace(/\bsylvania\b/gi, "silvania");
+  corrected = corrected.replace(/\bsilbania\b/gi, "silvania");
   corrected = corrected.replace(/\bspania\b/gi, "silvania");
   corrected = corrected.replace(/\bchilpania\b/gi, "silvania");
   corrected = corrected.replace(/\bchipania\b/gi, "silvania");

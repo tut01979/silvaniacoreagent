@@ -1,36 +1,27 @@
 import { google } from "googleapis";
-import fs from "fs";
-import path from "path";
 import { dbService } from "../database/db.js";
+import { getGoogleCredentials } from "../services/authHelper.js";
 
-export function getOAuth2Client() {
-  let credentials;
-  const credsPath = path.join(process.cwd(), "data", "gmail-credentials.json");
-  if (fs.existsSync(credsPath)) {
-    credentials = JSON.parse(fs.readFileSync(credsPath, "utf-8"));
-  } else {
-    console.error("❌ Falta gmail-credentials.json.");
+export function getOAuth2Client(userId?: number) {
+  const creds = getGoogleCredentials(userId);
+  if (!creds) {
+    console.error("❌ No se pudieron obtener las credenciales de Google.");
     return null;
   }
 
-  const clientInfo = credentials.installed || credentials.web;
-  if (!clientInfo) return null;
-
-  const { client_id, client_secret, redirect_uris } = clientInfo;
+  const { client_id, client_secret } = creds;
   
-  // Usar el primer redirect URI por defecto o el de producción de Railway
-  let redirectUri = redirect_uris[0];
   const publicUrlRaw = process.env.PUBLIC_URL || (process.env.RAILWAY_STATIC_URL ? `https://${process.env.RAILWAY_STATIC_URL}` : "");
-  if (publicUrlRaw) {
-    const publicUrl = publicUrlRaw.endsWith("/") ? publicUrlRaw.slice(0, -1) : publicUrlRaw;
-    redirectUri = `${publicUrl}/auth/google/callback`;
-  }
+  const PORT = process.env.PORT || 3000;
+  const redirectUri = publicUrlRaw
+    ? `${publicUrlRaw.endsWith("/") ? publicUrlRaw.slice(0, -1) : publicUrlRaw}/auth/google/callback`
+    : `http://localhost:${PORT}/auth/google/callback`;
 
   return new google.auth.OAuth2(client_id, client_secret, redirectUri);
 }
 
 export async function getGoogleAuthForUser(userId: number) {
-  const oAuth2Client = getOAuth2Client();
+  const oAuth2Client = getOAuth2Client(userId);
   if (!oAuth2Client) return null;
 
   const tokenObj = await dbService.getUserToken(userId);

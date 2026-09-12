@@ -410,3 +410,68 @@ export async function webSearch(query: string, searchType: string = "web", maxRe
     return `❌ Error en la búsqueda: ${error.message}`;
   }
 }
+
+/**
+ * Lee e inspecciona directamente el contenido de una página web a partir de su URL.
+ */
+export async function readUrl(rawUrl: string): Promise<string> {
+  let targetUrl = rawUrl.trim();
+  
+  // Limpiar posibles comillas o espacios residuales
+  targetUrl = targetUrl.replace(/^[<"']+|[>"']+$/g, "").trim();
+
+  // Si no tiene protocolo, asumir https://
+  if (!/^https?:\/\//i.test(targetUrl)) {
+    targetUrl = "https://" + targetUrl;
+  }
+
+  try {
+    console.log(`🌐 [readUrl] Solicitando contenido de: ${targetUrl}...`);
+    const { data: html } = await axios.get(targetUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
+      },
+      timeout: 12000,
+      maxRedirects: 5,
+    });
+
+    const $ = cheerio.load(html);
+
+    // Extraer metadatos clave
+    const title = $("title").text().trim() || $("meta[property='og:title']").attr("content") || "Página Web";
+    const description = $("meta[name='description']").attr("content") || $("meta[property='og:description']").attr("content") || "";
+
+    // Eliminar scripts, estilos y elementos ruidosos
+    $("script, style, noscript, svg, iframe, canvas").remove();
+
+    // Extraer encabezados principales
+    const headings: string[] = [];
+    $("h1, h2, h3").each((_, el) => {
+      const hText = $(el).text().trim();
+      if (hText && !headings.includes(hText) && headings.length < 10) {
+        headings.push(`• ${hText}`);
+      }
+    });
+
+    // Extraer texto principal
+    const rawText = $("body").text().replace(/\s+/g, " ").trim();
+    const cleanContent = rawText.slice(0, 4000);
+
+    let output = `🌐 **CONTENIDO DE LA PÁGINA:** [${title}](${targetUrl})\n${SEP}\n\n`;
+    if (description) {
+      output += `📝 **Descripción:** ${description}\n\n`;
+    }
+    if (headings.length > 0) {
+      output += `📌 **Estructura y Secciones Clave:**\n${headings.join("\n")}\n\n`;
+    }
+    output += `📄 **Texto Extraído:**\n${cleanContent}`;
+
+    return output;
+  } catch (err: any) {
+    console.error(`❌ [readUrl] Error al acceder a ${targetUrl}:`, err.message);
+    return `❌ No se pudo leer el contenido de ${targetUrl}: ${err.message}. Verifica que la URL sea accesible públicamente.`;
+  }
+}
+

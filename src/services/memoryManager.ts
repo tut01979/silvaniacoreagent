@@ -183,8 +183,12 @@ export const memoryManager = {
       
       // Buscar si ya existe el archivo
       const fileName = "memoria_conversacion.json";
-      await driveMemoryService.uploadOrReplace(userId, tempPath, fileName, silvaniaFolderId);
-      console.log(`✅ [Memory Manager] memoria_conversacion.json subido con éxito.`);
+      const fileId = await driveMemoryService.uploadOrReplace(userId, tempPath, fileName, silvaniaFolderId);
+      if (fileId) {
+        console.log(`✅ [Memory Manager] memoria_conversacion.json subido con éxito.`);
+      } else {
+        console.warn(`⚠️ [Memory Manager] No se pudo subir memoria_conversacion.json a Drive. Se mantiene en local.`);
+      }
       
       try {
         if (fs.existsSync(tempPath)) {
@@ -760,10 +764,14 @@ No incluyas explicaciones, saludos ni formateo de markdown (no uses triple comil
       fs.writeFileSync(tempPath, JSON.stringify(topic, null, 2), "utf8");
 
       // Subir o reemplazar para evitar duplicados
-      await driveMemoryService.uploadOrReplace(userId, tempPath, fileName, temasFolderId);
+      const fileId = await driveMemoryService.uploadOrReplace(userId, tempPath, fileName, temasFolderId);
       
       try { if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath); } catch {}
-      console.log(`✅ [Memory Manager] Tema '${topic.topic}' guardado con éxito en Drive.`);
+      if (fileId) {
+        console.log(`✅ [Memory Manager] Tema '${topic.topic}' guardado con éxito en Drive.`);
+      } else {
+        console.warn(`⚠️ [Memory Manager] No se pudo guardar tema '${topic.topic}' en Drive. Se conserva en DB local.`);
+      }
     } catch (err: any) {
       console.error("❌ Error en saveTopic:", err.message);
       throw err;

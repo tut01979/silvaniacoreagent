@@ -5,6 +5,7 @@ import fs from "fs";
 import { userContextStore } from "../services/context.js";
 import { dbService } from "../database/db.js";
 import { config } from "../config/config.js";
+import { getGoogleCredentials } from "../services/authHelper.js";
 
 const execPromise = util.promisify(exec);
 const GOG_PATH = process.platform === "win32" ? "bin\\gog.exe" : "./bin/gog";
@@ -71,16 +72,50 @@ export async function runGogRaw(command: string, customEnv?: any): Promise<strin
     const errorOutput = stripAnsi(err.stdout || err.stderr || err.message);
     console.error(`❌ [gog] Error en comando: ${fullCmd}\n${errorOutput}`);
     
+    const lowerOutput = errorOutput.toLowerCase();
+    if (
+      lowerOutput.includes("invalid_grant") ||
+      lowerOutput.includes("token has been expired") ||
+      lowerOutput.includes("token has been revoked")
+    ) {
+      throw new Error(
+        "Tu sesión de Google expiró o fue revocada. Usa /auth una vez."
+      );
+    }
+    if (
+      lowerOutput.includes("insufficientpermissions") ||
+      lowerOutput.includes("insufficient_scope") ||
+      lowerOutput.includes("insufficient permission") ||
+      lowerOutput.includes("scope_insufficient") ||
+      lowerOutput.includes("access_denied") ||
+      lowerOutput.includes("403")
+    ) {
+      throw new Error(
+        "Tu sesión de Google expiró o fue revocada. Usa /auth una vez."
+      );
+    }
+
     // Si falló pero devolvió algo que parece JSON, intentamos extraer el mensaje
     if (errorOutput.includes("{") || errorOutput.includes("[")) {
       try {
         const start = errorOutput.indexOf("{") !== -1 ? errorOutput.indexOf("{") : errorOutput.indexOf("[");
         const parsed = JSON.parse(errorOutput.substring(start));
         if (parsed && parsed.error && parsed.error.message) {
-          throw new Error(parsed.error.message);
+          const msg = parsed.error.message;
+          const lowerMsg = msg.toLowerCase();
+          if (
+            lowerMsg.includes("insufficient") ||
+            lowerMsg.includes("scope") ||
+            lowerMsg.includes("permission")
+          ) {
+            throw new Error(
+              "Tu sesión de Google expiró o fue revocada. Usa /auth una vez."
+            );
+          }
+          throw new Error(msg);
         }
-      } catch (e) {
-        // Ignorar error de parseo y lanzar el error original
+      } catch (e: any) {
+        if (e && e.message && e.message.includes("Tu sesión de Google")) throw e;
       }
     }
     
@@ -198,6 +233,49 @@ export async function ensureAccountParam(command: string, userId?: number): Prom
 
   return { command: clean, email };
 }
+/**
+ * Limpia el keyring y las credenciales locales de gog para un usuario.
+ * Obligatorio ante re-autenticación (/auth) o detección de invalid_grant.
+ */
+export async function clearUserGogCredentials(userId: number, email?: string): Promise<void> {
+  const userAppdataPath = path.join(process.cwd(), "data", `user_${userId}`);
+  const executable = path.join(process.cwd(), "bin", process.platform === "win32" ? "gog.exe" : "gog");
+  const customEnv = {
+    ...process.env,
+    APPDATA: userAppdataPath,
+    HOME: userAppdataPath,
+    USERPROFILE: userAppdataPath,
+    GOG_KEYRING_PASSWORD: process.env.GOG_KEYRING_PASSWORD || "silvaniacoreagent"
+  };
+
+  // 1. Intentar gog auth remove si se conoce el email
+  if (email) {
+    try {
+      execSync(`"${executable}" auth remove "${email}" --force`, { env: customEnv, stdio: "ignore" });
+      console.log(`🧹 [GOG] gog auth remove ejecutado con éxito para ${email}`);
+    } catch {}
+  }
+
+  // 2. Limpiar archivos locales de keyring y credenciales en gogcli para purgar tokens viejos
+  try {
+    const gogcliDir = path.join(userAppdataPath, "gogcli");
+    if (fs.existsSync(gogcliDir)) {
+      const keyringDir = path.join(gogcliDir, "keyring");
+      if (fs.existsSync(keyringDir)) {
+        fs.rmSync(keyringDir, { recursive: true, force: true });
+      }
+      const credsFiles = ["credentials.json", "credentials-prod.json", "credentials-beta.json"];
+      for (const cf of credsFiles) {
+        const p = path.join(gogcliDir, cf);
+        if (fs.existsSync(p)) {
+          try { fs.unlinkSync(p); } catch {}
+        }
+      }
+    }
+  } catch (err: any) {
+    console.warn(`⚠️ Aviso al limpiar directorio gogcli de usuario ${userId}:`, err.message);
+  }
+}
 
 /**
  * Ejecuta un comando gog con preprocesamiento y manejo de errores estandarizado.
@@ -208,8 +286,10 @@ export async function runGog(command: string, userId?: number): Promise<string> 
   const uId = userId || userContextStore.getStore()?.userId || (config.telegram?.allowedUsers?.[0]) || 1572946817;
   
   const { command: finalCmd, email } = await ensureAccountParam(preprocessed, uId);
-  
-  console.log(`[GOG] Ejecutando con account: ${email}`);
+  const userCreds = getGoogleCredentials(uId);
+  const currentTier = userCreds?.tier || "default";
+
+  console.log(`[GOG] Ejecutando con account: ${email} (tier: ${currentTier})`);
   
   // Directorio de almacenamiento aislado por usuario
   const userAppdataPath = path.join(process.cwd(), "data", `user_${uId}`);
@@ -220,18 +300,42 @@ export async function runGog(command: string, userId?: number): Promise<string> 
   const executable = path.join(process.cwd(), "bin", process.platform === "win32" ? "gog.exe" : "gog");
   const customEnv = { 
     ...process.env, 
-    APPDATA: userAppdataPath,
+    APPDATA: userAppdataPath, 
     HOME: userAppdataPath, 
     USERPROFILE: userAppdataPath,
-    GOG_KEYRING_PASSWORD: process.env.GOG_KEYRING_PASSWORD || "silvaniacoreagent"
+    GOG_KEYRING_PASSWORD: process.env.GOG_KEYRING_PASSWORD || "silvaniacoreagent",
+    GOG_CLIENT: currentTier
   };
 
-  // Registrar la credencial del cliente de Google de forma aislada
-  const credsPath = path.join(process.cwd(), "data", "gmail-credentials.json");
-  if (fs.existsSync(credsPath)) {
+  // Registrar la credencial del cliente de Google adecuada (prod vs beta) de forma aislada
+  if (userCreds) {
     try {
-      const clientCmd = `"${executable}" auth credentials "${credsPath}"`;
+      const publicUrlRaw = process.env.PUBLIC_URL || (process.env.RAILWAY_STATIC_URL ? `https://${process.env.RAILWAY_STATIC_URL}` : "");
+      const PORT = process.env.PORT || 3000;
+      const redirectUri = publicUrlRaw
+        ? `${publicUrlRaw.endsWith("/") ? publicUrlRaw.slice(0, -1) : publicUrlRaw}/auth/google/callback`
+        : `http://localhost:${PORT}/auth/google/callback`;
+
+      const userClientObj = {
+        web: {
+          client_id: userCreds.client_id,
+          client_secret: userCreds.client_secret,
+          redirect_uris: [redirectUri]
+        }
+      };
+
+      const userCredsPath = path.join(userAppdataPath, "gmail-credentials.json");
+      fs.writeFileSync(userCredsPath, JSON.stringify(userClientObj, null, 2));
+
+      // Registrar tanto para el tier específico como por defecto
+      const clientCmd = `"${executable}" auth credentials "${userCredsPath}"`;
       execSync(clientCmd, { env: customEnv });
+
+      if (userCreds.tier) {
+        try {
+          execSync(`"${executable}" --client=${userCreds.tier} auth credentials "${userCredsPath}"`, { env: customEnv });
+        } catch {}
+      }
     } catch (err: any) {
       console.error(`❌ Error registrando credenciales en gog para usuario ${uId}:`, err.message);
     }
@@ -240,8 +344,12 @@ export async function runGog(command: string, userId?: number): Promise<string> 
   const tokenObj = await dbService.getUserToken(uId);
   if (tokenObj) {
     try {
+      const preparedToken = {
+        ...tokenObj,
+        client: userCreds ? userCreds.tier : (tokenObj.client || "default")
+      };
       const tempTokenPath = path.join(userAppdataPath, `temp_token_${uId}.json`);
-      fs.writeFileSync(tempTokenPath, JSON.stringify(tokenObj, null, 2));
+      fs.writeFileSync(tempTokenPath, JSON.stringify(preparedToken, null, 2));
       
       const importCmd = `"${executable}" auth tokens import "${tempTokenPath}"`;
       execSync(importCmd, { env: customEnv });
@@ -251,6 +359,26 @@ export async function runGog(command: string, userId?: number): Promise<string> 
     }
   }
 
-  return await runGogRaw(finalCmd, customEnv);
+  try {
+    return await runGogRaw(finalCmd, customEnv);
+  } catch (err: any) {
+    const msg = err.message || "";
+    if (
+      msg.includes("Tu sesión de Google expiró") ||
+      msg.includes("invalid_grant") ||
+      msg.includes("expired") ||
+      msg.includes("revoked")
+    ) {
+      console.error(`🚨 [GOG] Sesión revocada/expirada detectada para usuario ${uId}. Purgando tokens locales...`);
+      try {
+        await dbService.deleteUserToken(uId);
+        await clearUserGogCredentials(uId, email);
+      } catch (cleanErr: any) {
+        console.warn(`⚠️ Error durante limpieza de credenciales gog para ${uId}:`, cleanErr.message);
+      }
+      throw new Error("Tu sesión de Google expiró o fue revocada. Usa /auth una vez.");
+    }
+    throw err;
+  }
 }
 

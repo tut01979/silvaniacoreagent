@@ -93,7 +93,7 @@ function isTodayRequestQuery(query: string): boolean {
   return regexes.some(regex => regex.test(q));
 }
 
-function formatGmailList(messages: any[], query?: string): string {
+export function formatGmailList(messages: any[], query?: string): string {
   if (messages.length === 0) return "📭 **Bandeja de entrada vacía.** No se han encontrado mensajes recientes.";
   
   let output = `📬 **CENTRO DE MENSAJERÍA GMAIL**\n${SEP}\n\n`;
@@ -101,11 +101,15 @@ function formatGmailList(messages: any[], query?: string): string {
     const from = m.from || "Desconocido";
     const subject = m.subject || "(Sin asunto)";
     const date = m.date || "";
-    const id = m.id || "N/A";
+    const hasValidId = m.id && typeof m.id === "string" && m.id !== "N/A" && /^[a-zA-Z0-9_-]{8,65}$/.test(m.id);
     const labels = (m.labels || []).join(", ");
     
-    output += `📧 ${subject}\n`;
-    output += `https://mail.google.com/mail/u/0/#inbox/${id}\n`;
+    output += `📧 **${subject}**\n`;
+    if (hasValidId) {
+      output += `> 🆔 ID: \`${m.id}\` | 🌐 Enlace: https://mail.google.com/mail/u/0/#inbox/${m.id}\n`;
+    } else {
+      output += `> ⚠️ [Enlace no disponible — no devuelto por la herramienta]\n`;
+    }
     output += `👤 Remitente: ${from}\n`;
     if (date) {
       output += `📅 ${date}  |  🏷️ ${labels}\n\n`;

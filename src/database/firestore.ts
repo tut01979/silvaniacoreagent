@@ -166,6 +166,15 @@ export const firestoreService = {
     }
   },
 
+  async deleteUserToken(userId: number): Promise<void> {
+    try {
+      const db = getDb();
+      await db.collection("user_tokens").doc(userId.toString()).delete();
+    } catch (error) {
+      console.error("Error eliminando token en Firestore:", error);
+    }
+  },
+
   async saveUserSubscription(userId: number, subscription: any) {
     try {
       const db = getDb();
