@@ -27,6 +27,41 @@ export const config = {
   search: {
     braveApiKey: process.env.BRAVE_API_KEY || "",
   },
+  oauth: {
+    prodClientId: process.env.GOOGLE_CLIENT_ID || "",
+    prodClientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+    betaClientId: process.env.GOOGLE_CLIENT_ID_BETA || "",
+    betaClientSecret: process.env.GOOGLE_CLIENT_SECRET_BETA || "",
+    betaUserIds: (process.env.BETA_USER_IDS || "").split(",").map(id => parseInt(id.trim())).filter(id => !isNaN(id)),
+    prodScopes: process.env.GOOGLE_SCOPES_PROD || [
+      "openid",
+      "profile",
+      "email",
+      "https://www.googleapis.com/auth/calendar.events",
+      "https://www.googleapis.com/auth/spreadsheets",
+      "https://www.googleapis.com/auth/drive.file",
+      "https://www.googleapis.com/auth/gmail.send"
+    ].join(" "),
+    betaScopes: process.env.GOOGLE_SCOPES_BETA || [
+      "openid",
+      "profile",
+      "email",
+      "https://www.googleapis.com/auth/calendar",
+      "https://www.googleapis.com/auth/calendar.events",
+      "https://www.googleapis.com/auth/spreadsheets",
+      "https://www.googleapis.com/auth/drive.file",
+      "https://www.googleapis.com/auth/drive",
+      "https://www.googleapis.com/auth/gmail.send",
+      "https://www.googleapis.com/auth/gmail.modify"
+    ].join(" ")
+  },
+  marketing: {
+    voiceProvider: process.env.MARKETING_VOICE_PROVIDER || "edge",
+    premiumVoice: process.env.MARKETING_PREMIUM_VOICE === "true",
+    imageProvider: process.env.MARKETING_IMAGE_PROVIDER || "pollinations_flux",
+    adminIds: (process.env.MARKETING_ADMIN_IDS || "1572946817").split(",").map(id => parseInt(id.trim())).filter(id => !isNaN(id)),
+    telegramChannelId: process.env.MARKETING_TELEGRAM_CHANNEL_ID || ""
+  },
   tempDir: "./temp"
 };
 

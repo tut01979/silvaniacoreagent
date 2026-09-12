@@ -1740,6 +1740,94 @@ bot.command(["auth", "login"], async (ctx) => {
   );
 });
 
+// --- SILVANIA MARKETING STUDIO (HUMAN-IN-THE-LOOP) ---
+bot.on("callback_query:data", async (ctx, next) => {
+  const data = ctx.callbackQuery?.data || "";
+  if (data.startsWith("mkt_")) {
+    try {
+      const { telegramReview } = await import("./marketing/telegramReview.js");
+      const handled = await telegramReview.handleCallback(bot, ctx);
+      if (handled) return;
+    } catch (err: any) {
+      console.error("❌ Error manejando callback de marketing:", err);
+    }
+  }
+  await next();
+});
+
+bot.command("marketing", async (ctx) => {
+  const userId = ctx.from!.id;
+  const adminIds = config.marketing?.adminIds || [1572946817];
+
+  if (!adminIds.includes(userId)) {
+    return ctx.reply("❌ No tienes permisos para acceder a Silvania Marketing Studio.");
+  }
+
+  const rawArgs = ctx.match ? ctx.match.toString().trim() : "";
+  if (!rawArgs) {
+    return ctx.reply(
+      "🚀 *Silvania Marketing Studio (Low-Cost P0)*\n\n" +
+      "Uso del comando:\n" +
+      "• `/marketing post [tema]` - Genera post social con imagen FLUX (gratis) y locución Edge-TTS (gratis).\n" +
+      "• `/marketing video [tema]` - Genera guión de YouTube (larga duración) con miniatura y hook locutado.\n" +
+      "• `/marketing short [tema]` - Genera guión de YouTube Short.\n" +
+      "• `/marketing status` - Consulta el estado del último borrador generado.\n\n" +
+      "_Ejemplo:_ `/marketing post 3 herramientas de IA para autónomos`",
+      { parse_mode: "Markdown" }
+    );
+  }
+
+  const parts = rawArgs.split(" ");
+  const subCmd = parts[0].toLowerCase();
+
+  // Subcomando de estado
+  if (subCmd === "status") {
+    try {
+      const { marketingManager } = await import("./marketing/manager.js");
+      const lastDraft = marketingManager.getLastDraft(userId);
+      if (!lastDraft) {
+        return ctx.reply("ℹ️ No hay borradores de marketing registrados todavía.");
+      }
+      return ctx.reply(
+        `📊 *Último Borrador:* #${lastDraft.id.slice(0, 8)}\n\n` +
+        `📌 *Tema:* ${lastDraft.topic}\n` +
+        `📦 *Formato:* ${lastDraft.format}\n` +
+        `🚦 *Estado:* \`${lastDraft.status}\`\n` +
+        `🎙️ *Voz:* ${lastDraft.voiceProvider || "edge"}\n` +
+        `🎨 *Imagen:* ${lastDraft.imageProvider || "flux"}\n` +
+        `🤖 *Modelo LLM:* ${lastDraft.llmModel || "gemini"}\n` +
+        `📅 *Creado:* ${new Date(lastDraft.createdAt).toLocaleString("es-ES")}`,
+        { parse_mode: "Markdown" }
+      );
+    } catch (err: any) {
+      return ctx.reply(`❌ Error consultando status: ${err.message}`);
+    }
+  }
+
+  const topic = parts.slice(1).join(" ").trim();
+
+  if (!topic) {
+    return ctx.reply("⚠️ Por favor indica el tema después del subcomando. Ejemplo: `/marketing post mi tema`", { parse_mode: "Markdown" });
+  }
+
+  let format: any = "social_post";
+  if (subCmd === "video" || subCmd === "youtube") {
+    format = "youtube_long";
+  } else if (subCmd === "short") {
+    format = "youtube_short";
+  }
+
+  await ctx.reply(`🧠 *Silvania Marketing Studio en marcha...*\nInvestigando y redactando propuesta para:\n_${topic}_...`, { parse_mode: "Markdown" });
+
+  try {
+    const { marketingManager } = await import("./marketing/manager.js");
+    await marketingManager.createAndReviewDraft(topic, format, userId, bot);
+  } catch (err: any) {
+    console.error("❌ Error en Marketing Studio:", err);
+    await ctx.reply(`❌ Error generando el borrador de marketing: ${err.message}`);
+  }
+});
+
 // Manejador de mensajes de texto
 bot.on("message:text", async (ctx) => {
   const userId = ctx.from.id;
