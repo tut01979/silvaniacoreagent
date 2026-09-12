@@ -1,12 +1,16 @@
 import { runGog } from "../tools/gogWrapper.js";
 import { configManager } from "./configManager.js";
 import { criticalLogService } from "./criticalLog.js";
+import { uploadSkillToDrive } from "../tools/skills.js";
 import fs from "fs";
 import path from "path";
 
 export const skillLoader = {
   /**
    * Sincroniza todas las habilidades activas del usuario desde su Google Drive a la caché local aislada.
+   * Utiliza estrictamente el ID canónico de 'silvania/skills'.
+   * Si en la carpeta canónica no hay skills pero el código local tiene SKILL.md,
+   * re-sube/instala las skills en la canónica sin borrar carpetas viejas duplicadas.
    */
   async syncSkillsFromDrive(userId: number): Promise<void> {
     try {
@@ -18,13 +22,15 @@ export const skillLoader = {
         fs.mkdirSync(localSkillsDir, { recursive: true });
       }
 
-      // Buscar subcarpetas de habilidades en la carpeta 'silvania/skills' de Drive
+      // Buscar subcarpetas de habilidades en la carpeta canónica 'silvania/skills' de Drive
       const searchRes = await runGog(
         `drive search "'${skillsFolderId}' in parents and trashed = false" --raw-query --json`,
         userId
       );
       const parsed = JSON.parse(searchRes);
       const items = parsed.files || (Array.isArray(parsed) ? parsed : []);
+
+      let driveSkillsCount = 0;
 
       for (const item of items) {
         if (item.mimeType === "application/vnd.google-apps.folder") {
@@ -44,6 +50,7 @@ export const skillLoader = {
           const fFiles = fParsed.files || (Array.isArray(fParsed) ? fParsed : []);
 
           if (fFiles.length > 0) {
+            driveSkillsCount++;
             const skillFileId = fFiles[0].id;
             const tempDownloadPath = path.join(process.cwd(), "temp", `download_skill_${userId}_${folderName}.md`);
             if (!fs.existsSync(path.dirname(tempDownloadPath))) {
@@ -60,7 +67,28 @@ export const skillLoader = {
           }
         }
       }
-      console.log(`✅ [Skill Loader] Sincronización de habilidades completada para usuario ${userId}.`);
+
+      // Si en la carpeta canónica no hay skills pero en el entorno local sí existen, re-subir a la canónica
+      if (driveSkillsCount === 0 && fs.existsSync(localSkillsDir)) {
+        const localFolders = fs.readdirSync(localSkillsDir);
+        for (const f of localFolders) {
+          const localFolder = path.join(localSkillsDir, f);
+          try {
+            if (fs.statSync(localFolder).isDirectory()) {
+              const localSkillMd = path.join(localFolder, "SKILL.md");
+              if (fs.existsSync(localSkillMd)) {
+                console.log(`ℹ️ [Skill Loader] Re-enlazando y subiendo skill '${f}' a la carpeta canónica en Drive...`);
+                await uploadSkillToDrive(userId, f, localFolder);
+                driveSkillsCount++;
+              }
+            }
+          } catch (skillUploadErr: any) {
+            console.warn(`⚠️ [Skill Loader] Error al re-subir skill '${f}' a Drive:`, skillUploadErr.message);
+          }
+        }
+      }
+
+      console.log(`✅ [Skill Loader] Sincronización de habilidades completada para usuario ${userId} (${driveSkillsCount} skills activas).`);
     } catch (err: any) {
       await criticalLogService.logCritical(
         "Fallo Sincronización Habilidades (syncSkillsFromDrive)",

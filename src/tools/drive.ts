@@ -271,6 +271,20 @@ export async function resolveOrCreateParentId(parentId: string | undefined, user
 
 export const driveMkdir = async (name: string, parentId?: string, userId?: number) => {
   const uId = userId || 0;
+  const cleanName = (name || "").trim();
+  const lowerName = cleanName.toLowerCase();
+
+  // Guarda canónica: prohibir creación manual de silvania/* y redirigir al resolvedor canónico
+  if (lowerName === "silvania" || lowerName.startsWith("silvania/") || lowerName.startsWith("silvania\\")) {
+    console.log(`🔒 [Drive Tool] Petición de creación para ruta silvania protegida '${cleanName}'. Redirigiendo a canónica...`);
+    const parts = cleanName.split(/[/\\]/).filter(p => p.length > 0);
+    const { folderCacheService } = await import("../services/folderCache.js");
+    const canonicalId = await folderCacheService.getOrCreateFolderPath(uId, parts);
+    const link = generateDriveLink(canonicalId, true);
+    const linkStr = formatFolderLink(cleanName, link);
+    return `📁 La carpeta canónica **"${cleanName}"** ya está configurada (ID: \`${canonicalId}\`).\n\n${linkStr}\nNo se crean carpetas duplicadas en Drive.`;
+  }
+
   const resolvedParentId = await resolveOrCreateParentId(parentId, uId);
 
   // Primero buscar si ya existe para evitar duplicados (petición del usuario)

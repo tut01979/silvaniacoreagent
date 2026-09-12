@@ -182,9 +182,9 @@ export async function installSkill(id: string, userId: number) {
       execSync(cmd);
       
       // Subir a Drive para persistencia
-      await uploadSkillToDrive(userId, targetFolderName, targetDir);
+      const driveOk = await uploadSkillToDrive(userId, targetFolderName, targetDir);
       
-      return `✅ **Habilidad '${id}' instalada y activada correctamente** (ZIP extraído y guardado en Drive).\n\n🧬 Ya está disponible en la conversación actual.`;
+      return `✅ **Habilidad '${id}' instalada y activada correctamente** (${driveOk ? "ZIP extraído y guardado en Drive" : "ZIP extraído y activa en almacenamiento local"}).\n\n🧬 Ya está disponible en la conversación actual.`;
     } catch (err: any) {
       return `❌ Error extrayendo habilidad ZIP: ${err.message}`;
     }
@@ -199,9 +199,9 @@ export async function installSkill(id: string, userId: number) {
     }
 
     // Subir a Drive para persistencia
-    await uploadSkillToDrive(userId, targetFolderName, targetDir);
+    const driveOk = await uploadSkillToDrive(userId, targetFolderName, targetDir);
 
-    return `✅ **Habilidad '${id}' instalada y activada correctamente** (guardada en Drive).\n\n🧬 Ya está disponible en la conversación actual.`;
+    return `✅ **Habilidad '${id}' instalada y activada correctamente** (${driveOk ? "guardada en Drive" : "activa en almacenamiento local"}).\n\n🧬 Ya está disponible en la conversación actual.`;
   } catch (err: any) {
     return `❌ Error al copiar los archivos de la habilidad: ${err.message}`;
   }
@@ -242,9 +242,9 @@ export async function createSkill(name: string, description: string, content: st
     }
 
     // Subir a Drive para persistencia
-    await uploadSkillToDrive(userId, folderName, activeTargetDir);
+    const driveOk = await uploadSkillToDrive(userId, folderName, activeTargetDir);
     
-    return `✅ **Nueva habilidad '${name}' creada e instalada en tu Drive**.\n\n🧬 Disponible desde ahora en la conversación actual.`;
+    return `✅ **Nueva habilidad '${name}' creada e instalada${driveOk ? " en tu Drive" : " en almacenamiento local"}**.\n\n🧬 Disponible desde ahora en la conversación actual.`;
   } catch (err: any) {
     return `❌ Error creando la habilidad: ${err.message}`;
   }
@@ -365,7 +365,7 @@ export async function loadSkillsSummary(userId: number): Promise<string> {
 /**
  * Helper para subir/actualizar los archivos de una skill a Google Drive del usuario.
  */
-async function uploadSkillToDrive(userId: number, folderName: string, localFolder: string): Promise<void> {
+export async function uploadSkillToDrive(userId: number, folderName: string, localFolder: string): Promise<boolean> {
   try {
     const skillsFolderId = await configManager.getOrCreateFolderPath(userId, ["silvania", "skills"]);
     const skillDriveFolderId = await configManager.getOrCreateFolderPath(userId, ["silvania", "skills", folderName]);
@@ -419,7 +419,9 @@ async function uploadSkillToDrive(userId: number, folderName: string, localFolde
       config.installedSkills.push(folderName);
       await configManager.saveConfig(userId, config);
     }
+    return true;
   } catch (err: any) {
     console.error(`❌ [Skills Drive] Error al sincronizar skill '${folderName}' a Google Drive:`, err.message);
+    return false;
   }
 }

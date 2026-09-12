@@ -32,6 +32,7 @@ import { EVA_EXERCISES_DATABASE, EVA_LESSONS } from "./config/evaExercises.js";
 import { clearUserGogCredentials } from "./tools/gogWrapper.js";
 import { configManager } from "./services/configManager.js";
 import { morningRadarService } from "./services/morningRadar.js";
+import { folderCacheService } from "./services/folderCache.js";
 
 if (process.env.GOOGLE_CREDS_JSON) {
   try {
@@ -1086,6 +1087,43 @@ async function safeReply(ctx: any, text: string) {
   await safeSendMessage(bot, ctx.chat.id, text);
 }
 
+/**
+ * Bootstrap canónico tras vinculación OAuth exitosa:
+ * Resuelve y persiste en drive_folders la jerarquía canónica:
+ * silvania -> skills, historial, prompts, documentos, temas.
+ * Sincroniza y re-enlaza skills si la carpeta canónica en Drive aún no las tiene.
+ */
+async function bootstrapUserDriveFolders(userId: number): Promise<void> {
+  try {
+    console.log(`🚀 [Drive Bootstrap] Iniciando bootstrap de carpetas canónicas para usuario ${userId}...`);
+    const standardPaths = [
+      ["silvania"],
+      ["silvania", "skills"],
+      ["silvania", "historial"],
+      ["silvania", "prompts"],
+      ["silvania", "documentos"],
+      ["silvania", "temas"]
+    ];
+
+    for (const p of standardPaths) {
+      const folderId = await folderCacheService.getOrCreateFolderPath(userId, p);
+      console.log(`📁 [Drive Bootstrap] ${p.join("/")} -> ID: ${folderId}`);
+    }
+
+    // Sincronizar o re-subir skills a la carpeta canónica
+    try {
+      const { skillLoader } = await import("./services/skillLoader.js");
+      await skillLoader.syncSkillsFromDrive(userId);
+    } catch (skillErr: any) {
+      console.warn(`⚠️ [Drive Bootstrap] Error en syncSkillsFromDrive durante bootstrap:`, skillErr.message);
+    }
+
+    console.log(`✅ [Drive Bootstrap] Carpetas canónicas listas y registradas en DB para usuario ${userId}.`);
+  } catch (err: any) {
+    console.error(`❌ [Drive Bootstrap] Error en bootstrap para usuario ${userId}:`, err.message);
+  }
+}
+
 app.get("/auth/google/callback", rateLimiter(10, 60000), async (req: any, res: any) => {
   const { code, state } = req.query;
   if (!code || !state) {
@@ -1208,6 +1246,11 @@ app.get("/auth/google/callback", rateLimiter(10, 60000), async (req: any, res: a
         } else {
           console.log(`✅ Token importado correctamente en gog para ${email} (tier: ${creds.tier})`);
           
+          // Bootstrap canónico de carpetas y reenlace de skills en segundo plano
+          bootstrapUserDriveFolders(userId).catch(bErr => {
+            console.error("❌ [OAuth Callback] Error en bootstrap de carpetas:", bErr.message);
+          });
+          
           try {
             await bot.api.sendMessage(userId, `✅ ¡Tu cuenta de Google (${email}) ha sido vinculada correctamente! Ya puedes utilizar todas mis herramientas.`);
           } catch (tErr: any) {
@@ -1232,6 +1275,9 @@ app.get("/auth/google/callback", rateLimiter(10, 60000), async (req: any, res: a
         }
       });
     } else {
+      // Asegurar bootstrap si ya estaba vinculado previamente
+      bootstrapUserDriveFolders(userId).catch(() => {});
+
       try {
         await bot.api.sendMessage(userId, `✅ ¡Tu cuenta de Google (${email}) ya estaba vinculada! Si tienes problemas de acceso, ve a la configuración de seguridad de tu cuenta de Google, revoca el acceso a la aplicación de Silvania y vuelve a iniciar el proceso.`);
       } catch {}
