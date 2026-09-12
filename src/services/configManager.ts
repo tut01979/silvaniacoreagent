@@ -21,6 +21,8 @@ export interface UserConfig {
   };
   skillsPath?: string;
   promptsPath?: string;
+  language?: string;
+  locale?: string;
 }
 
 export const configManager = {
@@ -42,7 +44,9 @@ export const configManager = {
       version: CURRENT_VERSION,
       customPrompt: "",
       muteVoice: false,
-      installedSkills: []
+      installedSkills: [],
+      language: "es",
+      locale: "es"
     };
 
     try {
@@ -213,24 +217,26 @@ export const configManager = {
       const uploadRes = await driveMemoryService.uploadOrReplace(userId, tempPath, fileName, silvaniaFolderId);
       try { fs.unlinkSync(tempPath); } catch {}
 
-      // Consultar y actualizar metadatos locales de sincronización tras la subida exitosa
-      try {
-        // Buscar el archivo subido de nuevo para obtener modifiedTime exacto asignado por Google Drive
-        const checkRes = await runGog(
-          `drive search "name = '${fileName}' and '${silvaniaFolderId}' in parents and trashed = false" --raw-query --json`,
-          userId
-        );
-        const checkParsed = JSON.parse(checkRes);
-        const checkFiles = checkParsed.files || [];
-        if (checkFiles.length > 0) {
-          const f = checkFiles[0];
-          await dbService.setConfigSyncInfo(userId, f.modifiedTime || "", f.size !== undefined ? Number(f.size) : 0);
+      if (uploadRes) {
+        // Consultar y actualizar metadatos locales de sincronización tras la subida exitosa
+        try {
+          const checkRes = await runGog(
+            `drive search "name = '${fileName}' and '${silvaniaFolderId}' in parents and trashed = false" --raw-query --json`,
+            userId
+          );
+          const checkParsed = JSON.parse(checkRes);
+          const checkFiles = checkParsed.files || [];
+          if (checkFiles.length > 0) {
+            const f = checkFiles[0];
+            await dbService.setConfigSyncInfo(userId, f.modifiedTime || "", f.size !== undefined ? Number(f.size) : 0);
+          }
+        } catch (syncErr: any) {
+          console.warn("⚠️ Error registrando metadatos de sincronización tras guardar:", syncErr.message);
         }
-      } catch (syncErr: any) {
-        console.warn("⚠️ Error registrando metadatos de sincronización tras guardar:", syncErr.message);
+        console.log(`✅ [Config Manager] Configuración guardada en Drive y caché local para usuario ${userId}.`);
+      } else {
+        console.log(`ℹ️ [Config Manager] Configuración guardada en caché local para usuario ${userId} (Drive en modo offline/degradado).`);
       }
-
-      console.log(`✅ [Config Manager] Configuración guardada en Drive y caché local para usuario ${userId}.`);
     } catch (err: any) {
       await criticalLogService.logCritical(
         "Fallo Guardado Configuración",
@@ -255,7 +261,9 @@ export const configManager = {
         summaryFile: oldConfig.memory?.summaryFile || "silvania/memoria_conversacion.json"
       },
       skillsPath: oldConfig.skillsPath || "silvania/skills",
-      promptsPath: oldConfig.promptsPath || "silvania/prompts"
+      promptsPath: oldConfig.promptsPath || "silvania/prompts",
+      language: oldConfig.language || oldConfig.locale || "es",
+      locale: oldConfig.locale || oldConfig.language || "es"
     };
   }
 };

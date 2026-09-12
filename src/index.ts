@@ -26,9 +26,12 @@ import fs from "fs";
 import crypto from "crypto";
 import { criticalLogService } from "./services/criticalLog.js";
 import { generateDriveLink } from "./services/linkGenerator.js";
-import { getAuthUrl } from "./services/authHelper.js";
+import { getAuthUrl, getGoogleCredentials } from "./services/authHelper.js";
 import { checkCourtesyGreeting } from "./services/courtesyHelper.js";
 import { EVA_EXERCISES_DATABASE, EVA_LESSONS } from "./config/evaExercises.js";
+import { clearUserGogCredentials } from "./tools/gogWrapper.js";
+import { configManager } from "./services/configManager.js";
+import { morningRadarService } from "./services/morningRadar.js";
 
 if (process.env.GOOGLE_CREDS_JSON) {
   try {
@@ -759,15 +762,31 @@ app.get("/cancel", (req: any, res: any) => {
 
 // Servir archivos estáticos y rutas amigables
 app.get("/privacy", (req: any, res: any) => res.sendFile(path.join(process.cwd(), "public", "privacy.html")));
+app.get("/terms", (req: any, res: any) => res.sendFile(path.join(process.cwd(), "public", "terms.html")));
 app.get("/eva", (req: any, res: any) => res.sendFile(path.join(process.cwd(), "public", "eva.html")));
 app.get("/evaagent", (req: any, res: any) => res.sendFile(path.join(process.cwd(), "public", "eva.html")));
-app.get("/coreagent", (req: any, res: any) => res.sendFile(path.join(process.cwd(), "public", "index.html")));
+app.get("/eva-landing", (req: any, res: any) => res.sendFile(path.join(process.cwd(), "public", "eva-landing.html")));
+app.get("/coreagent", rateLimiter(60, 60000), (req: any, res: any) => {
+  try {
+    const htmlPath = path.join(process.cwd(), "public", "coreagent.html");
+    if (fs.existsSync(htmlPath)) {
+      let html = fs.readFileSync(htmlPath, "utf8");
+      html = html.replace(/{{BOT_USERNAME}}/g, botUsername);
+      res.send(html);
+    } else {
+      res.sendFile(path.join(process.cwd(), "public", "index.html"));
+    }
+  } catch (err: any) {
+    console.error("Error sirviendo coreagent page:", err);
+    res.status(500).send("Error interno.");
+  }
+});
 app.use(express.static("public"));
 
 // Endpoint para la interacción conversacional en tiempo real con Eva (Logopedia & Pronunciación)
 app.post("/api/eva-chat", rateLimiter(40, 60000), express.json(), async (req: any, res: any) => {
   try {
-    const { message, history, exerciseContext, cameraActive, userProfile, sessionScoresHistory } = req.body;
+    const { message, history, exerciseContext, cameraActive, userProfile, sessionScoresHistory, currentMission } = req.body;
     if (!message) {
       return res.status(400).json({ error: "Falta el mensaje del usuario." });
     }
@@ -776,6 +795,11 @@ app.post("/api/eva-chat", rateLimiter(40, 60000), express.json(), async (req: an
     const age = parseInt(userProfile?.age || "0", 10);
     const difficulty = userProfile?.difficulty || "";
     const style = userProfile?.style || "";
+
+    const missionWorld = currentMission?.worldName || "";
+    const missionTitle = currentMission?.missionName || "";
+    const starsCount = currentMission?.starsCount || 0;
+    const badgesEarned = Array.isArray(currentMission?.badges) ? currentMission.badges.join(", ") : "";
 
     const scoresHistoryText = Array.isArray(sessionScoresHistory) && sessionScoresHistory.length > 0
       ? sessionScoresHistory.map((h: any) => `- Ejercicio: "${h.exerciseName}" | Frase modelo: "${h.targetText}" | Lo que dijo: "${h.userText}" | Precisión real: ${h.score}%`).join("\n")
@@ -789,12 +813,19 @@ app.post("/api/eva-chat", rateLimiter(40, 60000), express.json(), async (req: an
 - Dificultades: ${difficulty || "Desconocidas (fonemas a trabajar como R, L, S, etc.)"}
 - Estilo: ${style || "Desconocido (divertido/animales o serio/formal)"}
 
+🔷 MAPA DE AVENTURAS INFANTIL Y PROGRESO:
+- Mundo actual: ${missionWorld || "La Granja 🚜"}
+- Misión activa: ${missionTitle || "Práctica guiada"}
+- Estrellas acumuladas: ${starsCount} 🌟
+- Insignias obtenidas: ${badgesEarned || "Ninguna aún"}
+- Si estás en la Granja o en el Espacio, saluda o anima refiriéndote al mapa ("seguimos en la Granja", "desbloqueamos una estrella", "¡listos para el Espacio!").
+
 🔷 INICIANDO LLAMADA PROACTIVA (onboarding):
 Si el mensaje del usuario es exactamente "INICIAR_LLAMADA":
 - Tu primer mensaje DEBE ser proactivo buscando información del usuario para completar su perfil de forma amigable (¡nunca sueltes trabalenguas de entrada!).
 - Si falta el nombre, saluda proactivamente y pídelo: "¡Hola! Soy Eva, tu logopeda personal. ¿Con quién tengo el gusto de hablar hoy?" o similar.
 - Si ya tienes el nombre pero falta la edad, saluda y pídele la edad: "¡Qué lindo saludarte, [Nombre]! ¿Cuántos años tienes para adaptar nuestros juegos?"
-- Si tienes nombre y edad, saluda cálidamente y pregúntale si está listo para empezar su clase de 20-25 minutos.
+- Si tienes nombre y edad, saluda cálidamente y pregúntale si está listo para empezar su clase en ${missionWorld || "La Granja"}.
 
 🔷 INSTRUCCIONES DE ONBOARDING DURANTE DIÁLOGO:
 Si falta alguno de los datos del perfil (Nombre, Edad, Dificultad o Estilo) en tus turnos iniciales:
@@ -986,29 +1017,38 @@ function convertMarkdownToHtml(text: string): string {
 
   let processed = text;
 
-  // 1. Convertir negritas Markdown a HTML
+  // 1. Convertir negritas Markdown a HTML (**bold** y __bold__)
   processed = processed.replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
   processed = processed.replace(/__([^_]+)__/g, "<b>$1</b>");
 
-  // 2. Convertir código en línea
+  // 2. Convertir títulos o énfasis con asterisco simple *texto* (no listas ni operaciones matemáticas)
+  processed = processed.replace(/(^|[\s\n])\*([^\s*][^*]*[^\s*]|\S)\*(?=[\s\n.,:;!?]|$)/g, "$1<b>$2</b>");
+
+  // 3. Convertir código en línea
   processed = processed.replace(/`([^`]+)`/g, "<code>$1</code>");
 
-  // 3. Proteger todas las etiquetas HTML legítimas básicas (b, i, code, pre, u, s, strike, del, span)
+  // 4. Convertir enlaces Markdown [texto](url) a <a href="url">texto</a>
+  processed = processed.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, linkText, url) => {
+    const safeUrl = url.replace(/"/g, "%22").replace(/&amp;/g, "&").replace(/&/g, "&amp;");
+    return `<a href="${safeUrl}">${linkText}</a>`;
+  });
+
+  // 5. Proteger todas las etiquetas HTML legítimas básicas (b, i, code, pre, u, s, strike, del, span, a)
   const tokens: string[] = [];
-  processed = processed.replace(/<(\/?(?:b|i|code|pre|u|s|strike|del|span))>/gi, (match) => {
+  processed = processed.replace(/<(\/?(?:b|i|code|pre|u|s|strike|del|span|a(?:\s+href="[^"]*")?))>/gi, (match) => {
     tokens.push(match);
     return `___HTML_TOKEN_${tokens.length - 1}___`;
   });
 
-  // 4. Escapar el resto de caracteres reservados de HTML
+  // 6. Escapar el resto de caracteres reservados de HTML (&, <, >)
   processed = processed
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 
-  // 5. Restaurar las etiquetas protegidas
+  // 7. Restaurar las etiquetas protegidas
   processed = processed.replace(/___HTML_TOKEN_(\d+)___/g, (_, idx) => {
-    return tokens[parseInt(idx)];
+    return tokens[parseInt(idx, 10)];
   });
 
   return processed;
@@ -1046,19 +1086,6 @@ async function safeReply(ctx: any, text: string) {
   await safeSendMessage(bot, ctx.chat.id, text);
 }
 
-function getGoogleCredentials() {
-  try {
-    const credsPath = path.join(process.cwd(), "data", "gmail-credentials.json");
-    if (fs.existsSync(credsPath)) {
-      const data = JSON.parse(fs.readFileSync(credsPath, "utf8"));
-      return data.installed || data.web;
-    }
-  } catch (err: any) {
-    console.error("Error leyendo gmail-credentials.json:", err.message);
-  }
-  return null;
-}
-
 app.get("/auth/google/callback", rateLimiter(10, 60000), async (req: any, res: any) => {
   const { code, state } = req.query;
   if (!code || !state) {
@@ -1072,7 +1099,7 @@ app.get("/auth/google/callback", rateLimiter(10, 60000), async (req: any, res: a
   }
 
   try {
-    const creds = getGoogleCredentials();
+    const creds = getGoogleCredentials(userId);
     if (!creds) {
       return res.status(500).send("No se encontraron las credenciales del cliente de Google.");
     }
@@ -1081,7 +1108,7 @@ app.get("/auth/google/callback", rateLimiter(10, 60000), async (req: any, res: a
       ? `${PUBLIC_URL}/auth/google/callback` 
       : `http://localhost:${PORT}/auth/google/callback`;
 
-    // 1. Intercambiar el código por tokens
+    // 1. Intercambiar el código por tokens usando el cliente del tier adecuado (prod vs beta)
     const tokenResponse = await axios.post("https://oauth2.googleapis.com/token", {
       code,
       client_id: creds.client_id,
@@ -1103,7 +1130,7 @@ app.get("/auth/google/callback", rateLimiter(10, 60000), async (req: any, res: a
       return res.status(400).send("No se pudo obtener el correo del usuario.");
     }
 
-    console.log(`🔑 Vinculando usuario ${userId} con el correo ${email}...`);
+    console.log(`🔑 Vinculando usuario ${userId} [Tier: ${creds.tier}] con el correo ${email}...`);
 
     // 3. Guardar el correo en la base de datos
     await dbService.setUserEmail(userId, email);
@@ -1112,17 +1139,10 @@ app.get("/auth/google/callback", rateLimiter(10, 60000), async (req: any, res: a
     if (refresh_token) {
       const tokenObj = {
         email: email,
-        client: "default",
+        client: creds.tier,
+        authTier: creds.tier,
         services: ["gmail", "calendar", "drive", "sheets"],
-        scopes: [
-          "openid",
-          "profile",
-          "https://www.googleapis.com/auth/userinfo.email",
-          "https://www.googleapis.com/auth/gmail.modify",
-          "https://www.googleapis.com/auth/drive",
-          "https://www.googleapis.com/auth/calendar",
-          "https://www.googleapis.com/auth/spreadsheets"
-        ],
+        scopes: creds.scopes.split(" "),
         created_at: new Date().toISOString(),
         refresh_token: refresh_token
       };
@@ -1130,19 +1150,50 @@ app.get("/auth/google/callback", rateLimiter(10, 60000), async (req: any, res: a
       // Guardar el token en la base de datos (SaaS)
       await dbService.saveUserToken(userId, tokenObj);
 
-      const localDataPath = path.join(process.cwd(), "data");
-      const tempTokenPath = path.join(localDataPath, `temp_token_${userId}.json`);
-      
-      fs.writeFileSync(tempTokenPath, JSON.stringify(tokenObj, null, 2));
+      // Usar exactamente el mismo directorio de datos aislado por usuario que usa runGog
+      const userAppdataPath = path.join(process.cwd(), "data", `user_${userId}`);
+      if (!fs.existsSync(userAppdataPath)) {
+        fs.mkdirSync(userAppdataPath, { recursive: true });
+      }
+
+      // Limpiar credenciales y keyring previo del usuario para asegurar que no quede refresh_token viejo
+      await clearUserGogCredentials(userId, email);
 
       const executable = path.join(process.cwd(), "bin", process.platform === "win32" ? "gog.exe" : "gog");
       const customEnv = { 
         ...process.env, 
-        APPDATA: localDataPath,
-        HOME: localDataPath, 
-        USERPROFILE: localDataPath,
-        GOG_KEYRING_PASSWORD: process.env.GOG_KEYRING_PASSWORD || "silvaniacoreagent"
+        APPDATA: userAppdataPath, 
+        HOME: userAppdataPath, 
+        USERPROFILE: userAppdataPath,
+        GOG_KEYRING_PASSWORD: process.env.GOG_KEYRING_PASSWORD || "silvaniacoreagent",
+        GOG_CLIENT: creds.tier
       };
+
+      // Registrar credenciales del tier de cliente actual
+      try {
+        const userClientObj = {
+          web: {
+            client_id: creds.client_id,
+            client_secret: creds.client_secret,
+            redirect_uris: [redirectUri]
+          }
+        };
+        const userCredsPath = path.join(userAppdataPath, "gmail-credentials.json");
+        fs.writeFileSync(userCredsPath, JSON.stringify(userClientObj, null, 2));
+
+        const clientCmd = `"${executable}" auth credentials "${userCredsPath}"`;
+        execSync(clientCmd, { env: customEnv });
+        if (creds.tier) {
+          try {
+            execSync(`"${executable}" --client=${creds.tier} auth credentials "${userCredsPath}"`, { env: customEnv });
+          } catch {}
+        }
+      } catch (cErr: any) {
+        console.error("❌ Error registrando credenciales en callback:", cErr.message);
+      }
+
+      const tempTokenPath = path.join(userAppdataPath, `temp_token_${userId}.json`);
+      fs.writeFileSync(tempTokenPath, JSON.stringify(tokenObj, null, 2));
 
       const importCmd = `"${executable}" auth tokens import "${tempTokenPath}"`;
       console.log(`🔧 [gog] Importando token: ${importCmd}`);
@@ -1155,7 +1206,7 @@ app.get("/auth/google/callback", rateLimiter(10, 60000), async (req: any, res: a
           console.error("❌ Error importando token en gog:", stderr || err.message);
           res.status(500).send("Error al registrar las credenciales en el sistema.");
         } else {
-          console.log(`✅ Token importado correctamente en gog para ${email}`);
+          console.log(`✅ Token importado correctamente en gog para ${email} (tier: ${creds.tier})`);
           
           try {
             await bot.api.sendMessage(userId, `✅ ¡Tu cuenta de Google (${email}) ha sido vinculada correctamente! Ya puedes utilizar todas mis herramientas.`);
@@ -1207,6 +1258,25 @@ app.get("/auth/google/callback", rateLimiter(10, 60000), async (req: any, res: a
   }
 });
 
+// Ruta alternativa /oauth para redirigir al flujo oficial único
+app.get("/oauth", (req: any, res: any) => {
+  res.send(`
+    <html>
+      <head>
+        <title>SilvaniaCoreAgent — Vinculación de Cuenta</title>
+        <meta charset="utf-8">
+      </head>
+      <body style="font-family: -apple-system, sans-serif; text-align: center; padding: 50px; background-color: #0b0f19; color: #f3f4f6; margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center;">
+        <div style="background: rgba(17, 24, 39, 0.7); padding: 40px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: inline-block;">
+          <h1 style="color: #3b82f6; margin-bottom: 20px; font-size: 2rem;">⚡ Vinculación Oficial de Google</h1>
+          <p style="color: #9ca3af; font-size: 1.1rem; margin-bottom: 20px;">Para vincular tu cuenta con Silvania CoreAgent, abre tu chat en Telegram y envía el comando <code>/auth</code>.</p>
+          <p style="color: #6b7280; font-size: 0.95rem;">Esto generará un enlace seguro y único adaptado a tu cuenta.</p>
+        </div>
+      </body>
+    </html>
+  `);
+});
+
 if (PUBLIC_URL) {
   app.use(express.json());
   app.post(`/bot${config.telegram.token}`, (req: any, res: any) => {
@@ -1227,7 +1297,7 @@ app.listen(PORT, () => {
 });
 
 // Función para el Cron del mensaje matutino diario
-async function sendMorningMessages(botInstance: Bot) {
+export async function sendMorningMessages(botInstance: Bot) {
   console.log("🌞 [Cron] Iniciando generación de mensajes matutinos...");
   try {
     const users = await dbService.getAllUsers();
@@ -1237,25 +1307,36 @@ async function sendMorningMessages(botInstance: Bot) {
       
       await userContextStore.run({ userId }, async () => {
         try {
+          // 0. Obtener configuración del usuario (idioma / locale)
+          let userLocale = "es";
+          try {
+            const userCfg = await configManager.loadConfig(userId);
+            if (userCfg?.language) userLocale = userCfg.language;
+            else if (userCfg?.locale) userLocale = userCfg.locale;
+          } catch (cfgErr: any) {
+            console.warn(`[Cron] No se pudo cargar config para ${userId}, usando 'es':`, cfgErr.message);
+          }
+
           // 1. Obtener eventos de hoy
-          let calendarSummary = "No hay eventos programados para hoy.";
+          let calendarSummary = userLocale === "en" ? "No events scheduled for today." : "No hay eventos programados para hoy.";
           try {
             const eventsRes = await executeTool("calendar_list", { days_ahead: 1 }, userId);
             calendarSummary = eventsRes;
           } catch (e: any) {
+            calendarSummary = userLocale === "en" ? "Could not read calendar for today." : "No pude leer el calendario para hoy.";
             console.warn(`[Cron] No se pudieron obtener eventos para ${userId}:`, e.message);
           }
 
-          // 2. Obtener correos recientes (Inbox)
-          let gmailSummary = "No se pudieron obtener correos recientes.";
+          // 2. Obtener Radar del día (Economía, IA, Mundo) con tolerancia a fallos
+          let radarMarkdown: string | null = null;
           try {
-            const gmailRes = await executeTool("gmail_list", { max_results: 5 }, userId);
-            gmailSummary = gmailRes;
-          } catch (e: any) {
-            console.warn(`[Cron] No se pudieron obtener correos para ${userId}:`, e.message);
+            radarMarkdown = await morningRadarService.getMorningRadarMarkdown(userLocale);
+          } catch (radarErr: any) {
+            console.warn(`[Cron] Error obteniendo radar matutino para ${userId}:`, radarErr.message);
+            radarMarkdown = null;
           }
 
-          // 3. Generar briefing matutino con el LLM
+          // 3. Generar briefing matutino con el LLM (100% sin Gmail / correos)
           const now = new Date();
           const madridTime = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Madrid" }));
           const start = new Date(madridTime.getFullYear(), 0, 0);
@@ -1265,30 +1346,59 @@ async function sendMorningMessages(botInstance: Bot) {
           const quoteIndex = dayOfYear % MOTIVATIONAL_QUOTES.length;
           const selectedQuote = MOTIVATIONAL_QUOTES[quoteIndex];
 
-          const prompt = `Actúa como Silvania CoreAgent, el asistente personal del usuario. Genera un briefing matutino motivador, elegante y súper estructurado en español para el usuario.
-          
-          Aquí tienes sus eventos del calendario para hoy:
-          ${calendarSummary}
-          
-          Aquí tienes sus correos electrónicos recientes:
-          ${gmailSummary}
-          
-          Frase inspiradora sugerida para hoy:
-          "${selectedQuote}"
-          
-          Instrucciones:
-          1. Saluda con cordialidad y energía.
-          2. Resume de forma clara los eventos/citas del día (usa emojis 🗓️, ⏰).
-          3. Resume los correos recientes más importantes o pendientes (usa emojis 📩, 👤).
-          4. Finaliza el briefing de manera fluida y elegante incorporando y desarrollando la frase inspiradora del día para motivar su jornada laboral como ejecutivo de élite. Asegúrate de dar un mensaje inspirador y nuevo cada día.
-          Mantén el texto conciso, elegante y profesional.`;
+          const languageName = userLocale === "en" ? "inglés" : userLocale === "pt" ? "portugués" : "español";
+          const prompt = `Actúa como Silvania CoreAgent, el asistente personal del usuario. Genera los bloques del briefing matutino para un ejecutivo de élite en ${languageName}.
 
-          const response = await llmService.chat([
-            { role: "system", content: "Eres Silvania CoreAgent, un asistente ejecutivo de élite." },
-            { role: "user", content: prompt }
-          ]);
+Aquí tienes sus eventos del calendario para hoy:
+${calendarSummary}
 
-          const text = response.content || "¡Buenos días! Que tengas un excelente día.";
+Frase inspiradora del día:
+"${selectedQuote}"
+
+Estructura obligatoria de tu respuesta:
+[SALUDO_Y_AGENDA]
+Saluda con cordialidad y energía. Resume de forma clara los eventos/citas del día (usa emojis 🗓️, ⏰). Si no hay eventos o no se pudo leer el calendario, indícalo de forma amable y natural.
+
+[MOTIVACION]
+Cierra el briefing de manera fluida y elegante incorporando y desarrollando la frase inspiradora del día para motivar su jornada laboral.
+
+IMPORTANTE: No inventes noticias ni añadas secciones adicionales. Respeta las etiquetas [SALUDO_Y_AGENDA] y [MOTIVACION].`;
+
+          let text = "";
+          try {
+            const response = await llmService.chat([
+              { role: "system", content: "Eres Silvania CoreAgent, un asistente ejecutivo de élite." },
+              { role: "user", content: prompt }
+            ]);
+
+            const responseText = response.content || "";
+            const agendaMatch = responseText.match(/\[SALUDO_Y_AGENDA\]([\s\S]*?)(\[MOTIVACION\]|$)/i);
+            const motivacionMatch = responseText.match(/\[MOTIVACION\]([\s\S]*)/i);
+
+            if (agendaMatch && motivacionMatch) {
+              const agendaPart = agendaMatch[1].trim();
+              const motivacionPart = motivacionMatch[1].trim();
+              if (radarMarkdown) {
+                text = `${agendaPart}\n\n${radarMarkdown}\n\n${motivacionPart}`;
+              } else {
+                text = `${agendaPart}\n\n${motivacionPart}`;
+              }
+            } else {
+              if (radarMarkdown) {
+                text = `${responseText.trim()}\n\n${radarMarkdown}`;
+              } else {
+                text = responseText.trim() || (userLocale === "en" ? "Good morning! Have a productive day." : "¡Buenos días! Que tengas un excelente día.");
+              }
+            }
+          } catch (llmErr: any) {
+            console.error(`[Cron] Error llamando a LLM para briefing matutino de ${userId}:`, llmErr.message);
+            const greeting = userLocale === "en" ? "Good morning! Here is your daily summary:" : "¡Buenos días! Aquí tienes tu resumen para hoy:";
+            if (radarMarkdown) {
+              text = `${greeting}\n\n${calendarSummary}\n\n${radarMarkdown}\n\n"${selectedQuote}"`;
+            } else {
+              text = `${greeting}\n\n${calendarSummary}\n\n"${selectedQuote}"`;
+            }
+          }
 
           // 4. Enviar mensaje por Telegram
           await safeSendMessage(botInstance, userId, text);
@@ -1560,8 +1670,8 @@ bot.command("seguridad", async (ctx) => {
   }
 });
 
-// Comando /auth para generar y entregar el enlace
-bot.command("auth", async (ctx) => {
+// Comando /auth y /login para generar y entregar el enlace oficial
+bot.command(["auth", "login"], async (ctx) => {
   const userId = ctx.from!.id;
   const authUrl = getAuthUrl(userId);
   if (!authUrl) {
