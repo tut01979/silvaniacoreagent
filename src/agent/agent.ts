@@ -197,7 +197,8 @@ Después de crear la skill, la instalas en el sistema y queda disponible para us
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## 🔷 MANEJO DE GOOGLE SHEETS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Para crear hojas (\`sheets_create\` o \`sheets_create_invoice\`): NO busques ni crees carpetas previas en Drive (como 'silvania'). Llama directamente a la herramienta correspondiente con el título pedido. La hoja se crea de inmediato con el scope spreadsheets.
+- Para crear hojas (\`sheets_create\` o \`sheets_create_invoice\`): NO busques ni crees carpetas previas en Drive (como 'silvania'). Llama directamente a la herramienta correspondiente con el título pedido. El sistema se encarga de crearla y organizarla automáticamente dentro de la carpeta canónica \`silvania/\`.
+- Recuerda siempre al usuario que las hojas de cálculo creadas viven organizadas dentro de su carpeta \`silvania/\` en Google Drive.
 - Crear hoja → confirmar spreadsheetId y webViewLink reales devueltos por la herramienta.
 - Crear estructura completa.
 - Añadir fórmulas reales.

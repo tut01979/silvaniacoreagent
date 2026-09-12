@@ -1,5 +1,7 @@
 import { runGog } from "./gogWrapper.js";
 import { formatFolderLink } from "../services/linkFormatter.js";
+import { folderCacheService } from "../services/folderCache.js";
+import { userContextStore } from "../services/context.js";
 
 const SEP = "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
 
@@ -41,32 +43,51 @@ function formatSheetsList(raw: any): string {
 }
 
 export const sheetsList = async (userId?: number) => {
-  const result = await runGog("drive search --raw-query \"mimeType = 'application/vnd.google-apps.spreadsheet'\" --json", userId);
   try {
-    const parsed = JSON.parse(result);
-    return formatSheetsList(parsed);
-  } catch {
-    return result;
+    const result = await runGog("drive search --raw-query \"mimeType = 'application/vnd.google-apps.spreadsheet'\" --json", userId);
+    try {
+      const parsed = JSON.parse(result);
+      return formatSheetsList(parsed);
+    } catch {
+      return result;
+    }
+  } catch (err: any) {
+    if (err.message?.includes("Tu sesión de Google expiró")) throw err;
+    return "📊 En el modo de permisos de producción, solo se pueden listar las hojas de cálculo creadas o compartidas con Silvania CoreAgent.";
   }
 };
 
 export const sheetsCreate = async (title: string, userId?: number) => {
   try {
-    const result = await runGog(`sheets create "${title}" --json`, userId);
+    const uId = userId || userContextStore.getStore()?.userId || 0;
+    const result = await runGog(`sheets create "${title}" --json`, uId);
     const parsed = JSON.parse(result);
     const sheet = parsed.spreadsheet || parsed;
     const id = sheet.spreadsheetId || sheet.id;
     if (!id) {
       throw new Error(`No se pudo obtener el ID de la hoja de cálculo. Respuesta: ${result}`);
     }
-    const link = `https://docs.google.com/spreadsheets/d/${id}/edit`;
+    const link = sheet.spreadsheetUrl || `https://docs.google.com/spreadsheets/d/${id}/edit`;
     const cleanTitle = sheet.title || sheet.properties?.title || title;
     const linkStr = formatFolderLink(cleanTitle, link);
+
+    let moveInfo = "";
+    try {
+      const silvaniaFolderId = await folderCacheService.getOrCreateFolderPath(uId, "silvania");
+      if (silvaniaFolderId && silvaniaFolderId !== "root") {
+        await runGog(`drive move ${id} --parent=${silvaniaFolderId}`, uId);
+        console.log(`📂 [Sheets] Hoja '${cleanTitle}' (${id}) movida a carpeta canónica silvania/ (${silvaniaFolderId})`);
+        moveInfo = `\n📂 **Ubicación:** Guardada en la carpeta canónica \`silvania/\``;
+      }
+    } catch (moveErr: any) {
+      console.warn(`⚠️ [Sheets] Falló el movimiento de la hoja '${id}' a silvania/:`, moveErr?.message || moveErr);
+      moveInfo = `\n⚠️ *Aviso: La hoja fue creada pero no se pudo mover a la carpeta silvania/ (${moveErr?.message || "error al mover"}).*`;
+    }
     
     return `✅ **HOJA DE CÁLCULO CREADA**\n${SEP}\n\n` +
            `${linkStr}\n` +
            `ID: ${id}\n` +
-           `spreadsheetId: ${id}\n\n` +
+           `spreadsheetId: ${id}${moveInfo}\n\n` +
            `*Puedes empezar a escribir datos usando sheets_write.*`;
   } catch (error: any) {
     return `❌ **Error al crear la hoja de cálculo:** ${error.message}`;
@@ -246,10 +267,15 @@ export const sheetsCreateInvoice = async (opts: { title: string; number?: string
       }
     }
 
+    let moveNote = "\n📂 **Ubicación:** Guardada en la carpeta canónica `silvania/`";
+    if (createRes.includes("Aviso: La hoja fue creada pero no se pudo mover")) {
+      moveNote = "\n⚠️ *Aviso: La factura fue creada pero no se pudo mover a la carpeta silvania/.*";
+    }
+
     const editLink = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
     return `✅ **FACTURA CREADA Y CONFIGURADA CON ÉXITO**\n${SEP}\n\n` +
            `📊 **Documento:** [${title}](${editLink})\n` +
-           `🆔 **spreadsheetId:** \`${spreadsheetId}\`\n` +
+           `🆔 **spreadsheetId:** \`${spreadsheetId}\`${moveNote}\n` +
            `📍 **Rango inicial:** \`A1\` (matriz 2D escrita de una sola vez)\n\n` +
            `*Se han volcado las fórmulas automáticas vivas de Importe (=B12*C12, etc.), Subtotal, IVA 21% y Total de forma correcta.*`;
   } catch (error: any) {

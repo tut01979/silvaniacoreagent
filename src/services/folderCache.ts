@@ -12,7 +12,10 @@ export const folderCacheService = {
    * Si existen carpetas duplicadas, selecciona de forma canónica la registrada en DB o la más antigua,
    * guardándola en DB y evitando crear duplicados.
    */
-  async getOrCreateFolderPath(userId: number, pathParts: string[]): Promise<string> {
+  async getOrCreateFolderPath(userId: number, pathInput: string[] | string): Promise<string> {
+    const pathParts = Array.isArray(pathInput)
+      ? pathInput
+      : String(pathInput).split(/[/\\]/).filter(p => p.trim().length > 0);
     const fullPathStr = pathParts.join("/");
     const fullCacheKey = `${userId}:${fullPathStr}`;
     if (folderIdCache.has(fullCacheKey)) {
