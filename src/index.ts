@@ -1559,17 +1559,53 @@ bot.use(async (ctx, next) => {
   await next();
 });
 
-// Comando /start
-bot.command("start", (ctx) => ctx.reply(
-  `¡Hola! Soy Silvania, tu agente ejecutivo elite premium.\n` +
-  `No soy solo un chat bot puedo hacer o ejecutar tareas reales en el mundo real ¿Cómo te llamas?\n\n` +
-  `Ademas tambien puedo adaptarme a diferentes perfiles. Estos son algunos roles predeterminados:\n` +
-  `• Ejecutivo (por defecto)\n` +
-  `• Marketing\n` +
-  `• Soporte Técnico\n` +
-  `• Investigador / Analista\n\n` +
-  `Dime cuál prefieres o descríbeme cómo quieres que sea (puedo personalizarlo al 100% según tus necesidades).`
-));
+// Comando /start - Onboarding Fase 0 (Early Access / Producción)
+bot.command("start", async (ctx) => {
+  const channelUrl = config.marketing?.telegramChannelUrl;
+  const channelLine = channelUrl 
+    ? `\n📢 **Canal Oficial de Novedades y Demos:** ${channelUrl}\n` 
+    : `\n📢 Usa /canal para conocer nuestro canal oficial de demos.\n`;
+
+  const welcomeText = 
+    `👋 **¡Hola! Te doy la bienvenida a Silvania CoreAgent.**\n\n` +
+    `Soy tu asistente ejecutivo en Telegram, diseñado para ejecutar acciones reales en tu día a día integrado con **Google Workspace** mediante texto o notas de voz:\n\n` +
+    `📁 **Google Drive:** Búsqueda rápida, organización y consulta de documentos.\n` +
+    `✉️ **Gmail:** Redacción y envío seguro de correos bajo tu orden directa.\n` +
+    `📅 **Google Calendar:** Creación de eventos, citas y gestión de agenda.\n` +
+    `📊 **Google Sheets:** Registro de datos, facturación estructurada y tablas.\n` +
+    `🌐 **Navegación Web:** Búsqueda e inspección de páginas y empresas en tiempo real.\n\n` +
+    `🚀 **Acceso Anticipado (Early Access):**\n` +
+    `Para conectar tus herramientas de Google con permisos oficiales y seguros, pulsa:\n` +
+    `👉 /auth\n` +
+    channelLine +
+    `\n🌐 Más información y documentación: https://silvania.ai/coreagent\n` +
+    `💬 Tu feedback directo por privado es clave en esta fase. ¿Qué tarea te gustaría automatizar hoy?`;
+
+  await ctx.reply(welcomeText, { parse_mode: "Markdown", link_preview_options: { is_disabled: true } });
+});
+
+// Comando /canal para consultar o acceder al canal vitrina
+bot.command("canal", async (ctx) => {
+  const channelUrl = config.marketing?.telegramChannelUrl;
+  if (channelUrl && channelUrl.trim().length > 0) {
+    await ctx.reply(
+      `📢 **Canal Oficial de Novedades y Demos (Silvania AI):**\n\n` +
+      `Sigue el desarrollo en abierto (build-in-public), nuevos casos de uso y demostraciones en vídeo:\n` +
+      `👉 ${channelUrl}\n\n` +
+      `_Espacio oficial de lectura para estar al día de las últimas mejoras._`,
+      { link_preview_options: { is_disabled: false } }
+    );
+  } else {
+    await ctx.reply(
+      `📢 **Canal Oficial Silvania AI:**\n\n` +
+      `Estamos preparando el lanzamiento de nuestro canal público de demostraciones y novedades.\n` +
+      `Puedes consultar información actualizada y novedades del ecosistema en nuestra web oficial:\n` +
+      `👉 https://silvania.ai/coreagent\n\n` +
+      `Para cualquier consulta o sugerencia, puedes escribirnos directamente por este chat.`,
+      { link_preview_options: { is_disabled: true } }
+    );
+  }
+});
 
 // Comando /clear para resetear la memoria
 bot.command("clear", async (ctx) => {

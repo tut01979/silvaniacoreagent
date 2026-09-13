@@ -60,7 +60,8 @@ export const config = {
     premiumVoice: process.env.MARKETING_PREMIUM_VOICE === "true",
     imageProvider: process.env.MARKETING_IMAGE_PROVIDER || "pollinations_flux",
     adminIds: (process.env.MARKETING_ADMIN_IDS || "1572946817").split(",").map(id => parseInt(id.trim())).filter(id => !isNaN(id)),
-    telegramChannelId: process.env.MARKETING_TELEGRAM_CHANNEL_ID || ""
+    telegramChannelId: process.env.MARKETING_TELEGRAM_CHANNEL_ID || "",
+    telegramChannelUrl: process.env.MARKETING_TELEGRAM_CHANNEL_URL || ""
   },
   tempDir: "./temp"
 };

@@ -85,6 +85,14 @@ export const telegramReview = {
     const data: string = ctx.callbackQuery?.data || "";
     if (!data.startsWith("mkt_")) return false;
 
+    // Solo administradores autorizados pueden interactuar con marketing
+    const userId = ctx.from?.id;
+    const adminIds = config.marketing?.adminIds || [1572946817];
+    if (!userId || !adminIds.includes(userId)) {
+      await ctx.answerCallbackQuery({ text: "⛔ No tienes permisos para gestionar marketing." });
+      return true;
+    }
+
     const parts = data.split("_");
     const action = parts[1]; // pub, reg, rej, scr
     const draftId = parts.slice(2).join("_");
@@ -98,9 +106,10 @@ export const telegramReview = {
     if (action === "pub") {
       const channelId = config.marketing?.telegramChannelId;
 
-      if (channelId) {
+      if (channelId && channelId.trim().length > 0) {
         // Si hay canal configurado, publicar de forma real
         try {
+          console.log(`📢 [Marketing] Publicando borrador #${draftId} en canal ${channelId}...`);
           const hasImage = draft.imageUrls && draft.imageUrls.length > 0 && fs.existsSync(draft.imageUrls[0]);
           let channelMsg: any = null;
 
@@ -116,31 +125,46 @@ export const telegramReview = {
             channelMsg = await bot.api.sendMessage(channelId, publishCaption);
           }
 
+          draft.status = "published";
           draft.channelPublished = true;
           draft.channelMessageId = channelMsg.message_id;
-          marketingDb.updateStatus(draftId, "published");
+          draft.publishedAt = new Date().toISOString();
+          draft.updatedAt = new Date().toISOString();
           marketingDb.saveDraft(draft);
+
+          let postLinkNote = "";
+          const channelUrl = config.marketing?.telegramChannelUrl;
+          if (channelUrl) {
+            const cleanUrl = channelUrl.endsWith("/") ? channelUrl.slice(0, -1) : channelUrl;
+            postLinkNote = `\n🔗 [Ver en el canal](${cleanUrl}/${channelMsg.message_id})`;
+          }
 
           await ctx.answerCallbackQuery({ text: "🚀 ¡Publicado en el canal de Telegram!" });
           await ctx.editMessageReplyMarkup({ reply_markup: undefined });
-          await ctx.reply(`✅ *¡Borrador #${draftId.slice(0, 8)} publicado en el canal oficial!*`, { parse_mode: "Markdown" });
+          await ctx.reply(`✅ *¡Borrador #${draftId.slice(0, 8)} publicado en el canal oficial!*${postLinkNote}`, { parse_mode: "Markdown" });
           return true;
         } catch (publishErr: any) {
           console.error("❌ Error publicando en canal de Telegram:", publishErr.message);
-          marketingDb.updateStatus(draftId, "approved");
-          await ctx.answerCallbackQuery({ text: "⚠️ Error de permisos al publicar en canal. Marcado como aprobado." });
-          await ctx.reply(`⚠️ Aprobado, pero falló el envío al canal (${publishErr.message}). Verifica que el bot sea administrador del canal.`);
+          draft.status = "approved_saved";
+          draft.updatedAt = new Date().toISOString();
+          marketingDb.saveDraft(draft);
+          await ctx.answerCallbackQuery({ text: "⚠️ Error al enviar al canal. Guardado en base de datos." });
+          await ctx.reply(`⚠️ Aprobado y guardado en SQLite, pero falló el envío al canal (${publishErr.message}). Verifica que el bot sea administrador del canal con permisos de publicar.`);
           return true;
         }
       } else {
-        // Si NO hay canal configurado: no inventar publicación, solo marcar como aprobado
-        marketingDb.updateStatus(draftId, "approved");
-        await ctx.answerCallbackQuery({ text: "✅ Aprobado y listo." });
+        // Si NO hay canal configurado: no inventar publicación, marcar como approved_saved
+        console.log(`ℹ️ [Marketing] Skip publish: no hay canal configurado en MARKETING_TELEGRAM_CHANNEL_ID. Guardando borrador #${draftId}...`);
+        draft.status = "approved_saved";
+        draft.updatedAt = new Date().toISOString();
+        marketingDb.saveDraft(draft);
+        await ctx.answerCallbackQuery({ text: "✅ Aprobado y guardado." });
         await ctx.editMessageReplyMarkup({ reply_markup: undefined });
         await ctx.reply(
-          `✅ *Borrador #${draftId.slice(0, 8)} APROBADO*\n\n` +
-          `_Nota: No hay canal de Telegram configurado en \`MARKETING_TELEGRAM_CHANNEL_ID\`. ` +
-          `El contenido está aprobado y almacenado en base de datos para copiar o publicar cuando desees._`,
+          `✅ *Borrador #${draftId.slice(0, 8)} APROBADO Y GUARDADO*\n\n` +
+          `_El contenido ha sido aprobado y guardado en la base de datos (SQLite)._\n\n` +
+          `💡 *Para publicarlo automáticamente en tu canal vitrina:*\n` +
+          `Configura la variable \`MARKETING_TELEGRAM_CHANNEL_ID\` en Railway con el ID numérico de tu canal (ej. \`-100xxxxxxxxxx\`).`,
           { parse_mode: "Markdown" }
         );
         return true;

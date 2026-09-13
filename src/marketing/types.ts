@@ -1,6 +1,6 @@
 export type ContentFormat = "social_post" | "youtube_long" | "youtube_short" | "newsletter";
 
-export type DraftStatus = "pending_review" | "approved" | "regenerating" | "rejected" | "published";
+export type DraftStatus = "pending_review" | "approved" | "approved_saved" | "regenerating" | "rejected" | "published";
 
 export interface SceneBreakdown {
   sceneNumber: number;
