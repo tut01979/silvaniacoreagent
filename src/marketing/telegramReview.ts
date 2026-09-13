@@ -45,24 +45,54 @@ export const telegramReview = {
     // 1. Enviar imagen si existe
     const hasImage = draft.imageUrls && draft.imageUrls.length > 0 && fs.existsSync(draft.imageUrls[0]);
     if (hasImage) {
+      if (summaryText.length <= 1000) {
+        try {
+          await bot.api.sendPhoto(draft.userId, new InputFile(draft.imageUrls[0]), {
+            caption: summaryText,
+            parse_mode: "Markdown",
+            reply_markup: keyboard,
+          });
+        } catch (err: any) {
+          // Fallback sin Markdown si hay caracteres conflictivos en el copy
+          await bot.api.sendPhoto(draft.userId, new InputFile(draft.imageUrls[0]), {
+            caption: summaryText.replace(/[*_`]/g, ""),
+            reply_markup: keyboard,
+          });
+        }
+      } else {
+        // Si el texto supera los 1000 caracteres, Telegram rechaza caption > 1024.
+        // Enviamos la imagen primero y el texto completo con los botones interactivos después.
+        try {
+          await bot.api.sendPhoto(draft.userId, new InputFile(draft.imageUrls[0]), {
+            caption: `📸 *Propuesta Visual:* "${draft.topic.slice(0, 100)}"`,
+            parse_mode: "Markdown",
+          });
+        } catch {
+          await bot.api.sendPhoto(draft.userId, new InputFile(draft.imageUrls[0]));
+        }
+
+        try {
+          await bot.api.sendMessage(draft.userId, summaryText, {
+            parse_mode: "Markdown",
+            reply_markup: keyboard,
+          });
+        } catch (err: any) {
+          await bot.api.sendMessage(draft.userId, summaryText.replace(/[*_`]/g, ""), {
+            reply_markup: keyboard,
+          });
+        }
+      }
+    } else {
       try {
-        await bot.api.sendPhoto(draft.userId, new InputFile(draft.imageUrls[0]), {
-          caption: summaryText,
+        await bot.api.sendMessage(draft.userId, summaryText, {
           parse_mode: "Markdown",
           reply_markup: keyboard,
         });
       } catch (err: any) {
-        // Fallback sin Markdown si hay caracteres conflictivos en el copy
-        await bot.api.sendPhoto(draft.userId, new InputFile(draft.imageUrls[0]), {
-          caption: summaryText.replace(/[*_`]/g, ""),
+        await bot.api.sendMessage(draft.userId, summaryText.replace(/[*_`]/g, ""), {
           reply_markup: keyboard,
         });
       }
-    } else {
-      await bot.api.sendMessage(draft.userId, summaryText, {
-        parse_mode: "Markdown",
-        reply_markup: keyboard,
-      });
     }
 
     // 2. Enviar audio si existe
@@ -118,9 +148,15 @@ export const telegramReview = {
             : `${draft.videoScript?.title || draft.topic}`;
 
           if (hasImage) {
-            channelMsg = await bot.api.sendPhoto(channelId, new InputFile(draft.imageUrls[0]), {
-              caption: publishCaption.slice(0, 1024),
-            });
+            if (publishCaption.length <= 1000) {
+              channelMsg = await bot.api.sendPhoto(channelId, new InputFile(draft.imageUrls[0]), {
+                caption: publishCaption,
+              });
+            } else {
+              // Si el copy es largo, foto primero y post completo después
+              await bot.api.sendPhoto(channelId, new InputFile(draft.imageUrls[0]));
+              channelMsg = await bot.api.sendMessage(channelId, publishCaption);
+            }
           } else {
             channelMsg = await bot.api.sendMessage(channelId, publishCaption);
           }
