@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eva | Entrenamiento de Voz y Logopedia Lúdica con IA</title>
+  <meta name="description" content="Estimulación del habla y pronunciación infantil mediante inteligencia artificial interactiva, misiones espaciales y de granja, y privacidad 100% local.">
+  
+  <!-- Open Graph -->
+  <meta property="og:title" content="Eva | Entrenamiento de Voz y Logopedia Lúdica con IA">
+  <meta property="og:description" content="Aprende a hablar y pronunciar jugando con Eva. Misiones guiadas, estrellas, insignias y privacidad total para niños.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://silvania.ai/eva-landing">
+  <meta property="og:image" content="https://silvania.ai/eva_hero.jpg">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    :root {
+      --bg-color: #0b0f19;
+      --card-bg: rgba(22, 30, 49, 0.6);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --eva-pink: #ec4899;
+      --eva-purple: #a855f7;
+      --eva-cyan: #06b6d4;
+      --eva-emerald: #10b981;
+      --eva-amber: #f59e0b;
+      --font-title: 'Outfit', sans-serif;
+      --font-body: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    /* Fondo espacial cálido */
+    .bg-glows {
+      position: fixed;
+      width: 100vw;
+      height: 100vh;
+      top: 0;
+      left: 0;
+      overflow: hidden;
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    .glow-circle {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(150px);
+      opacity: 0.14;
+    }
+
+    .glow-1 {
+      width: 650px;
+      height: 650px;
+      background: var(--eva-purple);
+      top: -100px;
+      left: -150px;
+    }
+
+    .glow-2 {
+      width: 600px;
+      height: 600px;
+      background: var(--eva-cyan);
+      bottom: 5%;
+      right: -100px;
+    }
+
+    /* Header */
+    header {
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      background-color: rgba(11, 15, 25, 0.8);
+      border-bottom: 1px solid var(--card-border);
+      position: fixed;
+      width: 100%;
+      top: 0;
+      left: 0;
+      z-index: 100;
+      padding: 1rem 2rem;
+    }
+
+    .header-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-family: var(--font-title);
+      font-weight: 800;
+      font-size: 1.4rem;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      text-decoration: none;
+    }
+
+    .logo-badge {
+      font-size: 0.75rem;
+      background: rgba(168, 85, 247, 0.18);
+      color: #c084fc;
+      border: 1px solid rgba(168, 85, 247, 0.35);
+      padding: 2px 9px;
+      border-radius: 20px;
+      font-weight: 700;
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 1.8rem;
+    }
+
+    nav a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.92rem;
+      font-weight: 500;
+      transition: color 0.2s ease;
+    }
+
+    nav a:hover {
+      color: var(--text-main);
+    }
+
+    .nav-btn {
+      background: linear-gradient(135deg, #a855f7, #6366f1);
+      color: white !important;
+      padding: 0.65rem 1.5rem;
+      border-radius: 50px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      box-shadow: 0 4px 20px rgba(168, 85, 247, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      transition: all 0.2s ease;
+    }
+
+    .nav-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(168, 85, 247, 0.45);
+    }
+
+    /* Hero */
+    .hero {
+      padding: 8.5rem 2rem 4rem;
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 3.5rem;
+      align-items: center;
+    }
+
+    .hero-tag {
+      background: rgba(168, 85, 247, 0.12);
+      border: 1px solid rgba(168, 85, 247, 0.3);
+      color: #c084fc;
+      padding: 0.4rem 1.1rem;
+      border-radius: 50px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1.4rem;
+    }
+
+    .hero h1 {
+      font-family: var(--font-title);
+      font-size: 3.3rem;
+      line-height: 1.15;
+      font-weight: 800;
+      margin-bottom: 1.2rem;
+      letter-spacing: -0.5px;
+    }
+
+    .hero h1 span {
+      background: linear-gradient(135deg, #c084fc, #38bdf8, #34d399);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      color: var(--text-muted);
+      font-size: 1.12rem;
+      margin-bottom: 2rem;
+      max-width: 530px;
+      line-height: 1.7;
+    }
+
+    .cta-container {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-main {
+      background: linear-gradient(135deg, #a855f7, #6366f1);
+      color: white;
+      text-decoration: none;
+      padding: 0.95rem 2.2rem;
+      border-radius: 14px;
+      font-weight: 700;
+      font-size: 1.05rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      box-shadow: 0 10px 25px rgba(168, 85, 247, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      transition: all 0.3s ease;
+    }
+
+    .btn-main:hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 15px 35px rgba(168, 85, 247, 0.5);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-main);
+      text-decoration: none;
+      padding: 0.95rem 1.8rem;
+      border-radius: 14px;
+      font-weight: 600;
+      font-size: 1rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      border: 1px solid var(--card-border);
+      transition: all 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .hero-image-wrapper {
+      position: relative;
+      display: flex;
+      justify-content: center;
+    }
+
+    .hero-image-wrapper img {
+      width: 100%;
+      max-width: 500px;
+      border-radius: 28px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7), 0 0 40px rgba(168, 85, 247, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      transition: transform 0.4s ease;
+    }
+
+    .hero-image-wrapper:hover img {
+      transform: scale(1.02);
+    }
+
+    /* Disclaimer Banner Clínico */
+    .disclaimer-banner {
+      max-width: 1100px;
+      margin: 2rem auto;
+      padding: 1.2rem 2rem;
+      border-radius: 18px;
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+      color: #fde68a;
+      font-size: 0.92rem;
+      line-height: 1.6;
+    }
+
+    .disclaimer-banner i {
+      font-size: 1.6rem;
+      color: var(--eva-amber);
+      flex-shrink: 0;
+    }
+
+    /* Section Styling */
+    .section-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 5rem 2rem;
+    }
+
+    .section-title {
+      text-align: center;
+      margin-bottom: 3.5rem;
+    }
+
+    .section-title h2 {
+      font-family: var(--font-title);
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 0.9rem;
+    }
+
+    .section-title h2 span {
+      background: linear-gradient(135deg, #c084fc, #38bdf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .section-title p {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* Worlds / Map Showcase */
+    .worlds-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2.5rem;
+    }
+
+    .world-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 28px;
+      padding: 2.8rem 2.2rem;
+      backdrop-filter: blur(16px);
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .world-card:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-4px);
+    }
+
+    .world-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.3rem 0.9rem;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      margin-bottom: 1.2rem;
+    }
+
+    .wb-farm { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .wb-space { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+
+    .world-card h3 {
+      font-family: var(--font-title);
+      font-size: 1.8rem;
+      margin-bottom: 0.8rem;
+    }
+
+    .world-card p {
+      color: var(--text-muted);
+      font-size: 0.98rem;
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+    }
+
+    .world-features {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+
+    .world-features li {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.92rem;
+      color: #e2e8f0;
+    }
+
+    .world-features li i {
+      color: var(--eva-amber);
+    }
+
+    /* Pillars of Privacy */
+    .privacy-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2rem;
+      margin-top: 2rem;
+    }
+
+    .privacy-card {
+      background: linear-gradient(135deg, rgba(22, 30, 49, 0.7), rgba(15, 23, 42, 0.6));
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: 24px;
+      padding: 2.2rem;
+      text-align: center;
+    }
+
+    .privacy-icon {
+      width: 58px;
+      height: 58px;
+      border-radius: 18px;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      margin: 0 auto 1.4rem;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .privacy-card h4 {
+      font-family: var(--font-title);
+      font-size: 1.25rem;
+      margin-bottom: 0.6rem;
+    }
+
+    .privacy-card p {
+      color: var(--text-muted);
+      font-size: 0.92rem;
+      line-height: 1.6;
+    }
+
+    /* FAQ */
+    .faq-list {
+      max-width: 800px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+    }
+
+    .faq-item {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      padding: 1.6rem 2rem;
+    }
+
+    .faq-item h4 {
+      font-family: var(--font-title);
+      font-size: 1.15rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .faq-item p {
+      color: var(--text-muted);
+      font-size: 0.93rem;
+      line-height: 1.6;
+    }
+
+    /* Bottom CTA */
+    .bottom-cta {
+      background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(6, 182, 212, 0.15));
+      border: 1px solid rgba(168, 85, 247, 0.4);
+      border-radius: 32px;
+      padding: 4.5rem 2rem;
+      text-align: center;
+      margin: 4rem auto;
+      max-width: 1000px;
+    }
+
+    .bottom-cta h2 {
+      font-family: var(--font-title);
+      font-size: 2.6rem;
+      font-weight: 800;
+      margin-bottom: 1rem;
+    }
+
+    .bottom-cta p {
+      color: var(--text-muted);
+      font-size: 1.15rem;
+      max-width: 550px;
+      margin: 0 auto 2.2rem;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--card-border);
+      padding: 3rem 2rem 2rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .footer-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .footer-links a:hover {
+      color: var(--text-main);
+    }
+
+    @media (max-width: 900px) {
+      .hero {
+        grid-template-columns: 1fr;
+        padding-top: 7rem;
+        text-align: center;
+      }
+      .hero h1 { font-size: 2.4rem; }
+      .hero p { margin: 0 auto 2rem; }
+      .cta-container { justify-content: center; }
+      .worlds-grid { grid-template-columns: 1fr; }
+      .privacy-grid { grid-template-columns: 1fr; }
+      nav { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-glows">
+    <div class="glow-circle glow-1"></div>
+    <div class="glow-circle glow-2"></div>
+  </div>
+
+  <header>
+    <div class="header-container">
+      <a href="/" class="logo">
+        <i class="fa-solid fa-face-smile" style="color: #c084fc;"></i> Eva Agent
+        <span class="logo-badge">Voz & Estimulación</span>
+      </a>
+      <nav>
+        <a href="/"><i class="fa-solid fa-arrow-left"></i> Ecosistema Hub</a>
+        <a href="#misiones">Mundo de Misiones</a>
+        <a href="#privacidad">Privacidad</a>
+        <a href="#faq">FAQ Familias</a>
+        <a href="/coreagent" style="color: #34d399;"><i class="fa-solid fa-bolt"></i> CoreAgent</a>
+        <a href="/eva" class="nav-btn">
+          <i class="fa-solid fa-play"></i> Abrir Eva en Navegador
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-text">
+      <span class="hero-tag"><i class="fa-solid fa-wand-magic-sparkles"></i> Estimulación del Habla Lúdica & Segura</span>
+      <h1>Entrenamiento de voz y pronunciación con <span>IA</span></h1>
+      <p>Un espacio interactivo y cariñoso donde niños y familias practican dicción, superan misiones y ganan estrellas. Directo en tu navegador y sin descargas.</p>
+      <div class="cta-container">
+        <a href="/eva" class="btn-main">
+          <i class="fa-solid fa-rocket"></i> Empezar la Aventura con Eva
+        </a>
+        <a href="#misiones" class="btn-secondary">
+          <i class="fa-solid fa-map"></i> Ver Misiones
+        </a>
+      </div>
+    </div>
+    <div class="hero-image-wrapper">
+      <img src="/eva_hero.jpg" alt="Eva Asistente de Voz y Pronunciación Infantil">
+    </div>
+  </section>
+
+  <!-- Disclaimer Clínico Obligatorio -->
+  <div style="padding: 0 2rem;">
+    <div class="disclaimer-banner">
+      <i class="fa-solid fa-circle-info"></i>
+      <div>
+        <strong>Aviso Importante para Familias:</strong> Eva es una herramienta tecnológica de apoyo, refuerzo lúdico y estimulación de la pronunciación. No sustituye la evaluación, diagnóstico ni terapia de un logopeda o profesional colegiado de la salud.
+      </div>
+    </div>
+  </div>
+
+  <!-- El Mapa de Misiones -->
+  <section class="section-container" id="misiones">
+    <div class="section-title">
+      <h2>Aprender Jugando: <span>El Mapa de Misiones</span></h2>
+      <p>Ejercicios progresivos adaptados al ritmo de cada niño, con retroalimentación en tiempo real.</p>
+    </div>
+    <div class="worlds-grid">
+      <div class="world-card">
+        <span class="world-badge wb-farm"><i class="fa-solid fa-tractor"></i> Mundo 1</span>
+        <h3>La Granja Sonora 🚜</h3>
+        <p>Misiones introductorias centradas en vocales abiertas, sonidos de animales, rimas fáciles y ritmo pausado. Ideal para ganar confianza desde el primer minuto.</p>
+        <ul class="world-features">
+          <li><i class="fa-solid fa-star"></i> Misión 1: Saludo del Gallo (fonemas /a/, /o/)</li>
+          <li><i class="fa-solid fa-star"></i> Misión 2: El Viento en el Maizal (control del aire)</li>
+          <li><i class="fa-solid fa-star"></i> Misión 3: Cuento de la Oveja (frases cortas)</li>
+          <li><i class="fa-solid fa-medal"></i> Insignia desbloqueable: Explorador Granja</li>
+        </ul>
+      </div>
+
+      <div class="world-card">
+        <span class="world-badge wb-space"><i class="fa-solid fa-rocket"></i> Mundo 2</span>
+        <h3>El Espacio Exterior 🚀</h3>
+        <p>Nivel avanzado para pequeños astronautas. Desbloquea trabalenguas, agilidad verbal rápida y modulación de tonos intergalácticos.</p>
+        <ul class="world-features">
+          <li><i class="fa-solid fa-star"></i> Misión 1: Cuenta Regresiva (articulación clara)</li>
+          <li><i class="fa-solid fa-star"></i> Misión 2: Radar de Planetas (fonemas complejos)</li>
+          <li><i class="fa-solid fa-star"></i> Misión 3: Mensaje a la Tierra (fluidez continua)</li>
+          <li><i class="fa-solid fa-medal"></i> Insignia desbloqueable: Capitán Estelar</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Privacidad Infantil -->
+  <section class="section-container" id="privacidad" style="padding-top: 0;">
+    <div class="section-title">
+      <h2>Seguridad y Privacidad: <span>Los Niños Primero</span></h2>
+      <p>Diseñado con los estándares más estrictos de protección infantil en internet.</p>
+    </div>
+    <div class="privacy-grid">
+      <div class="privacy-card">
+        <div class="privacy-icon"><i class="fa-solid fa-microphone-slash"></i></div>
+        <h4>Audio 100% Efímero</h4>
+        <p>Las grabaciones de voz no se almacenan ni quedan registradas en ningún servidor. Se analizan en memoria y se descartan al instante.</p>
+      </div>
+      <div class="privacy-card">
+        <div class="privacy-icon"><i class="fa-solid fa-database"></i></div>
+        <h4>Progreso Local en tu Dispositivo</h4>
+        <p>Las estrellas, puntos y misiones completadas se guardan únicamente en el navegador de tu casa (localStorage), sin vincular perfiles externos.</p>
+      </div>
+      <div class="privacy-card">
+        <div class="privacy-icon"><i class="fa-solid fa-user-shield"></i></div>
+        <h4>Sin Cuentas de Menores</h4>
+        <p>No se solicitan correos electrónicos de niños ni accesos a servicios de Google. Abrir el navegador y comenzar a practicar.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="section-container" id="faq">
+    <div class="section-title">
+      <h2>Preguntas Frecuentes de <span>Familias</span></h2>
+      <p>Todo lo que necesitas saber antes de empezar.</p>
+    </div>
+    <div class="faq-list">
+      <div class="faq-item">
+        <h4>¿Para qué edades está recomendado?</h4>
+        <p>Las misiones están diseñadas principalmente para niños de entre 4 y 10 años, aunque cualquier persona que desee practicar dicción o pronunciación puede aprovechar sus ejercicios interactivos.</p>
+      </div>
+      <div class="faq-item">
+        <h4>¿Necesito una cámara web?</h4>
+        <p>La cámara es totalmente opcional. Permite activar el seguimiento labial (FaceMesh) para retroalimentación visual del movimiento de la boca, pero todas las misiones pueden realizarse únicamente con el micrófono.</p>
+      </div>
+      <div class="faq-item">
+        <h4>¿Se puede usar en tablet o teléfono móvil?</h4>
+        <p>Sí. Eva funciona en los navegadores modernos (Chrome, Safari, Edge, Firefox) tanto en ordenadores de sobremesa como en tablets y smartphones.</p>
+      </div>
+      <div class="faq-item">
+        <h4>¿Sustituye la consulta con un logopeda?</h4>
+        <p>No. Eva es un complemento lúdico para practicar en casa de manera divertida. Si tienes dudas sobre el desarrollo del habla de tu hijo, te recomendamos siempre acudir a un logopeda profesional colegiado.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Inferior -->
+  <div class="bottom-cta">
+    <h2>¿Listos para comenzar la primera misión?</h2>
+    <p>Abre Eva directamente en tu navegador y ayuda a tu hijo a descubrir la magia de su propia voz.</p>
+    <a href="/eva" class="btn-main">
+      <i class="fa-solid fa-play"></i> Iniciar Eva en el Navegador Gratis
+    </a>
+  </div>
+
+  <footer>
+    <div class="footer-links">
+      <a href="/">Silvania.ai Hub</a>
+      <a href="/coreagent">Silvania CoreAgent</a>
+      <a href="/privacy">Política de Privacidad</a>
+      <a href="/terms">Términos de Servicio</a>
+    </div>
+    <p>&copy; 2026 Silvania.ai — Eva Agent. Tecnología enfocada al bienestar y la estimulación verbal.</p>
+  </footer>
+</body>
+</html>

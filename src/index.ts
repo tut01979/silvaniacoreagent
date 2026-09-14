@@ -774,23 +774,236 @@ function renderFounderGatedPage(req: any, res: any, agentTitle: string, targetFi
     if (isKeyAuth) {
       res.setHeader("Set-Cookie", "silvania_founder=true; Path=/; Max-Age=2592000; SameSite=Lax");
     }
-    const htmlPath = path.join(process.cwd(), "public", targetFile);
+    const htmlPath = path.join(process.cwd(), "founder_views", targetFile);
     if (fs.existsSync(htmlPath)) {
       let html = fs.readFileSync(htmlPath, "utf8");
       html = html.replace(/{{BOT_USERNAME}}/g, botUsername);
       return res.send(html);
     } else {
-      return res.redirect("/");
+      return res.redirect("/founder");
     }
   }
 
-  // Si no está autenticado, mostrar pantalla elegante de acceso de desarrollo con PIN
+  // Redirigir al portal del fundador si no está autenticado
+  return res.redirect("/founder");
+}
+
+// ============================================================================
+// RUTAS PÚBLICAS DE AGENTES EN DESARROLLO (Redirección incondicional al Hub)
+// ============================================================================
+app.get(["/eva", "/evaagent", "/eva-landing", "/eva.html", "/eva-landing.html"], (req: any, res: any) => {
+  return res.redirect("/#eva");
+});
+
+app.get(["/marketing", "/marketing.html"], (req: any, res: any) => {
+  return res.redirect("/#marketing");
+});
+
+// ============================================================================
+// ACCESO PRIVADO EXCLUSIVO PARA EL FUNDADOR (/founder/*)
+// ============================================================================
+app.get("/founder/eva", rateLimiter(60, 60000), (req: any, res: any) => {
+  return renderFounderGatedPage(req, res, "Eva Agent (Entorno de Pruebas)", "eva.html");
+});
+
+app.get("/founder/eva-landing", rateLimiter(60, 60000), (req: any, res: any) => {
+  return renderFounderGatedPage(req, res, "Eva Agent Showcase", "eva-landing.html");
+});
+
+app.get("/founder/marketing", rateLimiter(60, 60000), (req: any, res: any) => {
+  return renderFounderGatedPage(req, res, "Silvania Marketing Studio", "marketing.html");
+});
+
+// Portal Central de Fundador
+app.get(["/founder", "/founder/hub"], rateLimiter(60, 60000), (req: any, res: any) => {
+  const queryKey = (req.query?.admin || req.query?.key || req.query?.pin || req.query?.preview || "").toString().trim().toLowerCase();
+  const cookies = req.headers?.cookie || "";
+  const isCookieAuth = cookies.includes("silvania_founder=true");
+  const isKeyAuth = queryKey === "silvania" || queryKey === "silvania2026" || queryKey === "admin" || queryKey === "1234";
+
+  if (isKeyAuth || isCookieAuth) {
+    if (isKeyAuth) {
+      res.setHeader("Set-Cookie", "silvania_founder=true; Path=/; Max-Age=2592000; SameSite=Lax");
+    }
+    return res.send(`<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Silvania Labs · Portal de Fundador</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;800&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: radial-gradient(circle at top, #0f172a 0%, #030712 100%);
+      color: #f8fafc;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1.5rem;
+    }
+    .portal-card {
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 28px;
+      padding: 3rem 2.5rem;
+      max-width: 700px;
+      width: 100%;
+      backdrop-filter: blur(25px);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
+      text-align: center;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 0.4rem 1.1rem;
+      border-radius: 50px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 1.2rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #fff 40%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    p.subtitle {
+      color: #94a3b8;
+      font-size: 1rem;
+      margin-bottom: 2.5rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.2rem;
+      margin-bottom: 2rem;
+      text-align: left;
+    }
+    .agent-item {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 18px;
+      padding: 1.5rem;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.25s ease;
+    }
+    .agent-item:hover {
+      background: rgba(255, 255, 255, 0.08);
+      transform: translateY(-4px);
+      border-color: rgba(56, 189, 248, 0.5);
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+    }
+    .agent-item.marketing:hover {
+      border-color: rgba(245, 158, 11, 0.6);
+    }
+    .agent-item.eva:hover {
+      border-color: rgba(192, 132, 252, 0.6);
+    }
+    .item-icon {
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+    }
+    .agent-item.marketing .item-icon { color: #fbbf24; }
+    .agent-item.eva .item-icon { color: #c084fc; }
+    .item-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+      color: #fff;
+    }
+    .item-desc {
+      font-size: 0.88rem;
+      color: #94a3b8;
+      line-height: 1.5;
+      margin-bottom: 1.2rem;
+    }
+    .item-btn {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #38bdf8;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .agent-item.marketing .item-btn { color: #fbbf24; }
+    .agent-item.eva .item-btn { color: #c084fc; }
+    .footer-note {
+      color: #64748b;
+      font-size: 0.85rem;
+    }
+    .footer-note a {
+      color: #94a3b8;
+      text-decoration: none;
+    }
+    .footer-note a:hover {
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <div class="portal-card">
+    <div class="badge"><i class="fa-solid fa-flask"></i> Silvania Labs · Acceso Privado</div>
+    <h1>Panel de Desarrollo de Agentes</h1>
+    <p class="subtitle">Entornos de prueba exclusivos para el fundador. Las rutas públicas están 100% protegidas y redirigen al Hub.</p>
+    
+    <div class="grid">
+      <a href="/founder/marketing" class="agent-item marketing">
+        <div>
+          <div class="item-icon"><i class="fa-solid fa-bullhorn"></i></div>
+          <div class="item-title">Silvania Marketing Studio</div>
+          <div class="item-desc">Generador de copys, artículos SEO, guiones de vídeo para YouTube y TikTok, y difusión.</div>
+        </div>
+        <div class="item-btn">Abrir Marketing Studio <i class="fa-solid fa-arrow-right"></i></div>
+      </a>
+
+      <a href="/founder/eva" class="agent-item eva">
+        <div>
+          <div class="item-icon"><i class="fa-solid fa-child-reaching"></i></div>
+          <div class="item-title">Eva Agent (Laboratorio)</div>
+          <div class="item-desc">Pruebas en tiempo real de voz interactiva, cámara MediaPipe, minimundos y minijuego de burbujas.</div>
+        </div>
+        <div class="item-btn">Abrir Entorno Eva <i class="fa-solid fa-arrow-right"></i></div>
+      </a>
+    </div>
+
+    <div style="margin-top: 1rem; display: flex; justify-content: center; gap: 1.5rem; flex-wrap: wrap;">
+      <a href="/founder/eva-landing" style="color: #94a3b8; font-size: 0.9rem; text-decoration: none;"><i class="fa-solid fa-globe"></i> Ver Showcase de Eva</a>
+      <a href="/coreagent" style="color: #94a3b8; font-size: 0.9rem; text-decoration: none;"><i class="fa-solid fa-cube"></i> Silvania CoreAgent</a>
+      <a href="/" style="color: #64748b; font-size: 0.9rem; text-decoration: none;"><i class="fa-solid fa-house"></i> Ir a la Home Pública</a>
+    </div>
+  </div>
+</body>
+</html>`);
+  }
+
+  // Si no está autenticado, renderizar formulario para introducir PIN
   return res.send(`<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${agentTitle} — Acceso de Fundador | Silvania.ai</title>
+  <title>Acceso de Fundador | Silvania.ai</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;800&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
@@ -819,9 +1032,9 @@ function renderFounderGatedPage(req: any, res: any, agentTitle: string, targetFi
     }
     .badge {
       display: inline-block;
-      background: rgba(192, 132, 252, 0.15);
-      color: #c084fc;
-      border: 1px solid rgba(192, 132, 252, 0.3);
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.3);
       padding: 0.35rem 0.9rem;
       border-radius: 50px;
       font-size: 0.82rem;
@@ -892,29 +1105,16 @@ function renderFounderGatedPage(req: any, res: any, agentTitle: string, targetFi
 <body>
   <div class="gate-card">
     <div class="badge">🔒 Silvania Labs · Modo Privado</div>
-    <h2>${agentTitle}</h2>
-    <p>Este agente se encuentra en fase de desarrollo activo y pruebas internas. Próximamente estará disponible para el público.</p>
-    <form method="GET" action="${req.path}">
+    <h2>Portal de Fundador</h2>
+    <p>Introduce tu clave de fundador para acceder a los paneles de desarrollo y prueba de los agentes.</p>
+    <form method="GET" action="/founder">
       <input type="password" name="admin" placeholder="Introduce el PIN de Fundador" autofocus required />
-      <button type="submit">Entrar al Agente</button>
+      <button type="submit">Entrar al Portal</button>
     </form>
     <a href="/" class="back-link">← Volver al Hub Principal (Silvania.ai)</a>
   </div>
 </body>
 </html>`);
-}
-
-app.get("/eva", rateLimiter(60, 60000), (req: any, res: any) => {
-  return renderFounderGatedPage(req, res, "Eva Agent", "eva.html");
-});
-app.get("/evaagent", rateLimiter(60, 60000), (req: any, res: any) => {
-  return renderFounderGatedPage(req, res, "Eva Agent", "eva.html");
-});
-app.get("/eva-landing", rateLimiter(60, 60000), (req: any, res: any) => {
-  return renderFounderGatedPage(req, res, "Eva Agent Showcase", "eva-landing.html");
-});
-app.get("/marketing", rateLimiter(60, 60000), (req: any, res: any) => {
-  return renderFounderGatedPage(req, res, "Silvania Marketing Studio", "marketing.html");
 });
 app.get("/coreagent", rateLimiter(60, 60000), (req: any, res: any) => {
   try {

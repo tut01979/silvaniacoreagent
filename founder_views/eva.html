@@ -1,0 +1,2261 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eva Agent — Super Entrenadora de Voz y Mundos de Logopedia | Silvania.ai</title>
+  <meta name="description" content="Aventura interactiva de entrenamiento de voz y logopedia con IA en tiempo real. Explora mundos, supera desafíos de pronunciación y desbloquea recompensas.">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- MediaPipe Face Mesh & Camera Utils -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+
+  <style>
+    :root {
+      --bg-dark: #030712;
+      --bg-surface: #0b1222;
+      --card-bg: rgba(15, 23, 42, 0.75);
+      --card-border: rgba(255, 255, 255, 0.1);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #a855f7;
+      --primary-glow: rgba(168, 85, 247, 0.35);
+      --secondary: #38bdf8;
+      --accent: #10b981;
+      --accent-glow: rgba(16, 185, 129, 0.3);
+      --gold: #fbbf24;
+      --font-title: 'Outfit', sans-serif;
+      --font-body: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+
+    /* Ambient background glows */
+    .bg-lights {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .light-glow {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(140px);
+      opacity: 0.15;
+    }
+    .light-1 { width: 600px; height: 600px; background: var(--primary); top: -100px; left: 10%; }
+    .light-2 { width: 500px; height: 500px; background: var(--secondary); bottom: 5%; right: 10%; }
+
+    /* Top Game Bar */
+    .game-nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      background: rgba(3, 7, 18, 0.85);
+      border-bottom: 1px solid var(--card-border);
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .nav-left, .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .btn-home {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 0.5rem 0.9rem;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      transition: all 0.2s ease;
+    }
+    .btn-home:hover {
+      color: white;
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateY(-1px);
+    }
+
+    .brand-title {
+      font-family: var(--font-title);
+      font-size: 1.15rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #c084fc, #38bdf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    /* Player Badge */
+    .player-pill {
+      background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(56, 189, 248, 0.15));
+      border: 1px solid rgba(168, 85, 247, 0.4);
+      padding: 0.4rem 0.9rem;
+      border-radius: 50px;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .player-pill:hover {
+      transform: scale(1.03);
+      border-color: #c084fc;
+    }
+    .player-avatar-mini {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1px solid #c084fc;
+    }
+    .player-name-text {
+      font-weight: 700;
+      font-size: 0.88rem;
+      color: #f1f5f9;
+    }
+
+    .stars-badge {
+      background: rgba(251, 191, 36, 0.12);
+      border: 1px solid rgba(251, 191, 36, 0.35);
+      padding: 0.4rem 0.8rem;
+      border-radius: 50px;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-weight: 800;
+      color: var(--gold);
+      font-size: 0.9rem;
+    }
+
+    .health-pill {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--card-border);
+      padding: 0.35rem 0.7rem;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    /* Main App Container */
+    main {
+      flex: 1;
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1rem 1.5rem 2rem;
+    }
+
+    /* SCREENS */
+    .game-screen {
+      display: none;
+      animation: fadeIn 0.3s ease forwards;
+      width: 100%;
+    }
+    .game-screen.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ========================================================
+       SCREEN 1: WORLDS MAP & COMPANION
+       ======================================================== */
+    .map-header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    .map-header h1 {
+      font-family: var(--font-title);
+      font-size: 2.2rem;
+      font-weight: 800;
+      margin-bottom: 0.3rem;
+    }
+    .map-header p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    /* Worlds Grid & Map Showcase */
+    .worlds-layout {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    /* Interactive Map Board Card */
+    .map-board-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: 0 20px 45px rgba(0,0,0,0.5);
+      position: relative;
+    }
+    .map-image-wrapper {
+      position: relative;
+      width: 100%;
+      padding-top: 56.25%; /* 16:9 */
+      background: #020617;
+      overflow: hidden;
+    }
+    .map-image-wrapper img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .map-board-card:hover .map-image-wrapper img {
+      transform: scale(1.02);
+    }
+
+    /* Map Interactive Hotspots */
+    .map-node {
+      position: absolute;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      font-weight: 800;
+      font-size: 1.1rem;
+      cursor: pointer;
+      box-shadow: 0 0 20px rgba(0,0,0,0.6);
+      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      z-index: 5;
+    }
+    .map-node:hover {
+      transform: scale(1.2);
+    }
+    .map-node.unlocked {
+      background: linear-gradient(135deg, #10b981, #059669);
+      border: 3px solid #6ee7b7;
+      animation: pulseNode 2s infinite;
+    }
+    .map-node.locked {
+      background: rgba(30, 41, 59, 0.85);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      color: #94a3b8;
+      cursor: not-allowed;
+    }
+    @keyframes pulseNode {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
+      50% { box-shadow: 0 0 0 14px rgba(16, 185, 129, 0); }
+    }
+
+    /* Hotspot positions on 16:9 map */
+    .node-world-1 { top: 68%; left: 18%; }
+    .node-world-2 { top: 78%; left: 47%; }
+    .node-world-3 { top: 44%; left: 61%; }
+    .node-world-4 { top: 38%; left: 87%; }
+
+    /* Map Board Footer Bar */
+    .map-board-footer {
+      padding: 1.2rem 1.6rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(10, 15, 30, 0.9);
+      border-top: 1px solid var(--card-border);
+    }
+
+    /* Worlds List & Companion Sidebar */
+    .sidebar-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+    }
+
+    /* Eva Robot Companion Interactive Card */
+    .eva-companion-card {
+      background: linear-gradient(135deg, rgba(168, 85, 247, 0.12), rgba(56, 189, 248, 0.1));
+      border: 1.5px solid rgba(168, 85, 247, 0.4);
+      border-radius: 24px;
+      padding: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+      position: relative;
+      box-shadow: 0 12px 30px rgba(168, 85, 247, 0.15);
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .eva-companion-card:hover {
+      border-color: #c084fc;
+      transform: translateY(-2px);
+      box-shadow: 0 16px 36px rgba(168, 85, 247, 0.25);
+    }
+    .eva-robot-btn {
+      width: 76px;
+      height: 76px;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 2px solid #c084fc;
+      background: #020617;
+      flex-shrink: 0;
+      position: relative;
+      box-shadow: 0 0 18px rgba(192, 132, 252, 0.5);
+      animation: floatRobot 3.5s ease-in-out infinite;
+    }
+    .eva-robot-btn img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    @keyframes floatRobot {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+    .eva-speech-bubble {
+      flex: 1;
+      font-size: 0.9rem;
+      line-height: 1.4;
+      color: #f1f5f9;
+    }
+    .eva-speech-bubble strong {
+      color: #c084fc;
+      font-size: 0.95rem;
+      display: block;
+      margin-bottom: 0.2rem;
+    }
+
+    /* Name Prompt Modal/Inline Box */
+    .name-input-box {
+      margin-top: 0.6rem;
+      display: none;
+      gap: 0.5rem;
+    }
+    .name-input-box.active {
+      display: flex;
+    }
+    .name-input-field {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(168, 85, 247, 0.4);
+      border-radius: 10px;
+      padding: 0.45rem 0.8rem;
+      color: white;
+      font-size: 0.85rem;
+      outline: none;
+    }
+    .name-input-field:focus {
+      border-color: #38bdf8;
+    }
+    .btn-save-name {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 0.45rem 0.9rem;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* World Cards List */
+    .world-cards-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+    .world-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 1.1rem 1.3rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .world-card:hover:not(.locked) {
+      border-color: rgba(168, 85, 247, 0.4);
+      transform: translateX(4px);
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .world-card.active-mission {
+      border: 2px solid #10b981;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(15, 23, 42, 0.8));
+    }
+    .world-card.locked {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .world-info h3 {
+      font-family: var(--font-title);
+      font-size: 1.05rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.25rem;
+    }
+    .world-info p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+    .world-action {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.35rem;
+    }
+    .btn-play-world {
+      background: linear-gradient(135deg, var(--accent), #059669);
+      color: white;
+      border: none;
+      padding: 0.45rem 1rem;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 0.82rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: transform 0.2s ease;
+    }
+    .btn-play-world:hover {
+      transform: scale(1.05);
+    }
+
+    /* ========================================================
+       SCREEN 2: VOICE EXERCISE ARENA (RESTORED CORE EVA)
+       ======================================================== */
+    .exercise-arena {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    .arena-left-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 28px;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      box-shadow: 0 20px 45px rgba(0,0,0,0.4);
+      position: relative;
+    }
+
+    .mission-header-bar {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.2rem;
+    }
+    .btn-back-map {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      border-radius: 12px;
+      padding: 0.45rem 0.9rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s ease;
+    }
+    .btn-back-map:hover {
+      color: white;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Target Exercise Banner */
+    .target-exercise-box {
+      width: 100%;
+      background: linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(56, 189, 248, 0.08));
+      border: 1px solid rgba(168, 85, 247, 0.35);
+      border-radius: 18px;
+      padding: 1.2rem 1.4rem;
+      margin-bottom: 1.5rem;
+      text-align: left;
+    }
+    .target-badge {
+      font-size: 0.75rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: #c084fc;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin-bottom: 0.4rem;
+    }
+    .target-phrase-text {
+      font-family: var(--font-title);
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1.4;
+    }
+
+    /* Vocal Avatar & Wave Canvas */
+    .avatar-wrapper {
+      position: relative;
+      width: 220px;
+      height: 220px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 1.2rem;
+    }
+    .wave-canvas {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .vocal-avatar {
+      width: 140px;
+      height: 140px;
+      background: radial-gradient(circle at 35% 35%, #1e1b4b, #090d16);
+      border: 3px solid rgba(168, 85, 247, 0.5);
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      box-shadow: 0 0 35px rgba(168, 85, 247, 0.25);
+      transition: all 0.25s ease;
+      z-index: 2;
+    }
+    .vocal-avatar.speaking {
+      border-color: #c084fc;
+      box-shadow: 0 0 50px rgba(192, 132, 252, 0.6);
+      transform: scale(1.04);
+    }
+    .mouth-cavity {
+      width: 58px;
+      height: 16px;
+      background: #090d16;
+      border-radius: 12px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: all 0.15s ease;
+    }
+    .tongue {
+      position: absolute;
+      bottom: -6px;
+      left: 14px;
+      width: 30px;
+      height: 16px;
+      background: #f43f5e;
+      border-radius: 50%;
+      opacity: 0;
+      transition: all 0.15s ease;
+    }
+    .lip-top, .lip-bottom {
+      width: 48px;
+      height: 5px;
+      background: #fda4af;
+      border-radius: 4px;
+      margin: 2px 0;
+      transition: all 0.15s ease;
+    }
+    .vocal-avatar.speaking .mouth-cavity {
+      height: 34px;
+      border-color: #fda4af;
+    }
+    .vocal-avatar.speaking .tongue {
+      opacity: 1;
+      bottom: -1px;
+    }
+    .vocal-avatar.speaking .lip-top { transform: translateY(-4px); }
+    .vocal-avatar.speaking .lip-bottom { transform: translateY(4px); }
+
+    /* Call Status & Controls */
+    .call-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 1rem;
+      border-radius: 50px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      font-size: 0.82rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: var(--text-muted);
+    }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 10px var(--accent);
+      animation: pulseDotAnim 1.5s infinite;
+    }
+    @keyframes pulseDotAnim {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.4); opacity: 0.6; }
+    }
+
+    .controls-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.9rem;
+      width: 100%;
+    }
+    .controls-row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 1.4rem;
+    }
+
+    .btn-control {
+      width: 66px;
+      height: 66px;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 1.5rem;
+      cursor: pointer;
+      border: none;
+      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      color: white;
+    }
+    .btn-control:hover {
+      transform: scale(1.08);
+    }
+    .btn-call-start {
+      background: linear-gradient(135deg, #10b981, #059669);
+      box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+    }
+    .btn-call-end {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+    }
+    .btn-camera-off {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+    }
+    .btn-camera-off:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: white;
+    }
+    .btn-camera-on {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+      color: white;
+    }
+
+    .btn-ptt {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(168, 85, 247, 0.4);
+      color: #f1f5f9;
+      padding: 0.8rem 1.6rem;
+      border-radius: 50px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      transition: all 0.2s ease;
+      width: 100%;
+      max-width: 380px;
+      justify-content: center;
+    }
+    .btn-ptt:hover, .btn-ptt.active {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border-color: transparent;
+      box-shadow: 0 6px 20px rgba(168, 85, 247, 0.35);
+      transform: translateY(-2px);
+    }
+
+    /* Score Feedback Container */
+    .score-container {
+      width: 100%;
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 18px;
+      padding: 1rem 1.2rem;
+      margin-top: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      text-align: left;
+    }
+    .score-circle-wrapper {
+      position: relative;
+      width: 58px;
+      height: 58px;
+      flex-shrink: 0;
+    }
+    .score-svg {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+    .score-circle-bg {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.1);
+      stroke-width: 8;
+    }
+    .score-circle-bar {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 8;
+      stroke-linecap: round;
+      stroke-dasharray: 283;
+      stroke-dashoffset: 283;
+      transition: stroke-dashoffset 0.8s ease;
+    }
+    .score-number {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: var(--font-title);
+      font-weight: 800;
+      font-size: 1rem;
+      color: var(--accent);
+    }
+
+    /* Right Arena Card: Vision + Dialogue + Lessons */
+    .arena-right-card {
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+    }
+
+    .vision-feedback-card {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 20px;
+      padding: 1.1rem;
+      text-align: left;
+    }
+    .vision-title {
+      font-weight: 700;
+      font-size: 0.88rem;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-bottom: 0.3rem;
+    }
+    .vision-metric {
+      font-size: 0.82rem;
+      color: white;
+      font-weight: 600;
+      margin-bottom: 0.2rem;
+    }
+    .vision-tip {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* Dialogue Logger */
+    .dialogue-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      padding: 1.2rem;
+      display: flex;
+      flex-direction: column;
+      height: 280px;
+    }
+    .dialogue-card h3 {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .dialogue-logger {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      padding-right: 0.4rem;
+    }
+    .bubble {
+      max-width: 88%;
+      padding: 0.65rem 0.95rem;
+      border-radius: 14px;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+    .bubble.eva {
+      background: rgba(168, 85, 247, 0.15);
+      border: 1px solid rgba(168, 85, 247, 0.3);
+      color: #f1f5f9;
+      align-self: flex-start;
+      border-bottom-left-radius: 3px;
+    }
+    .bubble.user {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #ffffff;
+      align-self: flex-end;
+      border-bottom-right-radius: 3px;
+    }
+
+    .text-fallback-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.8rem;
+    }
+    .text-fallback-input {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 0.65rem 0.9rem;
+      color: white;
+      font-size: 0.85rem;
+      outline: none;
+    }
+    .text-fallback-btn {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 0.65rem 1.1rem;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    /* Win mission action button */
+    .btn-claim-reward {
+      background: linear-gradient(135deg, #fbbf24, #f59e0b);
+      color: #020617;
+      border: none;
+      border-radius: 16px;
+      padding: 0.85rem 1.4rem;
+      font-family: var(--font-title);
+      font-weight: 800;
+      font-size: 1rem;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      box-shadow: 0 8px 25px rgba(251, 191, 36, 0.4);
+      animation: pulseNode 1.8s infinite;
+      margin-top: 1rem;
+      width: 100%;
+    }
+    .btn-claim-reward.active {
+      display: flex;
+    }
+
+    /* ========================================================
+       SCREEN 3: REWARD & VICTORY SCREEN
+       ======================================================== */
+    .reward-arena {
+      max-width: 680px;
+      margin: 1.5rem auto;
+      background: var(--card-bg);
+      border: 1.5px solid rgba(251, 191, 36, 0.4);
+      border-radius: 32px;
+      padding: 2.5rem 2rem;
+      text-align: center;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.6);
+      position: relative;
+      overflow: hidden;
+    }
+    .reward-stars-row {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin: 1.5rem 0;
+      font-size: 3.2rem;
+      color: var(--gold);
+    }
+    .star-anim {
+      animation: popStar 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      opacity: 0;
+      transform: scale(0.3);
+    }
+    .star-anim:nth-child(1) { animation-delay: 0.2s; }
+    .star-anim:nth-child(2) { animation-delay: 0.5s; }
+    .star-anim:nth-child(3) { animation-delay: 0.8s; }
+    @keyframes popStar {
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .reward-robot-avatar {
+      width: 100px;
+      height: 100px;
+      border-radius: 28px;
+      overflow: hidden;
+      margin: 0 auto 1.2rem;
+      border: 3px solid #fbbf24;
+      box-shadow: 0 0 25px rgba(251, 191, 36, 0.4);
+    }
+    .reward-robot-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .reward-buttons-row {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin-top: 2rem;
+      flex-wrap: wrap;
+    }
+    .btn-reward-minigame {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      border: none;
+      padding: 0.85rem 1.6rem;
+      border-radius: 16px;
+      font-weight: 800;
+      font-size: 0.95rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      box-shadow: 0 8px 25px rgba(168, 85, 247, 0.35);
+      transition: transform 0.2s ease;
+    }
+    .btn-reward-minigame:hover {
+      transform: scale(1.04);
+    }
+    .btn-reward-next {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--card-border);
+      color: white;
+      padding: 0.85rem 1.6rem;
+      border-radius: 16px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s ease;
+    }
+    .btn-reward-next:hover {
+      background: rgba(255, 255, 255, 0.15);
+      transform: scale(1.02);
+    }
+
+    /* ========================================================
+       SCREEN 4: 15-SECOND BUBBLE POP REWARD MINI-GAME
+       ======================================================== */
+    .minigame-arena {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #020617;
+      border: 1.5px solid rgba(168, 85, 247, 0.4);
+      border-radius: 32px;
+      padding: 1.5rem;
+      text-align: center;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.7);
+      position: relative;
+    }
+    .minigame-hud {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding: 0 1rem;
+    }
+    .hud-timer {
+      font-family: var(--font-title);
+      font-weight: 800;
+      font-size: 1.4rem;
+      color: #ef4444;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .hud-score {
+      font-family: var(--font-title);
+      font-weight: 800;
+      font-size: 1.4rem;
+      color: var(--gold);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .bubble-canvas {
+      width: 100%;
+      height: 420px;
+      background: radial-gradient(circle at 50% 100%, #1e1b4b, #020617);
+      border-radius: 20px;
+      cursor: pointer;
+      touch-action: none;
+    }
+
+    /* Hidden video for FaceMesh */
+    #webcam-video {
+      display: none;
+    }
+
+    /* Responsive */
+    @media (max-width: 960px) {
+      .worlds-layout, .exercise-arena {
+        grid-template-columns: 1fr;
+      }
+      .node-world-1, .node-world-2, .node-world-3, .node-world-4 {
+        transform: scale(0.85);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Ambient Lights -->
+  <div class="bg-lights">
+    <div class="light-glow light-1"></div>
+    <div class="light-glow light-2"></div>
+  </div>
+
+  <!-- Top Navigation Game Bar -->
+  <nav class="game-nav">
+    <div class="nav-left">
+      <a href="/" class="btn-home" title="Volver al Hub de Silvania.ai">
+        <i class="fa-solid fa-arrow-left"></i> <span>Hub Silvania</span>
+      </a>
+      <div class="brand-title">
+        <i class="fa-solid fa-gamepad"></i> Eva Agent
+      </div>
+    </div>
+
+    <div class="nav-right">
+      <!-- Player Tag (Clickable to change name) -->
+      <div class="player-pill" onclick="promptPlayerName()" title="Cambiar nombre de jugador">
+        <img src="/eva_robot.jpg" alt="Player" class="player-avatar-mini">
+        <span class="player-name-text" id="player-display-name">Amigo</span>
+        <i class="fa-solid fa-pen" style="font-size: 0.72rem; color: #c084fc;"></i>
+      </div>
+
+      <!-- Stars Trophy -->
+      <div class="stars-badge">
+        <i class="fa-solid fa-star"></i> <span id="total-stars-count">0</span>
+      </div>
+
+      <!-- Clinical Disclaimer Pill -->
+      <div class="health-pill" title="Aviso de Salud: Eva es una herramienta de estimulación y apoyo lúdico, no sustituye a un logopeda colegiado.">
+        <i class="fa-solid fa-shield-heart" style="color: #38bdf8;"></i>
+        <span>Apoyo Lúdico</span>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <!-- ========================================================
+         SCREEN 1: WORLDS MAP & COMPANION
+         ======================================================== -->
+    <section class="game-screen active" id="screen-map">
+      <div class="map-header">
+        <h1>Mundos de la <span>Voz y Dicción</span></h1>
+        <p>Elige un mundo para entrenar tu pronunciación junto a Eva y desbloquea recompensas estelares.</p>
+      </div>
+
+      <div class="worlds-layout">
+        <!-- Interactive 3D World Board -->
+        <div class="map-board-card">
+          <div class="map-image-wrapper">
+            <img src="/eva_worlds_map.jpg" alt="Mapa de Mundos de Eva">
+            
+            <!-- Clickable World Nodes -->
+            <div class="map-node unlocked node-world-1" onclick="startWorld(1)" title="Mundo 1: La Granja Sonora">
+              <span>1</span>
+            </div>
+            <div class="map-node locked node-world-2" id="map-node-2" onclick="startWorld(2)" title="Mundo 2: El Bosque Encantado">
+              <span>2</span>
+            </div>
+            <div class="map-node locked node-world-3" id="map-node-3" onclick="startWorld(3)" title="Mundo 3: El Reino Musical">
+              <span>3</span>
+            </div>
+            <div class="map-node locked node-world-4" id="map-node-4" onclick="startWorld(4)" title="Mundo 4: La Galaxia Cósmica">
+              <span>4</span>
+            </div>
+          </div>
+
+          <div class="map-board-footer">
+            <div style="font-size: 0.88rem; color: var(--text-muted);">
+              <i class="fa-solid fa-circle-check" style="color: #10b981;"></i> Progreso guardado automáticamente
+            </div>
+            <button class="btn-play-world" onclick="startCurrentMission()">
+              <i class="fa-solid fa-play"></i> Continuar Aventura
+            </button>
+          </div>
+        </div>
+
+        <!-- Sidebar: Eva Robot Companion & Level Cards -->
+        <div class="sidebar-layout">
+          <!-- Eva Companion Interactive Robot Character -->
+          <div class="eva-companion-card" onclick="onEvaCompanionClick()">
+            <div class="eva-robot-btn" id="eva-robot-companion">
+              <img src="/eva_robot.jpg" alt="Robot Eva">
+            </div>
+            <div class="eva-speech-bubble">
+              <strong>¡Hola! Soy Eva 🤖✨</strong>
+              <span id="eva-companion-msg">Tócame para hablar conmigo o presiona en cualquier mundo desbloqueado para comenzar a jugar.</span>
+              
+              <!-- Inline Name Input Box -->
+              <div class="name-input-box" id="name-input-box" onclick="event.stopPropagation();">
+                <input type="text" id="custom-name-field" class="name-input-field" placeholder="Escribe tu nombre..." onkeydown="if(event.key==='Enter') saveCustomPlayerName()">
+                <button class="btn-save-name" onclick="saveCustomPlayerName()">¡Listo! 🚀</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Worlds Progression List -->
+          <div class="world-cards-list">
+            <!-- World 1 -->
+            <div class="world-card active-mission" id="world-card-1" onclick="startWorld(1)">
+              <div class="world-info">
+                <h3>🚜 Mundo 1: La Granja Sonora</h3>
+                <p>Vocales abiertas, praxias bucales y animales.</p>
+              </div>
+              <div class="world-action">
+                <button class="btn-play-world"><i class="fa-solid fa-play"></i> Jugar</button>
+                <div style="font-size: 0.78rem; color: var(--gold);" id="stars-world-1">⭐⭐⭐</div>
+              </div>
+            </div>
+
+            <!-- World 2 -->
+            <div class="world-card locked" id="world-card-2" onclick="startWorld(2)">
+              <div class="world-info">
+                <h3>🌲 Mundo 2: El Bosque del Silbido</h3>
+                <p>Fonemas /s/, /z/, /l/ y control de aire.</p>
+              </div>
+              <div class="world-action">
+                <span style="font-size: 0.8rem; color: #94a3b8;" id="status-world-2"><i class="fa-solid fa-lock"></i> Bloqueado</span>
+              </div>
+            </div>
+
+            <!-- World 3 -->
+            <div class="world-card locked" id="world-card-3" onclick="startWorld(3)">
+              <div class="world-info">
+                <h3>🏰 Mundo 3: El Reino Musical</h3>
+                <p>Fonema /r/ suave y doble vibrante /rr/.</p>
+              </div>
+              <div class="world-action">
+                <span style="font-size: 0.8rem; color: #94a3b8;" id="status-world-3"><i class="fa-solid fa-lock"></i> Bloqueado</span>
+              </div>
+            </div>
+
+            <!-- World 4 -->
+            <div class="world-card locked" id="world-card-4" onclick="startWorld(4)">
+              <div class="world-info">
+                <h3>🚀 Mundo 4: La Galaxia Cósmica</h3>
+                <p>Trabalenguas espaciales y velocidad verbal.</p>
+              </div>
+              <div class="world-action">
+                <span style="font-size: 0.8rem; color: #94a3b8;" id="status-world-4"><i class="fa-solid fa-lock"></i> Bloqueado</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         SCREEN 2: VOICE EXERCISE ARENA (RESTORED CORE EVA)
+         ======================================================== -->
+    <section class="game-screen" id="screen-exercise">
+      <div class="exercise-arena">
+        <!-- Left Panel: Interactive Voice Call & Controls -->
+        <div class="arena-left-card">
+          <div class="mission-header-bar">
+            <button class="btn-back-map" onclick="showScreen('map')">
+              <i class="fa-solid fa-arrow-left"></i> Mapa de Mundos
+            </button>
+            <div style="font-size: 0.82rem; font-weight: 700; color: #c084fc;" id="arena-world-badge">
+              Mundo 1: La Granja Sonora 🚜
+            </div>
+          </div>
+
+          <!-- Target Phrase Box -->
+          <div class="target-exercise-box">
+            <div class="target-badge"><i class="fa-solid fa-bullseye"></i> Desafío de Pronunciación</div>
+            <div class="target-phrase-text" id="target-phrase-display">
+              "El perro de San Roque no tiene rabo porque Ramón Ramírez se lo ha robado."
+            </div>
+          </div>
+
+          <!-- Avatar & Visualizer Canvas -->
+          <div class="avatar-wrapper">
+            <canvas class="wave-canvas" id="wave-canvas" width="220" height="220"></canvas>
+            <div class="vocal-avatar" id="vocal-avatar">
+              <div class="lip-top"></div>
+              <div class="mouth-cavity">
+                <div class="tongue"></div>
+              </div>
+              <div class="lip-bottom"></div>
+            </div>
+          </div>
+
+          <!-- Call Status Indicator -->
+          <div class="call-status" id="call-status">
+            <div class="pulse-dot"></div>
+            <span>Listo para iniciar llamada</span>
+          </div>
+
+          <!-- Call & Camera Controls (Preserved IDs & Listeners) -->
+          <div class="controls-wrapper">
+            <div class="controls-row">
+              <button class="btn-control btn-call-start" id="btn-call" onclick="toggleCall()" title="Iniciar / Colgar Llamada por Voz">
+                <i class="fa-solid fa-phone"></i>
+              </button>
+              <button class="btn-control btn-camera-off" id="btn-camera" onclick="toggleCamera()" title="Activar / Desactivar Cámara para labios">
+                <i class="fa-solid fa-video-slash"></i>
+              </button>
+            </div>
+
+            <button class="btn-ptt" id="btn-ptt" onmousedown="startPushToTalk(event)" onmouseup="stopPushToTalk(event)" ontouchstart="startPushToTalk(event)" ontouchend="stopPushToTalk(event)" title="Mantén pulsado para hablar sin eco">
+              <i class="fa-solid fa-microphone"></i> <span>Mantén Presionado para Hablar 🎙️</span>
+            </button>
+
+            <div style="font-size: 0.8rem; color: var(--text-muted);" id="call-instruction-hint">
+              Pulsa el botón verde <i class="fa-solid fa-phone" style="color:#10b981;"></i> para voz continua o mantén pulsado el botón para hablar.
+            </div>
+          </div>
+
+          <!-- Pronunciation Score Container -->
+          <div class="score-container" id="score-container" style="display: none;">
+            <div class="score-circle-wrapper">
+              <svg class="score-svg" viewBox="0 0 100 100">
+                <circle class="score-circle-bg" cx="50" cy="50" r="45"></circle>
+                <circle class="score-circle-bar" id="score-bar" cx="50" cy="50" r="45"></circle>
+              </svg>
+              <div class="score-number" id="score-val">0%</div>
+            </div>
+            <div>
+              <div style="font-weight: 700; color: white;" id="score-comment">¡Bien pronunciado!</div>
+              <div style="font-size: 0.8rem; color: var(--text-muted);" id="score-tip">Sigue practicando la vocalización con Eva.</div>
+            </div>
+          </div>
+
+          <!-- Claim Reward Button (Appears when successful) -->
+          <button class="btn-claim-reward" id="btn-claim-reward" onclick="triggerRewardScreen()">
+            <i class="fa-solid fa-gift"></i> ¡Misión Superada! Ver Recompensa ⭐
+          </button>
+        </div>
+
+        <!-- Right Panel: Vision Analysis & Dialogue Logger -->
+        <div class="arena-right-card">
+          <!-- Vision Feedback Card (FaceMesh) -->
+          <div class="vision-feedback-card" id="vision-feedback-card" style="display: none;">
+            <div class="vision-title"><i class="fa-solid fa-eye"></i> Rastreo Labial con Cámara (FaceMesh)</div>
+            <div class="vision-metric" id="vision-metric">Labios detectados 🎯 | Ratio Apertura: 0.00</div>
+            <div class="vision-tip" id="vision-tip">Cámara activa. Gesticula frente a la pantalla para seguir la lección.</div>
+          </div>
+
+          <!-- Dialogue Log Card -->
+          <div class="dialogue-card">
+            <h3><i class="fa-solid fa-comments"></i> Diálogo con Eva</h3>
+            <div class="dialogue-logger" id="dialogue-logger">
+              <div class="bubble eva">¡Hola! Soy Eva. Pulsa el botón verde para iniciar la llamada o mantén pulsado el micrófono para practicar.</div>
+            </div>
+
+            <!-- Manual text fallback -->
+            <div class="text-fallback-row">
+              <input type="text" id="manual-text-input" class="text-fallback-input" placeholder="O escribe aquí tu frase..." onkeydown="if(event.key==='Enter') sendManualMessage()">
+              <button class="text-fallback-btn" onclick="sendManualMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+            </div>
+          </div>
+
+          <!-- Hidden lists kept for backward compatibility with library functions -->
+          <div id="lessons-list" style="display: none;"></div>
+          <div id="exercises-list" style="display: none;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         SCREEN 3: REWARD & VICTORY SCREEN
+         ======================================================== -->
+    <section class="game-screen" id="screen-reward">
+      <div class="reward-arena">
+        <div class="reward-robot-avatar">
+          <img src="/eva_robot.jpg" alt="Eva Robot Feliz">
+        </div>
+        <h2 style="font-family: var(--font-title); font-size: 2.2rem; margin-bottom: 0.3rem;">¡Misión Superada! 🎉</h2>
+        <p style="color: var(--text-muted); font-size: 0.95rem;" id="reward-congrats-text">¡Excelente vocalización y ritmo! Has desbloqueado una nueva etapa.</p>
+
+        <!-- Animated Stars -->
+        <div class="reward-stars-row">
+          <i class="fa-solid fa-star star-anim"></i>
+          <i class="fa-solid fa-star star-anim"></i>
+          <i class="fa-solid fa-star star-anim"></i>
+        </div>
+
+        <div style="font-size: 1.1rem; font-weight: 700; color: #10b981; margin-bottom: 0.5rem;" id="reward-unlocked-title">
+          ¡Nuevo Mundo Desbloqueado! 🔓
+        </div>
+
+        <div class="reward-buttons-row">
+          <button class="btn-reward-minigame" onclick="startRewardMiniGame()">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> ¡Jugar Premio (15s)! 🎈
+          </button>
+          <button class="btn-reward-next" onclick="showScreen('map')">
+            <i class="fa-solid fa-map"></i> Volver al Mapa de Mundos
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         SCREEN 4: 15-SECOND BUBBLE POP REWARD MINI-GAME
+         ======================================================== -->
+    <section class="game-screen" id="screen-minigame">
+      <div class="minigame-arena">
+        <div class="minigame-hud">
+          <div class="hud-timer"><i class="fa-solid fa-stopwatch"></i> <span id="mg-timer">15</span>s</div>
+          <div style="font-weight: 700; color: #c084fc;">¡Explota las Burbujas Sonoras! ✨</div>
+          <div class="hud-score"><i class="fa-solid fa-star"></i> Puntos: <span id="mg-score">0</span></div>
+        </div>
+
+        <canvas class="bubble-canvas" id="bubble-canvas" width="760" height="420"></canvas>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+          <div style="font-size: 0.85rem; color: var(--text-muted);">Toca o haz clic en las burbujas antes de que escapen.</div>
+          <button class="btn-back-map" onclick="endRewardMiniGame()">
+            Terminar y Volver al Mapa <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <video id="webcam-video" playsinline></video>
+
+  <!-- ========================================================
+       LOGIC & SCRIPTS (100% PRESERVED VOICE CALL FLOW + GAME LOOP)
+       ======================================================== -->
+  <script>
+    // Critical state variables
+    let isCalling = false;
+    let recognition = null;
+    let ttsVoice = null;
+    let chatHistory = [];
+    let userProfile = {
+      name: localStorage.getItem('eva_profile_name') || "",
+      age: localStorage.getItem('eva_profile_age') || "",
+      difficulty: localStorage.getItem('eva_profile_difficulty') || "",
+      style: localStorage.getItem('eva_profile_style') || ""
+    };
+
+    let audioContext = null;
+    let analyser = null;
+    let visualizerAnimId = null;
+    let rawExercisesDatabase = [];
+    let exerciseAttemptCount = 0;
+    let sessionScoresHistory = [];
+
+    let isCameraActive = false;
+    let cameraInstance = null;
+    let faceMeshInstance = null;
+    let isSpeakingTTS = false;
+    let isEvaSpeaking = false;
+    let evaFinishedSpeakingTime = 0;
+    let lastAssistantText = "";
+    let lastSpokenByEva = "";
+    let evaSpokenHistory = [];
+    let isRecognitionRunning = false;
+    let lastFacemeshLandmarks = null;
+
+    // Game loop state & worlds definition
+    const WORLDS_DATA = {
+      1: {
+        id: 1,
+        name: "La Granja Sonora",
+        badge: "Mundo 1: La Granja Sonora 🚜",
+        phrase: "La vaca Lola come hierba fresca en la pradera verde.",
+        description: "Vocales abiertas y ritmo fonético.",
+        targetFonema: "Vocales y fonemas labiales"
+      },
+      2: {
+        id: 2,
+        name: "El Bosque del Silbido",
+        badge: "Mundo 2: El Bosque del Silbido 🌲",
+        phrase: "El sol sale sobre la selva silbando suavemente.",
+        description: "Fonemas S, Z y control continuo del aire.",
+        targetFonema: "Fonema S"
+      },
+      3: {
+        id: 3,
+        name: "El Reino Musical",
+        badge: "Mundo 3: El Reino Musical 🏰",
+        phrase: "Rápido ruedan los carros cargados de azúcar del ferrocarril.",
+        description: "Fonema R suave y doble vibrante múltiple.",
+        targetFonema: "Fonema R"
+      },
+      4: {
+        id: 4,
+        name: "La Galaxia Cósmica",
+        badge: "Mundo 4: La Galaxia Cósmica 🚀",
+        phrase: "Tres astronautas intrépidos viajan en su nave hacia las estrellas.",
+        description: "Trabalenguas espaciales y velocidad verbal.",
+        targetFonema: "Trabalenguas"
+      }
+    };
+
+    let currentWorldId = 1;
+    let unlockedWorldId = parseInt(localStorage.getItem('eva_unlocked_world') || "1", 10);
+    let totalStarsEarned = parseInt(localStorage.getItem('eva_stars_count') || "0", 10);
+    let currentExerciseText = WORLDS_DATA[1].phrase;
+    let currentExerciseName = WORLDS_DATA[1].badge;
+
+    // Text cleaning & echo detection
+    function cleanSpanishText(str) {
+      if (!str) return "";
+      return str.toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?¿¡!]/g,"")
+                .replace(/\s+/g, " ")
+                .trim();
+    }
+
+    function isSimilarToEva(userClean, evaClean) {
+      if (!userClean || !evaClean) return false;
+      if (evaClean.includes(userClean) && userClean.length >= 6) return true;
+      if (userClean.includes(evaClean) && evaClean.length >= 6) return true;
+      const userWords = userClean.split(" ");
+      const evaWords = evaClean.split(" ");
+      if (userWords.length >= 2) {
+        const matches = userWords.filter(w => w.length > 2 && evaWords.includes(w));
+        if (matches.length >= Math.ceil(userWords.length * 0.6)) return true;
+      }
+      return false;
+    }
+
+    function isEchoOfEva(userText) {
+      const now = Date.now();
+      const timeSinceEvaSpoke = now - evaFinishedSpeakingTime;
+      if (timeSinceEvaSpoke < 600) return true;
+      const userClean = cleanSpanishText(userText);
+      if (userClean.length < 3) return true;
+      for (const phrase of evaSpokenHistory) {
+        if (isSimilarToEva(userClean, phrase)) return true;
+      }
+      return false;
+    }
+
+    function safeStartRecognition() {
+      if (!recognition || isSpeakingTTS || isRecognitionRunning) return;
+      try {
+        recognition.start();
+        isRecognitionRunning = true;
+      } catch (err) {}
+    }
+
+    function safeStopRecognition() {
+      if (!recognition || !isRecognitionRunning) return;
+      try {
+        recognition.stop();
+        isRecognitionRunning = false;
+      } catch (err) {}
+    }
+
+    function sendManualMessage() {
+      const inputEl = document.getElementById('manual-text-input');
+      const text = inputEl ? inputEl.value.trim() : '';
+      if (!text) return;
+      inputEl.value = '';
+      if (!isCalling) {
+        isCalling = true;
+        const btn = document.getElementById('btn-call');
+        if (btn) {
+          btn.className = "btn-control btn-call-end";
+          btn.innerHTML = '<i class="fa-solid fa-phone-slash"></i>';
+        }
+      }
+      processUserInput(text);
+    }
+
+    async function processUserInput(userText) {
+      if (userText !== "INICIAR_LLAMADA") {
+        logMessage("user", userText);
+      }
+      setCallStatus("Eva escuchando y pensando...", "pulse-dot", "#3b82f6");
+      safeStopRecognition();
+
+      let currentScore = null;
+      if (userText !== "INICIAR_LLAMADA") {
+        currentScore = evaluatePronunciation(userText, currentExerciseText);
+        showScoreFeedback(currentScore);
+
+        sessionScoresHistory.push({
+          exerciseName: currentExerciseName,
+          targetText: currentExerciseText,
+          userText: userText,
+          score: currentScore,
+          timestamp: Date.now()
+        });
+
+        exerciseAttemptCount++;
+
+        // Show claim reward button if score is good (>= 60%) or reached 3 attempts
+        if (currentScore >= 60 || exerciseAttemptCount >= 3) {
+          const rewardBtn = document.getElementById('btn-claim-reward');
+          if (rewardBtn) rewardBtn.classList.add('active');
+        }
+      }
+
+      try {
+        const res = await fetch("/api/eva-chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: userText,
+            exerciseContext: currentExerciseName + ": " + currentExerciseText,
+            history: chatHistory,
+            cameraActive: isCameraActive,
+            userProfile: userProfile,
+            sessionScoresHistory: sessionScoresHistory
+          })
+        });
+        const data = await res.json();
+        if (data.updatedProfile) {
+          userProfile = { ...userProfile, ...data.updatedProfile };
+          if (userProfile.name) {
+            localStorage.setItem('eva_profile_name', userProfile.name);
+            updatePlayerDisplay();
+          }
+        }
+        if (data.reply) {
+          chatHistory.push({ role: "user", content: userText });
+          chatHistory.push({ role: "assistant", content: data.reply });
+          logMessage("eva", data.reply);
+          await speak(data.reply);
+        }
+      } catch (err) {
+        console.error("Error en llamada con Eva:", err);
+        setCallStatus("Error de conexión", "", "#ef4444");
+      }
+    }
+
+    function rotateToNextExercise() {
+      if (rawExercisesDatabase && rawExercisesDatabase.length > 0) {
+        const randomEx = rawExercisesDatabase[Math.floor(Math.random() * rawExercisesDatabase.length)];
+        currentExerciseName = randomEx.fonema ? `Fonema ${randomEx.fonema}` : "Ejercicio";
+        currentExerciseText = randomEx.phrase;
+        const displayEl = document.getElementById('target-phrase-display');
+        if (displayEl) displayEl.innerText = `"${currentExerciseText}"`;
+      }
+    }
+
+    function startPushToTalk(e) {
+      if (e) e.preventDefault();
+      const pttBtn = document.getElementById('btn-ptt');
+      if (pttBtn) pttBtn.classList.add('active');
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+      isSpeakingTTS = false;
+      if (!isCalling) {
+        isCalling = true;
+        const btn = document.getElementById('btn-call');
+        if (btn) {
+          btn.className = "btn-control btn-call-end";
+          btn.innerHTML = '<i class="fa-solid fa-phone-slash"></i>';
+        }
+      }
+      setCallStatus("Escuchando tu voz... (Suelta para evaluar)", "pulse-dot", "#10b981");
+      safeStartRecognition();
+    }
+
+    function stopPushToTalk(e) {
+      if (e) e.preventDefault();
+      const pttBtn = document.getElementById('btn-ptt');
+      if (pttBtn) pttBtn.classList.remove('active');
+      if (isRecognitionRunning) {
+        setTimeout(() => {
+          safeStopRecognition();
+        }, 400);
+      }
+    }
+
+    async function toggleCall() {
+      const btn = document.getElementById('btn-call');
+      if (!isCalling) {
+        isCalling = true;
+        if (btn) {
+          btn.className = "btn-control btn-call-end";
+          btn.innerHTML = '<i class="fa-solid fa-phone-slash"></i>';
+        }
+        await startAudioVisualizer();
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+        safeStartRecognition();
+        setCallStatus("Llamada activa con Eva", "pulse-dot", "#10b981");
+        sessionScoresHistory = [];
+        exerciseAttemptCount = 0;
+        processUserInput("INICIAR_LLAMADA");
+      } else {
+        isCalling = false;
+        if (btn) {
+          btn.className = "btn-control btn-call-start";
+          btn.innerHTML = '<i class="fa-solid fa-phone"></i>';
+        }
+        setCallStatus("Llamada finalizada", "", "#9ca3af");
+        logMessage("eva", "Llamada finalizada. ¡Buen trabajo en este ejercicio!");
+        safeStopRecognition();
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+        stopAudioVisualizer();
+      }
+    }
+
+    async function toggleCamera() {
+      const btn = document.getElementById('btn-camera');
+      const card = document.getElementById('vision-feedback-card');
+      if (!isCameraActive) {
+        try {
+          await startCameraProcessing();
+          isCameraActive = true;
+          if (btn) {
+            btn.className = "btn-control btn-camera-on";
+            btn.innerHTML = '<i class="fa-solid fa-video"></i>';
+          }
+          if (card) card.style.display = "block";
+        } catch (err) {
+          alert("No se pudo acceder a la cámara. Por favor autoriza los permisos.");
+        }
+      } else {
+        stopCameraProcessing();
+        isCameraActive = false;
+        if (btn) {
+          btn.className = "btn-control btn-camera-off";
+          btn.innerHTML = '<i class="fa-solid fa-video-slash"></i>';
+        }
+        if (card) card.style.display = "none";
+      }
+    }
+
+    async function startCameraProcessing() {
+      const videoElement = document.getElementById('webcam-video');
+      faceMeshInstance = new FaceMesh({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+      });
+      faceMeshInstance.setOptions({
+        maxNumFaces: 1,
+        refineLandmarks: true,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+      });
+      faceMeshInstance.onResults(onFaceMeshResults);
+
+      cameraInstance = new Camera(videoElement, {
+        onFrame: async () => {
+          if (faceMeshInstance && isCameraActive) {
+            await faceMeshInstance.send({ image: videoElement });
+          }
+        },
+        width: 320,
+        height: 240
+      });
+      await cameraInstance.start();
+    }
+
+    function onFaceMeshResults(results) {
+      if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
+        lastFacemeshLandmarks = null;
+        return;
+      }
+      const landmarks = results.multiFaceLandmarks[0];
+      lastFacemeshLandmarks = landmarks;
+      const upperLip = landmarks[13];
+      const lowerLip = landmarks[14];
+      const leftCorner = landmarks[61];
+      const rightCorner = landmarks[291];
+      if (upperLip && lowerLip && leftCorner && rightCorner) {
+        const verticalDist = Math.hypot(upperLip.x - lowerLip.x, upperLip.y - lowerLip.y);
+        const horizontalDist = Math.hypot(leftCorner.x - rightCorner.x, leftCorner.y - rightCorner.y);
+        const mar = horizontalDist > 0 ? (verticalDist / horizontalDist) : 0;
+        const metricEl = document.getElementById('vision-metric');
+        const tipEl = document.getElementById('vision-tip');
+        if (metricEl) {
+          metricEl.innerText = `Apertura Labial (MAR): ${mar.toFixed(2)}`;
+        }
+        if (tipEl) {
+          if (mar > 0.35) tipEl.innerText = "¡Excelente apertura bucal para la vocal A/O!";
+          else if (mar < 0.15) tipEl.innerText = "Labios juntos. Ideal para fonemas M, P o B.";
+          else tipEl.innerText = "Gesticulación adecuada. Sigue pronunciando con claridad.";
+        }
+      }
+    }
+
+    function stopCameraProcessing() {
+      if (cameraInstance) {
+        try { cameraInstance.stop(); } catch (e) {}
+        cameraInstance = null;
+      }
+      if (faceMeshInstance) {
+        try { faceMeshInstance.close(); } catch (e) {}
+        faceMeshInstance = null;
+      }
+      lastFacemeshLandmarks = null;
+    }
+
+    async function startAudioVisualizer() {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const source = audioContext.createMediaStreamSource(stream);
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 64;
+        source.connect(analyser);
+        drawWave();
+      } catch (err) {
+        console.warn("No se pudo iniciar el visualizador de audio:", err);
+      }
+    }
+
+    function drawWave() {
+      const canvas = document.getElementById('wave-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const dataArray = new Uint8Array(analyser ? analyser.frequencyBinCount : 32);
+
+      function render() {
+        visualizerAnimId = requestAnimationFrame(render);
+        if (analyser) analyser.getByteFrequencyData(dataArray);
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const baseRadius = 75;
+        let avg = 0;
+        for (let i = 0; i < dataArray.length; i++) avg += dataArray[i];
+        avg = avg / dataArray.length;
+
+        // Draw dynamic sound ring
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, baseRadius + (avg * 0.25), 0, 2 * Math.PI);
+        ctx.strokeStyle = isEvaSpeaking ? 'rgba(192, 132, 252, 0.7)' : 'rgba(16, 185, 129, 0.4)';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+      render();
+    }
+
+    function stopAudioVisualizer() {
+      if (visualizerAnimId) {
+        cancelAnimationFrame(visualizerAnimId);
+        visualizerAnimId = null;
+      }
+      const canvas = document.getElementById('wave-canvas');
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+
+    function setCallStatus(text, dotClass, color) {
+      const statusEl = document.getElementById('call-status');
+      if (!statusEl) return;
+      statusEl.innerHTML = `<div class="${dotClass}" style="background: ${color}; box-shadow: 0 0 10px ${color};"></div><span>${text}</span>`;
+    }
+
+    function logMessage(sender, text) {
+      const logger = document.getElementById('dialogue-logger');
+      if (!logger) return;
+      const bubble = document.createElement('div');
+      bubble.className = `bubble ${sender}`;
+      bubble.innerText = text;
+      logger.appendChild(bubble);
+      logger.scrollTop = logger.scrollHeight;
+    }
+
+    function selectBestSpanishVoice() {
+      if (!window.speechSynthesis) return null;
+      const voices = window.speechSynthesis.getVoices();
+      const preferred = ["Google español", "Mónica", "Paulina", "Helena", "Laura", "es-ES", "es-MX"];
+      for (const p of preferred) {
+        const found = voices.find(v => v.name.includes(p) || v.lang.includes(p));
+        if (found) return found;
+      }
+      return voices.find(v => v.lang && v.lang.startsWith("es")) || null;
+    }
+
+    function speak(text) {
+      return new Promise((resolve) => {
+        if (!window.speechSynthesis) return resolve();
+        window.speechSynthesis.cancel();
+
+        const avatar = document.getElementById('vocal-avatar');
+        const cleanToRecord = cleanSpanishText(text);
+        if (cleanToRecord) {
+          evaSpokenHistory.push(cleanToRecord);
+          if (evaSpokenHistory.length > 5) evaSpokenHistory.shift();
+        }
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = "es-ES";
+        if (!ttsVoice) ttsVoice = selectBestSpanishVoice();
+        if (ttsVoice) utterance.voice = ttsVoice;
+        utterance.rate = 0.95;
+        utterance.pitch = 1.05;
+
+        utterance.onstart = () => {
+          isSpeakingTTS = true;
+          isEvaSpeaking = true;
+          safeStopRecognition();
+          if (avatar) avatar.classList.add('speaking');
+          const evaCompanionBtn = document.getElementById('eva-robot-companion');
+          if (evaCompanionBtn) evaCompanionBtn.style.boxShadow = "0 0 35px #38bdf8";
+        };
+
+        const onEnd = () => {
+          isSpeakingTTS = false;
+          isEvaSpeaking = false;
+          evaFinishedSpeakingTime = Date.now();
+          if (avatar) avatar.classList.remove('speaking');
+          const evaCompanionBtn = document.getElementById('eva-robot-companion');
+          if (evaCompanionBtn) evaCompanionBtn.style.boxShadow = "0 0 18px rgba(192, 132, 252, 0.5)";
+          setTimeout(() => {
+            if (isCalling) safeStartRecognition();
+          }, 600);
+          resolve();
+        };
+
+        utterance.onend = onEnd;
+        utterance.onerror = onEnd;
+        window.speechSynthesis.speak(utterance);
+      });
+    }
+
+    function evaluatePronunciation(spoken, target) {
+      const cleanSpoken = cleanSpanishText(spoken);
+      const cleanTarget = cleanSpanishText(target);
+      const distance = levenshteinDistance(cleanSpoken, cleanTarget);
+      const maxLength = Math.max(cleanSpoken.length, cleanTarget.length);
+      if (maxLength === 0) return 100;
+      let score = Math.round((1 - distance / maxLength) * 100);
+      if (score < 40) score = 40 + Math.round(Math.random() * 20);
+      if (score > 98) score = 100;
+      return score;
+    }
+
+    function levenshteinDistance(a, b) {
+      const matrix = [];
+      for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+      for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+      for (let i = 1; i <= b.length; i++) {
+        for (let j = 1; j <= a.length; j++) {
+          if (b.charAt(i - 1) === a.charAt(j - 1)) matrix[i][j] = matrix[i - 1][j - 1];
+          else matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1));
+        }
+      }
+      return matrix[b.length][a.length];
+    }
+
+    function showScoreFeedback(score) {
+      const container = document.getElementById('score-container');
+      const valEl = document.getElementById('score-val');
+      const barEl = document.getElementById('score-bar');
+      const commentEl = document.getElementById('score-comment');
+      if (container) container.style.display = "flex";
+      if (valEl) valEl.innerText = `${score}%`;
+      if (barEl) barEl.style.strokeDashoffset = 283 - (283 * score) / 100;
+      if (commentEl) {
+        if (score >= 80) commentEl.innerText = "¡Excelente pronunciación! 🌟";
+        else if (score >= 60) commentEl.innerText = "¡Muy buena dicción! Sigue así.";
+        else commentEl.innerText = "Buen intento. Vocalicemos un poco más despacio.";
+      }
+    }
+
+    // ========================================================
+    // GAME LOOP LOGIC & WORLDS MANAGEMENT
+    // ========================================================
+    function showScreen(screenId) {
+      const screens = ['screen-map', 'screen-exercise', 'screen-reward', 'screen-minigame'];
+      screens.forEach(s => {
+        const el = document.getElementById(s);
+        if (el) el.classList.remove('active');
+      });
+      const activeEl = document.getElementById(`screen-${screenId}`);
+      if (activeEl) activeEl.classList.add('active');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function updatePlayerDisplay() {
+      const name = localStorage.getItem('eva_profile_name') || "Amigo";
+      const nameEl = document.getElementById('player-display-name');
+      if (nameEl) nameEl.innerText = name;
+      const starsEl = document.getElementById('total-stars-count');
+      if (starsEl) starsEl.innerText = totalStarsEarned;
+    }
+
+    function promptPlayerName() {
+      const currentName = localStorage.getItem('eva_profile_name') || "";
+      const box = document.getElementById('name-input-box');
+      const field = document.getElementById('custom-name-field');
+      if (box && field) {
+        box.classList.toggle('active');
+        field.value = currentName;
+        field.focus();
+      }
+    }
+
+    function saveCustomPlayerName() {
+      const field = document.getElementById('custom-name-field');
+      if (!field) return;
+      const newName = field.value.trim();
+      if (newName) {
+        userProfile.name = newName;
+        localStorage.setItem('eva_profile_name', newName);
+        updatePlayerDisplay();
+        const box = document.getElementById('name-input-box');
+        if (box) box.classList.remove('active');
+        const speech = document.getElementById('eva-companion-msg');
+        if (speech) speech.innerText = `¡Qué bien tenerte aquí, ${newName}! Vamos a entrenar tu voz. Elige un mundo para comenzar.`;
+        speak(`¡Mucho gusto, ${newName}! He preparado mundos increíbles para ti. ¡Comencemos!`);
+      }
+    }
+
+    function onEvaCompanionClick() {
+      const name = localStorage.getItem('eva_profile_name');
+      const speech = document.getElementById('eva-companion-msg');
+      if (!name) {
+        if (speech) speech.innerText = "¿Cómo te llamas? Escribe tu nombre para guardar tus estrellas y aventuras.";
+        const box = document.getElementById('name-input-box');
+        if (box) box.classList.add('active');
+        const field = document.getElementById('custom-name-field');
+        if (field) field.focus();
+        speak("¡Hola! Soy Eva, tu entrenadora de voz. ¿Cómo te llamas?");
+      } else {
+        if (speech) speech.innerText = `¡Hola de nuevo, ${name}! ¿Listo para tu entrenamiento? Toca un mundo para jugar.`;
+        speak(`¡Hola ${name}! Me alegra mucho verte. ¿Listo para explorar los mundos de la voz?`);
+      }
+    }
+
+    function startWorld(worldId) {
+      if (worldId > unlockedWorldId) {
+        speak("Este mundo aún está bloqueado. Supera la misión anterior para desbloquearlo.");
+        alert("🔒 Mundo bloqueado. Completa el mundo anterior para desbloquear este nivel.");
+        return;
+      }
+      currentWorldId = worldId;
+      const world = WORLDS_DATA[worldId];
+      if (!world) return;
+
+      currentExerciseName = world.badge;
+      currentExerciseText = world.phrase;
+
+      const badgeEl = document.getElementById('arena-world-badge');
+      if (badgeEl) badgeEl.innerText = world.badge;
+      const phraseEl = document.getElementById('target-phrase-display');
+      if (phraseEl) phraseEl.innerText = `"${world.phrase}"`;
+
+      // Reset claim button
+      const claimBtn = document.getElementById('btn-claim-reward');
+      if (claimBtn) claimBtn.classList.remove('active');
+
+      showScreen('exercise');
+      speak(`¡Bienvenidos a ${world.name}! En esta misión practicaremos: ${world.phrase}`);
+    }
+
+    function startCurrentMission() {
+      startWorld(Math.min(unlockedWorldId, 4));
+    }
+
+    function triggerRewardScreen() {
+      // Award stars
+      totalStarsEarned += 3;
+      localStorage.setItem('eva_stars_count', totalStarsEarned.toString());
+
+      // Unlock next world
+      if (currentWorldId >= unlockedWorldId && unlockedWorldId < 4) {
+        unlockedWorldId = currentWorldId + 1;
+        localStorage.setItem('eva_unlocked_world', unlockedWorldId.toString());
+      }
+
+      updateWorldsUI();
+      updatePlayerDisplay();
+
+      const name = localStorage.getItem('eva_profile_name') || "Super Campeón";
+      const congratsEl = document.getElementById('reward-congrats-text');
+      if (congratsEl) congratsEl.innerText = `¡Increíble vocalización y esfuerzo, ${name}! Has completado la misión con éxito.`;
+
+      showScreen('reward');
+      playChimeVictory();
+      speak(`¡Felicitaciones ${name}! Has ganado tres estrellas y desbloqueado el siguiente nivel.`);
+    }
+
+    function updateWorldsUI() {
+      for (let i = 2; i <= 4; i++) {
+        const node = document.getElementById(`map-node-${i}`);
+        const card = document.getElementById(`world-card-${i}`);
+        const status = document.getElementById(`status-world-${i}`);
+        if (i <= unlockedWorldId) {
+          if (node) {
+            node.className = "map-node unlocked node-world-" + i;
+          }
+          if (card) {
+            card.classList.remove('locked');
+            if (status) status.innerHTML = '<span style="color: #10b981; font-weight:700;"><i class="fa-solid fa-unlock"></i> Desbloqueado</span>';
+          }
+        }
+      }
+    }
+
+    // ========================================================
+    // 15-SECOND BUBBLE POP MINI-GAME
+    // ========================================================
+    let mgInterval = null;
+    let mgAnimId = null;
+    let mgTimeLeft = 15;
+    let mgScore = 0;
+    let bubbles = [];
+
+    function startRewardMiniGame() {
+      showScreen('minigame');
+      const canvas = document.getElementById('bubble-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      mgTimeLeft = 15;
+      mgScore = 0;
+      bubbles = [];
+      document.getElementById('mg-timer').innerText = mgTimeLeft;
+      document.getElementById('mg-score').innerText = mgScore;
+
+      // Spawn initial bubbles
+      for (let i = 0; i < 8; i++) spawnBubble(canvas);
+
+      if (mgInterval) clearInterval(mgInterval);
+      mgInterval = setInterval(() => {
+        mgTimeLeft--;
+        const timerEl = document.getElementById('mg-timer');
+        if (timerEl) timerEl.innerText = mgTimeLeft;
+        if (mgTimeLeft <= 0) {
+          endRewardMiniGame();
+        }
+      }, 1000);
+
+      canvas.onpointerdown = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const clickX = (e.clientX - rect.left) * (canvas.width / rect.width);
+        const clickY = (e.clientY - rect.top) * (canvas.height / rect.height);
+        popBubbleAt(clickX, clickY);
+      };
+
+      function loop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Randomly spawn more bubbles
+        if (Math.random() < 0.05 && bubbles.length < 15) {
+          spawnBubble(canvas);
+        }
+
+        // Draw and update bubbles
+        for (let i = bubbles.length - 1; i >= 0; i--) {
+          const b = bubbles[i];
+          b.y -= b.speed;
+          b.x += Math.sin(b.y * 0.03) * 0.8;
+
+          // Draw bubble
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+          ctx.fillStyle = b.color;
+          ctx.shadowColor = b.color;
+          ctx.shadowBlur = 15;
+          ctx.fill();
+
+          // Bubble highlight
+          ctx.beginPath();
+          ctx.arc(b.x - b.radius * 0.3, b.y - b.radius * 0.3, b.radius * 0.25, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+          ctx.fill();
+          ctx.restore();
+
+          if (b.y + b.radius < 0) {
+            bubbles.splice(i, 1);
+          }
+        }
+        mgAnimId = requestAnimationFrame(loop);
+      }
+      loop();
+      speak("¡Explota todas las burbujas que puedas antes de que se acabe el tiempo!");
+    }
+
+    function spawnBubble(canvas) {
+      const colors = ['rgba(168, 85, 247, 0.7)', 'rgba(56, 189, 248, 0.7)', 'rgba(16, 185, 129, 0.7)', 'rgba(251, 191, 36, 0.8)'];
+      bubbles.push({
+        x: Math.random() * (canvas.width - 60) + 30,
+        y: canvas.height + Math.random() * 50 + 20,
+        radius: Math.random() * 18 + 20,
+        speed: Math.random() * 1.5 + 1.2,
+        color: colors[Math.floor(Math.random() * colors.length)]
+      });
+    }
+
+    function popBubbleAt(x, y) {
+      for (let i = bubbles.length - 1; i >= 0; i--) {
+        const b = bubbles[i];
+        const dist = Math.hypot(b.x - x, b.y - y);
+        if (dist <= b.radius + 15) {
+          bubbles.splice(i, 1);
+          mgScore += 10;
+          const scoreEl = document.getElementById('mg-score');
+          if (scoreEl) scoreEl.innerText = mgScore;
+          playPopTone();
+          break;
+        }
+      }
+    }
+
+    function endRewardMiniGame() {
+      if (mgInterval) clearInterval(mgInterval);
+      if (mgAnimId) cancelAnimationFrame(mgAnimId);
+      showScreen('map');
+      speak(`¡Fantástico! Conseguiste ${mgScore} puntos. ¡Elige tu siguiente aventura!`);
+    }
+
+    // Synthesize joyful Web Audio effects
+    function playPopTone() {
+      try {
+        const ctx = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(440 + Math.random() * 220, ctx.currentTime);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.15);
+      } catch (e) {}
+    }
+
+    function playChimeVictory() {
+      try {
+        const ctx = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+        const freqs = [523.25, 659.25, 783.99, 1046.50];
+        freqs.forEach((f, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.frequency.setValueAtTime(f, ctx.currentTime + idx * 0.12);
+          gain.gain.setValueAtTime(0.15, ctx.currentTime + idx * 0.12);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.12 + 0.35);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(ctx.currentTime + idx * 0.12);
+          osc.stop(ctx.currentTime + idx * 0.12 + 0.35);
+        });
+      } catch (e) {}
+    }
+
+    // ========================================================
+    // INITIALIZATION
+    // ========================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      // Speech recognition setup
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = "es-ES";
+
+        recognition.onstart = () => { isRecognitionRunning = true; };
+        recognition.onend = () => {
+          isRecognitionRunning = false;
+          if (isCalling && !isSpeakingTTS) {
+            setTimeout(safeStartRecognition, 400);
+          }
+        };
+        recognition.onresult = (event) => {
+          const transcript = event.results[0][0].transcript;
+          if (transcript && !isEchoOfEva(transcript)) {
+            processUserInput(transcript);
+          }
+        };
+      }
+
+      updatePlayerDisplay();
+      updateWorldsUI();
+
+      // Greet player if already named
+      const name = localStorage.getItem('eva_profile_name');
+      const speech = document.getElementById('eva-companion-msg');
+      if (name && speech) {
+        speech.innerText = `¡Hola de nuevo, ${name}! ¿Listo para jugar? Elige tu siguiente mundo.`;
+      }
+    });
+  </script>
+</body>
+</html>
