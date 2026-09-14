@@ -723,22 +723,22 @@
       <!-- Tarjeta 2: Agente Marketing -->
       <div class="agent-card card-marketing" id="marketing">
         <div>
-          <span class="agent-tag tag-marketing"><i class="fa-solid fa-bullhorn"></i> Growth & Marketing Digital</span>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.5rem;">
+            <span class="agent-tag tag-marketing" style="margin-bottom: 0;"><i class="fa-solid fa-bullhorn"></i> Growth & Marketing Digital</span>
+            <span class="agent-tag tag-proximamente" style="margin-bottom: 0;"><i class="fa-solid fa-clock"></i> Próximamente</span>
+          </div>
           <h3>Agente Marketing</h3>
           <p class="agent-desc">Crea copys persuasivos, artículos de blog SEO y guiones para YouTube y TikTok. Planifica la difusión de vídeos y supervisa la publicación asistida con aprobación en Telegram.</p>
           <ul class="agent-features-mini">
-            <li><i class="fa-solid fa-check"></i> Copys, artículos de blog y carruseles con IA</li>
-            <li><i class="fa-solid fa-check"></i> Guiones y difusión de vídeos para YouTube y TikTok</li>
-            <li><i class="fa-solid fa-check"></i> Aprobación humana y difusión en canales de Telegram</li>
+            <li><i class="fa-solid fa-hourglass-half"></i> Copys, artículos de blog y carruseles con IA</li>
+            <li><i class="fa-solid fa-hourglass-half"></i> Guiones y difusión de vídeos para YouTube y TikTok</li>
+            <li><i class="fa-solid fa-hourglass-half"></i> Aprobación humana y difusión en canales de Telegram</li>
           </ul>
         </div>
         <div class="card-buttons">
-          <a href="/marketing" class="btn-card-primary btn-marketing">
-            Ver Agente Marketing <i class="fa-solid fa-arrow-right"></i>
-          </a>
-          <a href="https://t.me/{{BOT_USERNAME}}" target="_blank" class="btn-card-sub" title="Abrir en Telegram">
-            <i class="fa-brands fa-telegram"></i>
-          </a>
+          <div class="btn-proximamente" style="border-color: rgba(245, 158, 11, 0.4); color: #fbbf24; background: rgba(245, 158, 11, 0.08);">
+            <i class="fa-solid fa-clock"></i> Próximamente disponible
+          </div>
         </div>
       </div>
 
@@ -808,10 +808,11 @@
   <footer>
     <div class="footer-links">
       <a href="/coreagent">Silvania CoreAgent</a>
-      <a href="/marketing">Agente Marketing</a>
+      <a href="#marketing">Agente Marketing (Próximamente)</a>
       <a href="#eva">Eva Agent (Próximamente)</a>
       <a href="/privacy">Política de Privacidad</a>
       <a href="/terms">Términos de Servicio</a>
+      <a href="/eva?admin=silvania" style="opacity: 0.35; font-size: 0.8rem;" title="Acceso Fundador a Agentes en Desarrollo"><i class="fa-solid fa-key"></i> Acceso Fundador</a>
     </div>
     <p>&copy; 2026 Silvania.ai — Ecosistema de Agentes Inteligentes. Diseñado con rigor y propósito.</p>
   </footer>

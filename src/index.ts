@@ -764,9 +764,158 @@ app.get("/cancel", (req: any, res: any) => {
 // Servir archivos estáticos y rutas amigables
 app.get("/privacy", (req: any, res: any) => res.sendFile(path.join(process.cwd(), "public", "privacy.html")));
 app.get("/terms", (req: any, res: any) => res.sendFile(path.join(process.cwd(), "public", "terms.html")));
-app.get("/eva", (req: any, res: any) => res.redirect("/#eva"));
-app.get("/evaagent", (req: any, res: any) => res.redirect("/#eva"));
-app.get("/eva-landing", (req: any, res: any) => res.redirect("/#eva"));
+function renderFounderGatedPage(req: any, res: any, agentTitle: string, targetFile: string) {
+  const queryKey = (req.query?.admin || req.query?.key || req.query?.pin || req.query?.preview || "").toString().trim().toLowerCase();
+  const cookies = req.headers?.cookie || "";
+  const isCookieAuth = cookies.includes("silvania_founder=true");
+  const isKeyAuth = queryKey === "silvania" || queryKey === "silvania2026" || queryKey === "admin" || queryKey === "1234";
+
+  if (isKeyAuth || isCookieAuth) {
+    if (isKeyAuth) {
+      res.setHeader("Set-Cookie", "silvania_founder=true; Path=/; Max-Age=2592000; SameSite=Lax");
+    }
+    const htmlPath = path.join(process.cwd(), "public", targetFile);
+    if (fs.existsSync(htmlPath)) {
+      let html = fs.readFileSync(htmlPath, "utf8");
+      html = html.replace(/{{BOT_USERNAME}}/g, botUsername);
+      return res.send(html);
+    } else {
+      return res.redirect("/");
+    }
+  }
+
+  // Si no está autenticado, mostrar pantalla elegante de acceso de desarrollo con PIN
+  return res.send(`<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${agentTitle} — Acceso de Fundador | Silvania.ai</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;800&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #030712;
+      color: #f8fafc;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 1.5rem;
+    }
+    .gate-card {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 28px;
+      padding: 3rem 2.2rem;
+      max-width: 450px;
+      width: 100%;
+      text-align: center;
+      backdrop-filter: blur(25px);
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6);
+    }
+    .badge {
+      display: inline-block;
+      background: rgba(192, 132, 252, 0.15);
+      color: #c084fc;
+      border: 1px solid rgba(192, 132, 252, 0.3);
+      padding: 0.35rem 0.9rem;
+      border-radius: 50px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      margin-bottom: 1.2rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2rem;
+      font-weight: 800;
+      margin-bottom: 0.6rem;
+    }
+    p {
+      color: #94a3b8;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin-bottom: 2rem;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    input {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 14px;
+      padding: 0.95rem 1rem;
+      color: #fff;
+      font-size: 1.05rem;
+      text-align: center;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus {
+      border-color: #38bdf8;
+    }
+    button {
+      background: linear-gradient(135deg, #0284c7, #6366f1);
+      border: none;
+      color: white;
+      padding: 0.95rem;
+      border-radius: 14px;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      box-shadow: 0 10px 25px rgba(99, 102, 241, 0.35);
+      transition: transform 0.2s;
+    }
+    button:hover {
+      transform: translateY(-2px);
+    }
+    .back-link {
+      display: inline-block;
+      margin-top: 1.8rem;
+      color: #64748b;
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.2s;
+    }
+    .back-link:hover {
+      color: #cbd5e1;
+    }
+  </style>
+</head>
+<body>
+  <div class="gate-card">
+    <div class="badge">🔒 Silvania Labs · Modo Privado</div>
+    <h2>${agentTitle}</h2>
+    <p>Este agente se encuentra en fase de desarrollo activo y pruebas internas. Próximamente estará disponible para el público.</p>
+    <form method="GET" action="${req.path}">
+      <input type="password" name="admin" placeholder="Introduce el PIN de Fundador" autofocus required />
+      <button type="submit">Entrar al Agente</button>
+    </form>
+    <a href="/" class="back-link">← Volver al Hub Principal (Silvania.ai)</a>
+  </div>
+</body>
+</html>`);
+}
+
+app.get("/eva", rateLimiter(60, 60000), (req: any, res: any) => {
+  return renderFounderGatedPage(req, res, "Eva Agent", "eva.html");
+});
+app.get("/evaagent", rateLimiter(60, 60000), (req: any, res: any) => {
+  return renderFounderGatedPage(req, res, "Eva Agent", "eva.html");
+});
+app.get("/eva-landing", rateLimiter(60, 60000), (req: any, res: any) => {
+  return renderFounderGatedPage(req, res, "Eva Agent Showcase", "eva-landing.html");
+});
+app.get("/marketing", rateLimiter(60, 60000), (req: any, res: any) => {
+  return renderFounderGatedPage(req, res, "Silvania Marketing Studio", "marketing.html");
+});
 app.get("/coreagent", rateLimiter(60, 60000), (req: any, res: any) => {
   try {
     const htmlPath = path.join(process.cwd(), "public", "coreagent.html");
@@ -779,21 +928,6 @@ app.get("/coreagent", rateLimiter(60, 60000), (req: any, res: any) => {
     }
   } catch (err: any) {
     console.error("Error sirviendo coreagent page:", err);
-    res.status(500).send("Error interno.");
-  }
-});
-app.get("/marketing", rateLimiter(60, 60000), (req: any, res: any) => {
-  try {
-    const htmlPath = path.join(process.cwd(), "public", "marketing.html");
-    if (fs.existsSync(htmlPath)) {
-      let html = fs.readFileSync(htmlPath, "utf8");
-      html = html.replace(/{{BOT_USERNAME}}/g, botUsername);
-      res.send(html);
-    } else {
-      res.sendFile(path.join(process.cwd(), "public", "index.html"));
-    }
-  } catch (err: any) {
-    console.error("Error sirviendo marketing page:", err);
     res.status(500).send("Error interno.");
   }
 });
