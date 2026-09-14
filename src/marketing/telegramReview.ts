@@ -3,19 +3,22 @@ import fs from "fs";
 import { MarketingDraft } from "./types.js";
 import { marketingDb } from "./database.js";
 import { config } from "../config/config.js";
+import { socialPublisher } from "./services/socialPublisher.js";
 
 export const telegramReview = {
   /**
-   * Envía la tarjeta de revisión interactiva (Human-in-the-Loop) a Telegram con metadatos de coste.
+   * Envía la tarjeta de revisión interactiva (Human-in-the-Loop) a Telegram con metadatos de coste y multired.
    */
   async sendReviewCard(bot: Bot, draft: MarketingDraft): Promise<void> {
     const keyboard = new InlineKeyboard()
       .text("🚀 Aprobar y Publicar", `mkt_pub_${draft.id}`)
       .text("🔄 Regenerar", `mkt_reg_${draft.id}`)
-      .text("❌ Descartar", `mkt_rej_${draft.id}`);
+      .text("❌ Descartar", `mkt_rej_${draft.id}`)
+      .row()
+      .text("📦 Pack Multirredes (X, LinkedIn, FB, TikTok)", `mkt_pack_${draft.id}`);
 
     if (draft.format === "youtube_long" || draft.format === "youtube_short" || draft.format === "tiktok") {
-      keyboard.row().text("📜 Ver Guión Detallado", `mkt_scr_${draft.id}`);
+      keyboard.text("📜 Ver Guión Detallado", `mkt_scr_${draft.id}`);
     }
 
     const techFooter = `\n\n⚙️ _Stack: LLM: ${draft.llmModel || "gemini"} | Voz: ${draft.voiceProvider || "edge-free"} | Img: ${draft.imageProvider || "flux-free"}_`;
@@ -65,15 +68,8 @@ export const telegramReview = {
       } else {
         // Si el texto supera los 1000 caracteres, Telegram rechaza caption > 1024.
         // Enviamos la imagen primero y el texto completo con los botones interactivos después.
-        try {
-          await bot.api.sendPhoto(draft.userId, new InputFile(draft.imageUrls[0]), {
-            caption: `📸 *Propuesta Visual:* "${draft.topic.slice(0, 100)}"`,
-            parse_mode: "Markdown",
-          });
-        } catch {
-          await bot.api.sendPhoto(draft.userId, new InputFile(draft.imageUrls[0]));
-        }
-
+        // Enviar foto primero y texto completo después
+        await bot.api.sendPhoto(draft.userId, new InputFile(draft.imageUrls[0]));
         try {
           await bot.api.sendMessage(draft.userId, summaryText, {
             parse_mode: "Markdown",
@@ -127,7 +123,7 @@ export const telegramReview = {
     }
 
     const parts = data.split("_");
-    const action = parts[1]; // pub, reg, rej, scr
+    const action = parts[1]; // pub, reg, rej, scr, pack
     const draftId = parts.slice(2).join("_");
 
     const draft = marketingDb.getDraft(draftId);
@@ -136,11 +132,56 @@ export const telegramReview = {
       return true;
     }
 
+    // Acción: Generar y mostrar el pack adaptado a cada red social
+    if (action === "pack") {
+      await ctx.answerCallbackQuery({ text: "📦 Generando Pack Multirredes..." });
+      const pack = socialPublisher.generateSocialPack(draft);
+
+      const msg = 
+        `📦 *PACK MULTIRREDES LISTO (Copia y Pega)*\n\n` +
+        `𝕏 *X / Twitter (Optimizado < 280 caracteres):*\n` +
+        `\`\`\`text\n${pack.twitter}\n\`\`\`\n\n` +
+        `💼 *LinkedIn (Profesional B2B):*\n` +
+        `\`\`\`text\n${pack.linkedin}\n\`\`\`\n\n` +
+        `📘 *Facebook:*\n` +
+        `\`\`\`text\n${pack.facebook}\n\`\`\`\n\n` +
+        `🎵 *TikTok:*\n` +
+        `\`\`\`text\n${pack.tiktok}\n\`\`\`\n\n` +
+        `🎬 *YouTube (Título & Descripción):*\n` +
+        `*Título:* \`${pack.youtube.title}\`\n\n` +
+        `*Descripción:*\n\`\`\`text\n${pack.youtube.description.slice(0, 1000)}\n\`\`\``;
+
+      await ctx.reply(msg, { parse_mode: "Markdown" });
+      return true;
+    }
+
     if (action === "pub") {
       const channelId = config.marketing?.telegramChannelId;
+      const socialPack = socialPublisher.generateSocialPack(draft);
+      const publishReport: string[] = [];
 
+      // 1. Enviar a Webhook Multirredes (Make / n8n / Zapier) si está activo
+      if (config.marketing?.webhookUrl) {
+        const webhookRes = await socialPublisher.dispatchToWebhook(draft, socialPack);
+        if (webhookRes.success) {
+          publishReport.push(`🌐 *Webhook Multicanal (Make/n8n):* Disparado con éxito`);
+        } else {
+          publishReport.push(`⚠️ *Webhook Multicanal:* ${webhookRes.error}`);
+        }
+      }
+
+      // 2. Enviar a Facebook Page si está configurado
+      if (config.marketing?.facebookPageAccessToken) {
+        const fbRes = await socialPublisher.publishToFacebook(socialPack.facebook);
+        if (fbRes.success) {
+          publishReport.push(`📘 *Facebook Page:* Publicado (ID: ${fbRes.messageId})`);
+        } else {
+          publishReport.push(`⚠️ *Facebook:* ${fbRes.error}`);
+        }
+      }
+
+      // 3. Publicación en Canal Oficial de Telegram
       if (channelId && channelId.trim().length > 0) {
-        // Si hay canal configurado, publicar de forma real
         try {
           console.log(`📢 [Marketing] Publicando borrador #${draftId} en canal ${channelId}...`);
           const hasImage = draft.imageUrls && draft.imageUrls.length > 0 && fs.existsSync(draft.imageUrls[0]);
@@ -178,17 +219,26 @@ export const telegramReview = {
             postLinkNote = `\n🔗 [Ver en el canal](${cleanUrl}/${channelMsg.message_id})`;
           }
 
-          await ctx.answerCallbackQuery({ text: "🚀 ¡Publicado en el canal de Telegram!" });
+          publishReport.unshift(`📢 *Canal Telegram:* Publicado con éxito${postLinkNote}`);
+
+          await ctx.answerCallbackQuery({ text: "🚀 ¡Aprobado y publicado!" });
           await ctx.editMessageReplyMarkup({ reply_markup: undefined });
-          await ctx.reply(`✅ *¡Borrador #${draftId.slice(0, 8)} publicado en el canal oficial!*${postLinkNote}`, { parse_mode: "Markdown" });
+
+          const reportText = 
+            `✅ *¡Borrador #${draftId.slice(0, 8)} APROBADO!*\n\n` +
+            publishReport.join("\n") + "\n\n" +
+            `💡 _Toca el botón abajo para obtener los textos listos para pegar en X, LinkedIn, TikTok y YouTube:_`;
+
+          const followUpKeyboard = new InlineKeyboard().text("📦 Ver Pack Multirredes (1-Click)", `mkt_pack_${draftId}`);
+          await ctx.reply(reportText, { parse_mode: "Markdown", reply_markup: followUpKeyboard });
           return true;
         } catch (publishErr: any) {
           console.error("❌ Error publicando en canal de Telegram:", publishErr.message);
           draft.status = "approved_saved";
           draft.updatedAt = new Date().toISOString();
           marketingDb.saveDraft(draft);
-          await ctx.answerCallbackQuery({ text: "⚠️ Error al enviar al canal. Guardado en base de datos." });
-          await ctx.reply(`⚠️ Aprobado y guardado en SQLite, pero falló el envío al canal (${publishErr.message}). Verifica que el bot sea administrador del canal con permisos de publicar.`);
+          await ctx.answerCallbackQuery({ text: "⚠️ Error al enviar al canal. Guardado en SQLite." });
+          await ctx.reply(`⚠️ Aprobado y guardado en SQLite, pero falló el envío al canal (${publishErr.message}).`);
           return true;
         }
       } else {
@@ -199,13 +249,18 @@ export const telegramReview = {
         marketingDb.saveDraft(draft);
         await ctx.answerCallbackQuery({ text: "✅ Aprobado y guardado." });
         await ctx.editMessageReplyMarkup({ reply_markup: undefined });
-        await ctx.reply(
+
+        publishReport.push(`💾 *SQLite Local:* Guardado`);
+
+        const reportText = 
           `✅ *Borrador #${draftId.slice(0, 8)} APROBADO Y GUARDADO*\n\n` +
-          `_El contenido ha sido aprobado y guardado en la base de datos (SQLite)._\n\n` +
-          `💡 *Para publicarlo automáticamente en tu canal vitrina:*\n` +
-          `Configura la variable \`MARKETING_TELEGRAM_CHANNEL_ID\` en Railway con el ID numérico de tu canal (ej. \`-100xxxxxxxxxx\`).`,
-          { parse_mode: "Markdown" }
-        );
+          publishReport.join("\n") + "\n\n" +
+          `💡 *Para publicarlo automáticamente en Telegram:*\n` +
+          `Configura la variable \`MARKETING_TELEGRAM_CHANNEL_ID\` en Railway.\n\n` +
+          `_Toca abajo para copiar los textos formateados para tus otras redes:_`;
+
+        const followUpKeyboard = new InlineKeyboard().text("📦 Ver Pack Multirredes (1-Click)", `mkt_pack_${draftId}`);
+        await ctx.reply(reportText, { parse_mode: "Markdown", reply_markup: followUpKeyboard });
         return true;
       }
     }

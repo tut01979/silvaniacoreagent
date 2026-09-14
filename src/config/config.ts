@@ -61,7 +61,12 @@ export const config = {
     imageProvider: process.env.MARKETING_IMAGE_PROVIDER || "pollinations_flux",
     adminIds: (process.env.MARKETING_ADMIN_IDS || "1572946817").split(",").map(id => parseInt(id.trim())).filter(id => !isNaN(id)),
     telegramChannelId: process.env.MARKETING_TELEGRAM_CHANNEL_ID || "",
-    telegramChannelUrl: process.env.MARKETING_TELEGRAM_CHANNEL_URL || ""
+    telegramChannelUrl: process.env.MARKETING_TELEGRAM_CHANNEL_URL || "",
+    webhookUrl: process.env.MARKETING_WEBHOOK_URL || "",
+    facebookPageAccessToken: process.env.FACEBOOK_PAGE_ACCESS_TOKEN || "",
+    facebookPageId: process.env.FACEBOOK_PAGE_ID || "",
+    twitterApiKey: process.env.TWITTER_API_KEY || "",
+    twitterAccessToken: process.env.TWITTER_ACCESS_TOKEN || ""
   },
   tempDir: "./temp"
 };
