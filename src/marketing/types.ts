@@ -1,4 +1,4 @@
-export type ContentFormat = "social_post" | "youtube_long" | "youtube_short" | "newsletter";
+export type ContentFormat = "social_post" | "youtube_long" | "youtube_short" | "tiktok" | "newsletter";
 
 export type DraftStatus = "pending_review" | "approved" | "approved_saved" | "regenerating" | "rejected" | "published";
 
@@ -37,7 +37,7 @@ export interface MarketingDraft {
   videoScript?: VideoScript;
   imageUrls: string[];
   audioUrls: string[];
-  targetChannels: string[]; // ["telegram_channel", "linkedin", "youtube"]
+  targetChannels: string[]; // ["telegram_channel", "linkedin", "youtube", "tiktok"]
   voiceProvider?: string; // "edge" | "elevenlabs" | "polly" | "google"
   imageProvider?: string; // "pollinations_flux" | "dalle"
   llmModel?: string; // "gemini-2.5-flash" | "llama-3.3-70b"

@@ -3,128 +3,452 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Política de Privacidad | Silvania AI</title>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <title>Política de Privacidad | Silvania.ai</title>
+  <meta name="description" content="Política de Privacidad oficial de Silvania.ai, Silvania CoreAgent y Eva Agent. Información transparente sobre tratamiento de datos y permisos OAuth de Google.">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
   <style>
     :root {
-      --bg-color: #060913;
-      --card-bg: rgba(13, 20, 38, 0.6);
-      --card-border: rgba(255, 255, 255, 0.06);
-      --text-main: #f3f4f6;
-      --text-muted: #9ca3af;
-      --primary: #10b981;
-      --secondary: #3b82f6;
+      --bg-dark: #030712;
+      --card-bg: rgba(15, 23, 42, 0.75);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #a855f7;
+      --secondary: #38bdf8;
+      --accent: #10b981;
       --font-title: 'Outfit', sans-serif;
       --font-body: 'Plus Jakarta Sans', sans-serif;
     }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
-      background-color: var(--bg-color);
+      background-color: var(--bg-dark);
       color: var(--text-main);
       font-family: var(--font-body);
       line-height: 1.7;
-      margin: 0;
-      padding: 4rem 2rem;
-      background: radial-gradient(circle at top right, rgba(59, 130, 246, 0.06), transparent 50%);
+      min-height: 100vh;
+      overflow-x: hidden;
+      background: radial-gradient(circle at 80% 10%, rgba(168, 85, 247, 0.08), transparent 40%),
+                  radial-gradient(circle at 20% 80%, rgba(56, 189, 248, 0.08), transparent 40%);
     }
-    .container {
-      max-width: 800px;
+
+    /* Header */
+    header {
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      background-color: rgba(3, 7, 18, 0.85);
+      border-bottom: 1px solid var(--card-border);
+      padding: 1rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-container {
+      max-width: 1000px;
       margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      text-decoration: none;
+      color: white;
+      font-family: var(--font-title);
+      font-weight: 800;
+      font-size: 1.3rem;
+    }
+    .brand img {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+    }
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover {
+      color: white;
+    }
+
+    /* Main Container */
+    .legal-container {
+      max-width: 900px;
+      margin: 3.5rem auto 5rem;
+      padding: 0 1.5rem;
+    }
+
+    .legal-card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
-      border-radius: 24px;
-      padding: 3rem;
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      border-radius: 28px;
+      padding: 3.5rem 3rem;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
     }
+
+    .badge-meta {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: 50px;
+      background: rgba(168, 85, 247, 0.12);
+      border: 1px solid rgba(168, 85, 247, 0.3);
+      color: #c084fc;
+      font-size: 0.82rem;
+      font-weight: 700;
+      margin-bottom: 1.2rem;
+    }
+
     h1 {
       font-family: var(--font-title);
-      font-size: 2.2rem;
-      font-weight: 700;
-      margin-bottom: 2rem;
-      background: linear-gradient(135deg, var(--secondary), var(--primary));
+      font-size: 2.5rem;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 0.6rem;
+      background: linear-gradient(135deg, #ffffff, #94a3b8);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      border-bottom: 1px solid var(--card-border);
-      padding-bottom: 1rem;
     }
+
+    .last-updated {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--card-border);
+    }
+
     h2 {
       font-family: var(--font-title);
-      font-size: 1.4rem;
-      color: #fff;
-      margin-top: 2rem;
-      margin-bottom: 1rem;
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-top: 2.4rem;
+      margin-bottom: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
     }
-    p, li {
+
+    h3 {
+      font-family: var(--font-title);
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: #e2e8f0;
+      margin-top: 1.4rem;
+      margin-bottom: 0.6rem;
+    }
+
+    p {
       color: var(--text-muted);
       font-size: 0.98rem;
+      margin-bottom: 1.1rem;
     }
+
     ul {
-      margin-bottom: 1.5rem;
-      padding-left: 1.5rem;
+      margin-bottom: 1.4rem;
+      padding-left: 1.4rem;
     }
+
     li {
-      margin-bottom: 0.5rem;
-    }
-    .footer {
-      text-align: center;
-      margin-top: 3rem;
-      font-size: 0.85rem;
       color: var(--text-muted);
+      font-size: 0.96rem;
+      margin-bottom: 0.55rem;
+    }
+
+    strong {
+      color: #f1f5f9;
+    }
+
+    /* Callout & Alert Boxes */
+    .callout-box {
+      border-radius: 16px;
+      padding: 1.3rem 1.6rem;
+      margin: 1.5rem 0;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    .callout-info {
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      color: #e0f2fe;
+    }
+    .callout-info i {
+      color: var(--secondary);
+      font-size: 1.3rem;
+      margin-top: 0.15rem;
+    }
+
+    .callout-highlight {
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #d1fae5;
+    }
+    .callout-highlight i {
+      color: var(--accent);
+      font-size: 1.3rem;
+      margin-top: 0.15rem;
+    }
+
+    .callout-warning {
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #fef3c7;
+    }
+    .callout-warning i {
+      color: #f59e0b;
+      font-size: 1.3rem;
+      margin-top: 0.15rem;
+    }
+
+    code {
+      background: rgba(0, 0, 0, 0.4);
+      padding: 0.2rem 0.45rem;
+      border-radius: 6px;
+      color: #38bdf8;
+      font-family: monospace;
+      font-size: 0.9em;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    a {
+      color: var(--secondary);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    a:hover {
+      color: #7dd3fc;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--card-border);
+      padding: 3rem 2rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      background: rgba(3, 7, 18, 0.9);
+    }
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .footer-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .footer-links a:hover {
+      color: white;
+    }
+
+    @media (max-width: 768px) {
+      .legal-card {
+        padding: 2.2rem 1.6rem;
+      }
+      h1 { font-size: 2rem; }
+      .nav-links { display: none; }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Política de Privacidad de Silvania AI</h1>
-    <p>Última actualización: 21 de junio de 2026</p>
-    
-    <p>En Silvania AI nos tomamos muy en serio la seguridad y privacidad de tu información. Esta Política de Privacidad detalla de qué manera recopilamos, utilizamos, tratamos y protegemos tus datos cuando interactúas con nuestro asistente personal ejecutivo a través de Telegram y conectas tus cuentas de Google Workspace.</p>
 
-    <h2>1. Responsable del Tratamiento de Datos</h2>
-    <p>El responsable del tratamiento de los datos recopilados por esta aplicación es Eduardo, con correo de contacto corporativo <strong>eduardo@silvania.ai</strong>.</p>
+  <!-- Header -->
+  <header>
+    <div class="header-container">
+      <a href="/" class="brand">
+        <img src="/logo_ai.png" alt="Silvania.ai Logo"> Silvania.ai
+      </a>
+      <nav class="nav-links">
+        <a href="/"><i class="fa-solid fa-house"></i> Hub</a>
+        <a href="/coreagent">CoreAgent</a>
+        <a href="/eva-landing">Eva Logopedia</a>
+        <a href="/terms">Términos de Servicio</a>
+      </nav>
+    </div>
+  </header>
 
-    <h2>2. Datos que Recopilamos y Procesamos</h2>
-    <p>Para proporcionar las capacidades de asistente personal, procesamos los siguientes tipos de datos:</p>
-    <ul>
-      <li><strong>Información de Telegram:</strong> Identificador único del usuario (Telegram User ID), nombre, apellidos y nombre de usuario de Telegram.</li>
-      <li><strong>Credenciales de Google (OAuth 2.0 Tokens):</strong> Claves y tokens de acceso necesarios para conectarnos en tu nombre a los servicios de Google autorizados. Estos tokens se almacenan cifrados y de manera segura.</li>
-      <li><strong>Datos de Google Workspace (Bajo demanda):</strong>
-        <ul>
-          <li><strong>Gmail:</strong> Metadatos y contenido del cuerpo del correo para generar resúmenes, buscar mensajes o redactar respuestas bajo tu orden explícita.</li>
-          <li><strong>Google Calendar:</strong> Datos de citas, reuniones y eventos para listarlos en tu chat o agendar nuevos.</li>
-          <li><strong>Google Drive y Sheets:</strong> Archivos que envíes activamente a Silvania (como fotos, facturas o PDFs) y hojas de cálculo generadas por la aplicación.</li>
-        </ul>
-      </li>
-    </ul>
+  <!-- Content -->
+  <div class="legal-container">
+    <div class="legal-card">
+      <div class="badge-meta">
+        <i class="fa-solid fa-shield-halved"></i> Transparencia y Seguridad Oficial
+      </div>
+      <h1>Política de Privacidad</h1>
+      <div class="last-updated">
+        Última actualización: <strong>7 de septiembre de 2026</strong> · Vigente para el ecosistema Silvania.ai
+      </div>
 
-    <h2>3. Uso de la Información y Finalidad</h2>
-    <p>Los datos son recopilados exclusivamente para la ejecución de tareas ejecutivas solicitadas de forma directa por el usuario a través de comandos o mensajes en Telegram. Silvania AI no almacena de forma persistente tus correos electrónicos, archivos o registros de calendario más allá de la memoria necesaria para procesar y responder tus peticiones en tiempo real.</p>
+      <p>
+        En <strong>Silvania.ai</strong> la protección de tu información personal y el control soberano sobre tus datos constituyen nuestro principio de diseño fundamental. Esta Política de Privacidad explica de forma clara, detallada y honesta cómo tratamos tus datos al interactuar con nuestro ecosistema de aplicaciones, qué permisos solicitamos y cuáles son tus derechos.
+      </p>
 
-    <h2>4. Transferencia de Datos y Terceros</h2>
-    <p>No vendemos, comercializamos ni transferimos tus datos personales a terceros. Todos tus datos se transmiten directamente y de forma segura entre los servidores del bot (alojados en Railway y Firebase) y las APIs oficiales de Google.</p>
+      <!-- 1. Responsable -->
+      <h2><i class="fa-solid fa-user-shield" style="color: var(--primary);"></i> 1. Responsable del Tratamiento</h2>
+      <p>
+        El responsable del tratamiento de los datos recogidos en esta plataforma es Eduardo Quintero Martínez, titular de la iniciativa <strong>Silvania AI</strong>.
+      </p>
+      <ul>
+        <li><strong>Sitio web principal:</strong> <a href="https://silvania.ai">https://silvania.ai</a></li>
+        <li><strong>Correo electrónico de contacto y privacidad:</strong> <a href="mailto:soporte@silvania.ai">soporte@silvania.ai</a> / <a href="mailto:eduardoqm573@gmail.com">eduardoqm573@gmail.com</a></li>
+      </ul>
 
-    <h2>5. Conservación de los Datos</h2>
-    <p>Los tokens de acceso de Google se conservan de forma indefinida en nuestras bases de datos seguras para mantener activa la vinculación con el bot de Telegram. Puedes revocar el acceso a tus cuentas de Google y borrar todo tu historial de conversaciones del bot en cualquier momento usando el comando de Telegram <code>/clear</code> o eliminando el acceso de Silvania desde tu configuración de seguridad de Google.</p>
+      <!-- 2. Ámbito -->
+      <h2><i class="fa-solid fa-layer-group" style="color: var(--secondary);"></i> 2. Ámbito de Aplicación</h2>
+      <p>Esta política cubre la totalidad de los productos y servicios bajo el dominio <strong>silvania.ai</strong>:</p>
+      <ul>
+        <li><strong>Silvania CoreAgent:</strong> Asistente de productividad ejecutiva interactivo vía Telegram y conectado con herramientas autorizadas de Google Workspace.</li>
+        <li><strong>Eva:</strong> Aplicación web de estimulación vocal, práctica de dicción y apoyo en logopedia lúdica disponible en <code>https://silvania.ai/eva</code>.</li>
+        <li><strong>Sitio Web y Hub Silvania.ai:</strong> Portal principal, páginas informativas y landings oficiales.</li>
+      </ul>
 
-    <h2>6. Uso de Datos de Google</h2>
-    <p>
-      Silvania CoreAgent accede a datos de tu cuenta de Google (Gmail, Google Drive, Google Calendar y Google Sheets) únicamente para prestar y mejorar las funciones que tú solicitas en la aplicación: leer y enviar correo cuando lo pides, crear y gestionar eventos de calendario, listar y organizar archivos en Drive, y crear o editar hojas de cálculo. No utilizamos los datos de Google para publicidad, no los vendemos a terceros ni los usamos para entrenar modelos de inteligencia artificial de terceros. El acceso se produce solo tras tu autorización OAuth y bajo tu instrucción explícita en el chat.
-    </p>
+      <!-- 3. CoreAgent - Datos Tratados -->
+      <h2><i class="fa-brands fa-telegram" style="color: #229ed9;"></i> 3. Silvania CoreAgent — Datos que Tratamos</h2>
+      <p>Para proporcionar asistencia a través de Telegram, tratamos los siguientes datos:</p>
+      <ul>
+        <li><strong>Identificadores de Telegram:</strong> Telegram User ID numérico, nombre visible y nombre de usuario (@username) proporcionados cuando inicias una conversación con el bot oficial.</li>
+        <li><strong>Mensajes e instrucciones:</strong> El texto o comandos de voz que envías al bot para ejecutar las solicitudes de calendario, hojas de cálculo o correos.</li>
+        <li><strong>Credenciales OAuth de Google (Tokens):</strong> Tokens de acceso y actualización generados cuando el usuario autoriza la vinculación a través de la pantalla oficial de consentimiento de Google. Se almacenan de forma segura y cifrada.</li>
+        <li><strong>Datos de Google bajo demanda:</strong> Silvania CoreAgent interactúa con tus servicios de Google <strong>única y exclusivamente bajo tu instrucción explícita</strong>.</li>
+      </ul>
 
-    <h2>7. Protección de Datos Sensibles</h2>
-    <p>
-      Los tokens de acceso y actualización de Google se almacenan de forma segura y cifrada, asociados a tu cuenta de usuario, y solo el sistema de Silvania los utiliza para ejecutar las acciones que solicitas. No compartimos el contenido de tus correos, archivos, eventos u hojas de cálculo con terceros con fines comerciales. Aplicamos medidas técnicas y organizativas razonables (acceso restringido a servidores, comunicación HTTPS, minimización de datos y retención limitada a lo necesario para el servicio). Puedes revocar el acceso en cualquier momento desde la <a href="https://myaccount.google.com/permissions" target="_blank" style="color: var(--primary);">configuración de seguridad de tu cuenta de Google</a>, momento en el cual dejaremos de poder acceder a esos datos.
-    </p>
+      <!-- 4. CoreAgent - Permisos de Google -->
+      <h2><i class="fa-brands fa-google" style="color: #ea4335;"></i> 4. Permisos de Google OAuth en Producción (Versión Pública)</h2>
+      <p>
+        En estricto cumplimiento con el principio de minimización de datos de Google, la versión pública y verificada de Silvania CoreAgent solicita <strong>únicamente</strong> los siguientes alcances (scopes) acotados:
+      </p>
+      <ul>
+        <li><code>.../auth/calendar.events</code>: Permite consultar tus próximos eventos y agendar nuevas citas en tu Google Calendar cuando lo solicitas en el chat.</li>
+        <li><code>.../auth/spreadsheets</code>: Permite crear y actualizar hojas de cálculo específicas (por ejemplo, registros de gastos, plantillas o emisión de facturas solicitadas).</li>
+        <li><code>.../auth/drive.file</code>: Permite ver, crear y modificar <strong>únicamente</strong> los archivos específicos que la aplicación genera o que tú decides subir y compartir con ella (no tiene acceso al resto de tus archivos preexistentes).</li>
+        <li><code>.../auth/gmail.send</code>: Permite redactar y enviar un correo electrónico en tu nombre <strong>únicamente cuando nos lo pides de forma expresa</strong>.</li>
+        <li><code>openid</code>, <code>.../auth/userinfo.email</code>, <code>.../auth/userinfo.profile</code>: Identificación básica de tu cuenta para asociar los tokens al usuario correcto.</li>
+      </ul>
 
-    <h2>8. Finalidad Limitada</h2>
-    <p>
-      El tratamiento de datos obtenidos mediante las API de Google se limita a proporcionar o mejorar la funcionalidad orientada al usuario de Silvania CoreAgent, de conformidad con las <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" style="color: var(--primary);">políticas de servicios de API de Google</a> y los requisitos de datos de usuario de Google.
-    </p>
+      <div class="callout-box callout-highlight">
+        <i class="fa-solid fa-circle-check"></i>
+        <div>
+          <strong>Declaración Explícita de Producción:</strong><br>
+          En la versión pública, Silvania CoreAgent <strong>no solicita acceso de lectura completa a Gmail ni a todo tu Google Drive</strong>. No leemos tus correos entrantes, no indexamos tu bandeja de entrada ni exploramos tus carpetas privadas no vinculadas.
+        </div>
+      </div>
 
-    <div class="footer">
-      <p>&copy; 2026 Silvania AI. Todos los derechos reservados.</p>
+      <p style="font-size: 0.88rem; color: var(--text-muted);">
+        <em>Nota técnica: Cuentas de prueba internas autorizadas pueden disponer de un entorno de desarrollo para pruebas técnicas; dicho uso interno está estrictamente restringido y no forma parte del producto público verificado.</em>
+      </p>
+
+      <!-- 5. Finalidad y Uso Limitado -->
+      <h2><i class="fa-solid fa-bullseye" style="color: var(--accent);"></i> 5. Finalidad y Cumplimiento de Uso Limitado</h2>
+      <p>
+        El tratamiento de la información obtenida a través de las APIs de Google se destina exclusivamente a ejecutar las acciones de productividad solicitadas por el usuario.
+      </p>
+      <ul>
+        <li><strong>No vendemos datos:</strong> Tus datos personales y de Google jamás se venden, ceden ni monetizan a terceros.</li>
+        <li><strong>Sin publicidad:</strong> No usamos información de Google Workspace para publicidad dirigida, retargeting ni creación de perfiles comerciales.</li>
+        <li><strong>Sin entrenamiento de modelos de IA con tus datos privados:</strong> Los datos obtenidos mediante las API de Google no se transfieren a proveedores externos para el entrenamiento de modelos de inteligencia artificial fundacionales de terceros.</li>
+        <li><strong>Cumplimiento con Google API Services User Data Policy:</strong> El uso y transferencia por parte de Silvania AI de la información recibida a través de las APIs de Google se adhiere a la <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank">Google API Services User Data Policy</a>, incluidos los requisitos de Uso Limitado (Limited Use).</li>
+      </ul>
+
+      <!-- 6. Conservación y Revocación -->
+      <h2><i class="fa-solid fa-clock-rotate-left" style="color: #f59e0b;"></i> 6. Conservación de Datos y Derecho de Revocación</h2>
+      <p>
+        Los tokens OAuth se conservan cifrados mientras mantengas vinculada tu cuenta para permitir la continuidad del servicio en Telegram.
+      </p>
+      <ul>
+        <li><strong>Revocación directa desde Google:</strong> Puedes desconectar Silvania CoreAgent en cualquier momento y de forma inmediata desde la configuración de seguridad de tu cuenta Google en <a href="https://myaccount.google.com/permissions" target="_blank">https://myaccount.google.com/permissions</a>. Al revocar el permiso, la aplicación pierde al instante la capacidad de comunicarse con tus servicios de Google.</li>
+        <li><strong>Comando de borrado:</strong> Puedes escribir el comando <code>/clear</code> en el chat de Telegram para restablecer la memoria operativa del bot.</li>
+      </ul>
+
+      <!-- 7. Eva - Privacidad Infantil y de Voz -->
+      <h2><i class="fa-solid fa-face-smile" style="color: #c084fc;"></i> 7. Eva — Privacidad Infantil, Audio y Estimulación Vocal</h2>
+      <p>
+        La aplicación <strong>Eva</strong> (disponible en <code>https://silvania.ai/eva</code>) está concebida bajo las directrices más rigurosas de privacidad familiar e infantil:
+      </p>
+      <ul>
+        <li><strong>Ejecución en el navegador del usuario:</strong> El procesamiento del habla, visualización de ondas sonoras y seguimiento labial con MediaPipe FaceMesh se ejecutan localmente en el navegador mediante las APIs web del dispositivo.</li>
+        <li><strong>Audio 100% Efímero:</strong> Las muestras de voz captadas por el micrófono no se almacenan permanentemente en nuestros servidores ni se guardan archivos de audio de menores. El análisis fonético se realiza en memoria y se descarta tras procesar la frase.</li>
+        <li><strong>Cámara opcional y local:</strong> El uso de la cámara web para analizar la gesticulación de los labios es estrictamente voluntario y opera en tiempo real en tu propio equipo sin transmitir vídeo grabado a ningún servidor.</li>
+        <li><strong>Sin cuentas de Google de menores:</strong> Eva no requiere vincular cuentas de Google, ni correos electrónicos ni información bancaria del menor para su uso.</li>
+        <li><strong>Progreso guardado localmente:</strong> Las estrellas conseguidas y los niveles desbloqueados se almacenan preferentemente en la memoria local de tu navegador (<code>localStorage</code>).</li>
+      </ul>
+
+      <div class="callout-box callout-warning">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <div>
+          <strong>Aviso de Salud Importante (Disclaimer):</strong><br>
+          Eva es una herramienta tecnológica de estimulación del habla, entrenamiento de dicción y refuerzo lúdico. <strong>No constituye un dispositivo médico ni sustituye el diagnóstico, evaluación, intervención o tratamiento realizado por un logopeda colegiado o profesional sanitario.</strong>
+        </div>
+      </div>
+
+      <!-- 8. Infraestructura y Seguridad -->
+      <h2><i class="fa-solid fa-server" style="color: var(--secondary);"></i> 8. Infraestructura y Medidas Técnicas</h2>
+      <p>
+        Implementamos medidas técnicas y organizativas para salvaguardar la confidencialidad e integridad de la información:
+      </p>
+      <ul>
+        <li><strong>Alojamiento seguro:</strong> Infraestructura en servidores protegidos en la nube (Railway) y bases de datos aisladas (Firebase/Firestore) con reglas estrictas de acceso.</li>
+        <li><strong>Cifrado en tránsito:</strong> Todas las comunicaciones se realizan bajo protocolo HTTPS / TLS de alta seguridad.</li>
+        <li><strong>Límites de tasa (Rate Limiting):</strong> Protección perimetral contra ataques de fuerza bruta y abusos de API.</li>
+      </ul>
+
+      <!-- 9. Contacto -->
+      <h2><i class="fa-solid fa-envelope" style="color: var(--primary);"></i> 9. Contacto y Ejercicio de Derechos</h2>
+      <p>
+        Puedes ejercer tus derechos de acceso, rectificación, supresión, limitación y oposición, o remitir cualquier duda sobre este documento escribiendo a:
+      </p>
+      <p>
+        <strong>Email:</strong> <a href="mailto:soporte@silvania.ai">soporte@silvania.ai</a> o <a href="mailto:eduardoqm573@gmail.com">eduardoqm573@gmail.com</a><br>
+        <strong>Responsable:</strong> Eduardo Quintero Martínez · Silvania AI<br>
+        <strong>Ubicación:</strong> España (Unión Europea)
+      </p>
     </div>
   </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-links">
+      <a href="/">Silvania.ai Hub</a>
+      <a href="/coreagent">Silvania CoreAgent</a>
+      <a href="/eva-landing">Eva Logopedia</a>
+      <a href="/eva">Eva App</a>
+      <a href="/terms">Términos de Servicio</a>
+    </div>
+    <p>&copy; 2026 Silvania.ai. Todos los derechos reservados. Privacidad por diseño y utilidad honesta.</p>
+  </footer>
+
 </body>
 </html>

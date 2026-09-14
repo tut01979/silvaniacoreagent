@@ -14,7 +14,7 @@ export const telegramReview = {
       .text("🔄 Regenerar", `mkt_reg_${draft.id}`)
       .text("❌ Descartar", `mkt_rej_${draft.id}`);
 
-    if (draft.format === "youtube_long" || draft.format === "youtube_short") {
+    if (draft.format === "youtube_long" || draft.format === "youtube_short" || draft.format === "tiktok") {
       keyboard.row().text("📜 Ver Guión Detallado", `mkt_scr_${draft.id}`);
     }
 
@@ -31,10 +31,13 @@ export const telegramReview = {
         `🏷️ *Tags:* ${draft.socialContent.hashtags.join(" ")}` +
         techFooter;
     } else if (draft.videoScript) {
+      const formatLabel = draft.format === "youtube_long" ? "YouTube Largo" : draft.format === "tiktok" ? "TikTok (9:16)" : "YouTube Short";
+      const durationSeconds = draft.videoScript.totalEstimatedDurationSeconds || 60;
+      const durationLabel = durationSeconds < 60 ? `~${durationSeconds} seg` : `~${Math.round(durationSeconds / 60)} min`;
       summaryText =
-        `🎬 *GUION DE VIDEO (${draft.format === "youtube_long" ? "Larga Duración" : "Short"})*\n\n` +
+        `🎬 *GUION DE VIDEO (${formatLabel})*\n\n` +
         `📌 *Título:* ${draft.videoScript.title}\n` +
-        `⏱️ *Duración estimada:* ~${Math.round(draft.videoScript.totalEstimatedDurationSeconds / 60)} min\n` +
+        `⏱️ *Duración estimada:* ${durationLabel}\n` +
         `🎞️ *Escenas:* ${draft.videoScript.scenes.length} bloques estructurados\n\n` +
         `🎣 *Hook:* "${draft.videoScript.hook}"` +
         techFooter;

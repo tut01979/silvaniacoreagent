@@ -764,9 +764,9 @@ app.get("/cancel", (req: any, res: any) => {
 // Servir archivos estáticos y rutas amigables
 app.get("/privacy", (req: any, res: any) => res.sendFile(path.join(process.cwd(), "public", "privacy.html")));
 app.get("/terms", (req: any, res: any) => res.sendFile(path.join(process.cwd(), "public", "terms.html")));
-app.get("/eva", (req: any, res: any) => res.sendFile(path.join(process.cwd(), "public", "eva.html")));
-app.get("/evaagent", (req: any, res: any) => res.sendFile(path.join(process.cwd(), "public", "eva.html")));
-app.get("/eva-landing", (req: any, res: any) => res.sendFile(path.join(process.cwd(), "public", "eva-landing.html")));
+app.get("/eva", (req: any, res: any) => res.redirect("/#eva"));
+app.get("/evaagent", (req: any, res: any) => res.redirect("/#eva"));
+app.get("/eva-landing", (req: any, res: any) => res.redirect("/#eva"));
 app.get("/coreagent", rateLimiter(60, 60000), (req: any, res: any) => {
   try {
     const htmlPath = path.join(process.cwd(), "public", "coreagent.html");
@@ -779,6 +779,21 @@ app.get("/coreagent", rateLimiter(60, 60000), (req: any, res: any) => {
     }
   } catch (err: any) {
     console.error("Error sirviendo coreagent page:", err);
+    res.status(500).send("Error interno.");
+  }
+});
+app.get("/marketing", rateLimiter(60, 60000), (req: any, res: any) => {
+  try {
+    const htmlPath = path.join(process.cwd(), "public", "marketing.html");
+    if (fs.existsSync(htmlPath)) {
+      let html = fs.readFileSync(htmlPath, "utf8");
+      html = html.replace(/{{BOT_USERNAME}}/g, botUsername);
+      res.send(html);
+    } else {
+      res.sendFile(path.join(process.cwd(), "public", "index.html"));
+    }
+  } catch (err: any) {
+    console.error("Error sirviendo marketing page:", err);
     res.status(500).send("Error interno.");
   }
 });
@@ -1812,8 +1827,9 @@ bot.command("marketing", async (ctx) => {
       "• `/marketing post [tema]` - Genera post social con imagen FLUX (gratis) y locución Edge-TTS (gratis).\n" +
       "• `/marketing video [tema]` - Genera guión de YouTube (larga duración) con miniatura y hook locutado.\n" +
       "• `/marketing short [tema]` - Genera guión de YouTube Short.\n" +
+      "• `/marketing tiktok [tema]` - Genera guión vertical (9:16) para TikTok con ganchos de alta retención.\n" +
       "• `/marketing status` - Consulta el estado del último borrador generado.\n\n" +
-      "_Ejemplo:_ `/marketing post 3 herramientas de IA para autónomos`",
+      "_Ejemplo:_ `/marketing tiktok 3 trucos de Google Calendar que nadie conoce`",
       { parse_mode: "Markdown" }
     );
   }
@@ -1856,6 +1872,8 @@ bot.command("marketing", async (ctx) => {
     format = "youtube_long";
   } else if (subCmd === "short") {
     format = "youtube_short";
+  } else if (subCmd === "tiktok") {
+    format = "tiktok";
   }
 
   await ctx.reply(`🧠 *Silvania Marketing Studio en marcha...*\nInvestigando y redactando propuesta para:\n_${topic}_...`, { parse_mode: "Markdown" });

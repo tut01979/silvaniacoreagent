@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Silvania Marketing Agent | Tu Motor de Contenido, SEO y Growth</title>
+  <meta name="description" content="Agente autónomo de marketing digital y growth. Genera copys persuasivos, artículos de blog optimizados y gestiona la difusión con revisión y aprobación directa en Telegram.">
+  
+  <!-- Open Graph -->
+  <meta property="og:title" content="Silvania Marketing Agent | Motor de Contenido y Growth">
+  <meta property="og:description" content="Genera copys, hilos, artículos y campañas de marca con aprobación humana en Telegram.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://silvania.ai/marketing">
+  <meta property="og:image" content="https://silvania.ai/hub_ecosystem.jpg">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    :root {
+      --bg-color: #030712;
+      --card-bg: rgba(17, 24, 39, 0.55);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text-main: #f9fafb;
+      --text-muted: #9ca3af;
+      --primary: #f59e0b;
+      --primary-glow: rgba(245, 158, 11, 0.25);
+      --secondary: #ec4899;
+      --secondary-glow: rgba(236, 72, 153, 0.2);
+      --accent: #f97316;
+      --font-title: 'Outfit', sans-serif;
+      --font-body: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    /* Luces de fondo */
+    .bg-glows {
+      position: fixed;
+      width: 100vw;
+      height: 100vh;
+      top: 0;
+      left: 0;
+      overflow: hidden;
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    .glow-circle {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(140px);
+      opacity: 0.12;
+    }
+
+    .glow-1 {
+      width: 600px;
+      height: 600px;
+      background: var(--primary);
+      top: -150px;
+      right: -100px;
+    }
+
+    .glow-2 {
+      width: 700px;
+      height: 700px;
+      background: var(--secondary);
+      bottom: 10%;
+      left: -200px;
+    }
+
+    /* Header */
+    header {
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      background-color: rgba(3, 7, 18, 0.75);
+      border-bottom: 1px solid var(--card-border);
+      position: fixed;
+      width: 100%;
+      top: 0;
+      left: 0;
+      z-index: 100;
+      padding: 1rem 2rem;
+    }
+
+    .header-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-family: var(--font-title);
+      font-weight: 800;
+      font-size: 1.4rem;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      text-decoration: none;
+    }
+
+    .logo img {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+    }
+
+    .logo-badge {
+      font-size: 0.75rem;
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-weight: 700;
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 1.8rem;
+    }
+
+    nav a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.92rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    nav a:hover {
+      color: var(--text-main);
+    }
+
+    .nav-hub {
+      color: #60a5fa !important;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .nav-btn {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: white !important;
+      padding: 0.6rem 1.4rem;
+      border-radius: 50px;
+      font-weight: 700;
+      font-size: 0.88rem;
+      box-shadow: 0 4px 15px var(--primary-glow);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .nav-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(245, 158, 11, 0.35);
+    }
+
+    /* Hero */
+    .hero {
+      padding: 9rem 2rem 5rem;
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 4rem;
+      align-items: center;
+      position: relative;
+    }
+
+    .hero-text {
+      position: relative;
+      z-index: 2;
+    }
+
+    .hero-tag {
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #fbbf24;
+      padding: 0.4rem 1rem;
+      border-radius: 50px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .hero h1 {
+      font-family: var(--font-title);
+      font-size: 3.4rem;
+      line-height: 1.15;
+      font-weight: 800;
+      margin-bottom: 1.4rem;
+      letter-spacing: -1px;
+    }
+
+    .hero h1 span {
+      background: linear-gradient(135deg, #f59e0b, #f97316, #ec4899);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      color: var(--text-muted);
+      font-size: 1.15rem;
+      line-height: 1.7;
+      margin-bottom: 2.2rem;
+      max-width: 580px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: white;
+      text-decoration: none;
+      padding: 0.95rem 2rem;
+      border-radius: 14px;
+      font-weight: 700;
+      font-size: 1rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      box-shadow: 0 10px 30px var(--primary-glow);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 35px rgba(245, 158, 11, 0.4);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+      text-decoration: none;
+      padding: 0.95rem 1.8rem;
+      border-radius: 14px;
+      font-weight: 600;
+      font-size: 1rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      border: 1px solid var(--card-border);
+      transition: all 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Mockup Visual */
+    .hero-mockup {
+      position: relative;
+      background: linear-gradient(145deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8));
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      border-radius: 24px;
+      padding: 1.8rem;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(20px);
+    }
+
+    .mockup-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 1rem;
+      margin-bottom: 1.4rem;
+    }
+
+    .mockup-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      color: #fbbf24;
+      font-weight: 700;
+    }
+
+    .mockup-chat {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      font-size: 0.9rem;
+    }
+
+    .chat-bubble {
+      padding: 1rem 1.2rem;
+      border-radius: 16px;
+      line-height: 1.5;
+    }
+
+    .bubble-user {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #fef3c7;
+      align-self: flex-end;
+      max-width: 88%;
+      border-bottom-right-radius: 4px;
+    }
+
+    .bubble-agent {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--card-border);
+      color: #e2e8f0;
+      align-self: flex-start;
+      max-width: 95%;
+      border-bottom-left-radius: 4px;
+    }
+
+    .chat-action-row {
+      display: flex;
+      gap: 0.6rem;
+      margin-top: 0.8rem;
+    }
+
+    .btn-mock-approve {
+      background: #10b981;
+      color: white;
+      border: none;
+      padding: 0.4rem 0.8rem;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-mock-edit {
+      background: rgba(255, 255, 255, 0.1);
+      color: #cbd5e1;
+      border: none;
+      padding: 0.4rem 0.8rem;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      cursor: pointer;
+    }
+
+    /* Sección Features */
+    .section-features {
+      max-width: 1200px;
+      margin: 4rem auto 6rem;
+      padding: 0 2rem;
+    }
+
+    .section-title {
+      text-align: center;
+      margin-bottom: 3.5rem;
+    }
+
+    .section-title h2 {
+      font-family: var(--font-title);
+      font-size: 2.6rem;
+      font-weight: 800;
+      margin-bottom: 0.8rem;
+    }
+
+    .section-title p {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .grid-features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 2rem;
+    }
+
+    .feature-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 2.2rem;
+      backdrop-filter: blur(15px);
+      transition: all 0.3s ease;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(245, 158, 11, 0.4);
+      box-shadow: 0 15px 35px rgba(245, 158, 11, 0.15);
+    }
+
+    .feature-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #fbbf24;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      margin-bottom: 1.4rem;
+    }
+
+    .feature-card h3 {
+      font-family: var(--font-title);
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+    }
+
+    .feature-card p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    /* Workflow Box */
+    .workflow-section {
+      max-width: 1200px;
+      margin: 4rem auto 6rem;
+      padding: 0 2rem;
+    }
+
+    .workflow-box {
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.7));
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      border-radius: 28px;
+      padding: 3.5rem 3rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3rem;
+      align-items: center;
+    }
+
+    .workflow-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .step-item {
+      display: flex;
+      gap: 1.2rem;
+      align-items: flex-start;
+    }
+
+    .step-number {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: rgba(245, 158, 11, 0.2);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      color: #fbbf24;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .step-text h4 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 0.2rem;
+    }
+
+    .step-text p {
+      color: var(--text-muted);
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--card-border);
+      padding: 4rem 2rem 3rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.92rem;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-bottom: 1.8rem;
+      flex-wrap: wrap;
+    }
+
+    .footer-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .footer-links a:hover {
+      color: var(--text-main);
+    }
+
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; padding-top: 7rem; }
+      .workflow-box { grid-template-columns: 1fr; padding: 2rem; }
+      nav { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-glows">
+    <div class="glow-circle glow-1"></div>
+    <div class="glow-circle glow-2"></div>
+  </div>
+
+  <header>
+    <div class="header-container">
+      <a href="/" class="logo">
+        <img src="/logo_ai.png" alt="Silvania Logo">
+        Silvania <span class="logo-badge">Marketing</span>
+      </a>
+      <nav>
+        <a href="/" class="nav-hub"><i class="fa-solid fa-house"></i> Ecosistema</a>
+        <a href="/coreagent"><i class="fa-solid fa-bolt"></i> CoreAgent</a>
+        <a href="#features">Habilidades</a>
+        <a href="#workflow">Flujo Editorial</a>
+        <a href="https://t.me/{{BOT_USERNAME}}" target="_blank" class="nav-btn"><i class="fa-brands fa-telegram"></i> Abrir en Telegram</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <main class="hero">
+    <div class="hero-text">
+      <div class="hero-tag">
+        <i class="fa-solid fa-bullhorn"></i> Agente Autónomo de Growth & Contenido
+      </div>
+      <h1>
+        Crea, afina y publica con <span>Marketing Agent</span>
+      </h1>
+      <p>
+        Genera copys persuasivos de alto impacto, artículos de blog estructurados para SEO y estrategias de contenido multicanal con revisión asistida y aprobación instantánea desde Telegram.
+      </p>
+      <div class="hero-actions">
+        <a href="https://t.me/{{BOT_USERNAME}}" target="_blank" class="btn-primary">
+          <i class="fa-brands fa-telegram"></i> Probar en Telegram
+        </a>
+        <a href="#features" class="btn-secondary">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> Ver Capacidades
+        </a>
+      </div>
+    </div>
+
+    <div class="hero-mockup">
+      <div class="mockup-header">
+        <span class="mockup-badge"><i class="fa-solid fa-bolt"></i> Silvania Marketing Studio</span>
+        <span style="font-size: 0.78rem; color: #94a3b8;">Telegram Review Active</span>
+      </div>
+      <div class="mockup-chat">
+        <div class="chat-bubble bubble-user">
+          Redáctame un post para LinkedIn sobre la nueva actualización de Silvania CoreAgent y su integración con Sheets.
+        </div>
+        <div class="chat-bubble bubble-agent">
+          <strong>📢 Borrador Generado:</strong><br><br>
+          "¿Cuánto tiempo dedicas a volcar datos manualmente de Telegram a Google Sheets?<br><br>
+          Hoy lanzamos la sincronización bidireccional en Silvania CoreAgent: ahora registras gastos, métricas y pedidos con un mensaje de voz o texto en 3 segundos.<br><br>
+          👉 Prueba la demo sin fricción en el enlace del primer comentario.<br><br>
+          <em>#Productividad #GoogleWorkspace #InteligenciaArtificial</em>"
+          <div class="chat-action-row">
+            <button class="btn-mock-approve"><i class="fa-solid fa-check"></i> Aprobar & Programar</button>
+            <button class="btn-mock-edit"><i class="fa-solid fa-pen"></i> Ajustar Tono</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Features -->
+  <section class="section-features" id="features">
+    <div class="section-title">
+      <h2>Habilidades Diseñadas para el <span>Crecimiento Orgánico</span></h2>
+      <p>Un estratega de contenido que no inventa ruido, sino que potencia la voz de tu producto.</p>
+    </div>
+
+    <div class="grid-features">
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fa-solid fa-pen-nib"></i></div>
+        <h3>Copys Persuasivos Multicanal</h3>
+        <p>Textos adaptados a cada plataforma: el tono reflexivo de LinkedIn, el dinamismo de Twitter/X y la claridad ejecutiva de Telegram.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fa-brands fa-youtube"></i></div>
+        <h3>Vídeos para YouTube & Shorts</h3>
+        <p>Guiones estructurados para vídeos largos (tutoriales, demos técnicas) y YouTube Shorts con hooks iniciales, timestamps y miniaturas fotorrealistas.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fa-brands fa-tiktok"></i></div>
+        <h3>Vídeos Virales para TikTok (9:16)</h3>
+        <p>Guiones verticales ultra-dinámicos con ganchos de 3 segundos, textos clave en pantalla y estrategia de retención para crecer en TikTok y Reels.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fa-solid fa-share-nodes"></i></div>
+        <h3>Difusión de Vídeos Publicados</h3>
+        <p>¿Tienes un vídeo nuevo en YouTube o TikTok? El agente redacta el post de lanzamiento perfecto con enlaces para tu canal de Telegram y LinkedIn.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fa-solid fa-magnifying-glass-chart"></i></div>
+        <h3>Estrategia SEO & Artículos</h3>
+        <p>Generación de estructuras de artículos con palabras clave, subtítulos H2/H3 y llamadas a la acción pensadas para posicionar en buscadores.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fa-solid fa-user-check"></i></div>
+        <h3>Supervisión Humana en Telegram</h3>
+        <p>Nunca se publica nada a ciegas. El bot envía el borrador a tu chat con botones interactivos para aprobar, descartar o editar con un toque.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fa-solid fa-comments"></i></div>
+        <h3>Canal Vitrina & Broadcast</h3>
+        <p>Distribución automatizada hacia tus canales oficiales de Telegram de novedades, vídeos destacados, changelogs y lecciones de producto.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fa-solid fa-shield-halved"></i></div>
+        <h3>Control y Seguridad</h3>
+        <p>Solo administradores autenticados pueden desencadenar publicaciones o modificar borradores de marketing.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Workflow -->
+  <section class="workflow-section" id="workflow">
+    <div class="workflow-box">
+      <div>
+        <span class="hero-tag" style="margin-bottom: 1rem;"><i class="fa-solid fa-route"></i> Flujo Editorial Transparente</span>
+        <h3 style="font-family: var(--font-title); font-size: 2.2rem; font-weight: 800; margin-bottom: 1rem;">
+          De la idea a la publicación en 3 pasos
+        </h3>
+        <p style="color: var(--text-muted); line-height: 1.7; margin-bottom: 1.5rem;">
+          Olvídate de plataformas complejas de gestión de redes. Controla todo tu embudo de contenido desde el mismo Telegram donde gestionas tu día a día.
+        </p>
+        <a href="https://t.me/{{BOT_USERNAME}}" target="_blank" class="btn-primary">
+          <i class="fa-brands fa-telegram"></i> Comenzar ahora
+        </a>
+      </div>
+
+      <div class="workflow-steps">
+        <div class="step-item">
+          <div class="step-number">1</div>
+          <div class="step-text">
+            <h4>Prompt o Instrucción Rápida</h4>
+            <p>Pídele a Silvania que prepare el contenido de la semana o una píldora sobre una nueva funcionalidad.</p>
+          </div>
+        </div>
+
+        <div class="step-item">
+          <div class="step-number">2</div>
+          <div class="step-text">
+            <h4>Borrador con Vista Previa</h4>
+            <p>Recibes el texto formateado en tu Telegram con botones de revisión inmediata.</p>
+          </div>
+        </div>
+
+        <div class="step-item">
+          <div class="step-number">3</div>
+          <div class="step-text">
+            <h4>Aprobación y Difusión</h4>
+            <p>Con un solo clic en "Aprobar", el contenido se archiva o se distribuye al canal oficial.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="footer-links">
+      <a href="/">Silvania Hub</a>
+      <a href="/coreagent">Silvania CoreAgent</a>
+      <a href="/marketing">Silvania Marketing Agent</a>
+      <a href="/#eva">Eva Agent (Próximamente)</a>
+      <a href="/privacy">Privacidad</a>
+      <a href="/terms">Términos</a>
+    </div>
+    <p>&copy; 2026 Silvania.ai — Potenciando la presencia digital de creadores y empresas con IA.</p>
+  </footer>
+</body>
+</html>

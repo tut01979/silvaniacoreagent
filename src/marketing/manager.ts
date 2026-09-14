@@ -60,22 +60,30 @@ export const marketingManager = {
       } catch (err: any) {
         console.warn("⚠️ Falló generación de audio:", err.message);
       }
-    } else if (format === "youtube_long" || format === "youtube_short") {
+    } else if (format === "youtube_long" || format === "youtube_short" || format === "tiktok") {
+      const isTikTok = format === "tiktok";
+      const isShort = format === "youtube_short" || isTikTok;
       const minutes = format === "youtube_long" ? 8 : 1;
 
       // 1. Guión Estructurado (LLM)
-      const scriptRes = await scriptWriter.generateYouTubeScript(topic, minutes);
+      const scriptRes = isTikTok
+        ? await scriptWriter.generateTikTokScript(topic)
+        : await scriptWriter.generateYouTubeScript(topic, minutes);
       draft.videoScript = scriptRes.data;
       draft.llmModel = scriptRes.llmModel;
 
-      // 2. Miniatura de Alto CTR (FLUX Free)
+      // 2. Miniatura / Portada Visual de Alto CTR (FLUX Free)
+      // Si es TikTok o Short, generar en 9:16 vertical (720x1280); si es YouTube Long, 16:9 (1280x720)
+      const imgDimensions = isShort ? { width: 720, height: 1280 } : { width: 1280, height: 720 };
       try {
-        const thumbPrompt = `${scriptRes.data.title}, YouTube thumbnail concept, eye-catching, high contrast, vibrant cinematic lighting, photorealistic`;
-        const imgRes = await imageGenerator.generateImage(thumbPrompt, { width: 1280, height: 720 });
+        const thumbPrompt = isTikTok
+          ? `${scriptRes.data.title}, TikTok cover concept, 9:16 vertical, eye-catching, high contrast, viral aesthetic, photorealistic`
+          : `${scriptRes.data.title}, YouTube thumbnail concept, eye-catching, high contrast, vibrant cinematic lighting, photorealistic`;
+        const imgRes = await imageGenerator.generateImage(thumbPrompt, imgDimensions);
         draft.imageUrls.push(imgRes.filePath);
         draft.imageProvider = imgRes.provider;
       } catch (err: any) {
-        console.warn("⚠️ Falló miniatura:", err.message);
+        console.warn("⚠️ Falló miniatura visual:", err.message);
       }
 
       // 3. Locución del Gancho (Hook + Escena 1) con Edge-TTS

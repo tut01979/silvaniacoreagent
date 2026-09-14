@@ -3,107 +3,394 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Términos de Servicio | Silvania AI</title>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <title>Términos de Servicio | Silvania.ai</title>
+  <meta name="description" content="Términos de Servicio oficiales de Silvania.ai, Silvania CoreAgent y Eva Agent. Condiciones de uso, suscripciones y responsabilidades.">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
   <style>
     :root {
-      --bg-color: #060913;
-      --card-bg: rgba(13, 20, 38, 0.6);
-      --card-border: rgba(255, 255, 255, 0.06);
-      --text-main: #f3f4f6;
-      --text-muted: #9ca3af;
-      --primary: #10b981;
-      --secondary: #3b82f6;
+      --bg-dark: #030712;
+      --card-bg: rgba(15, 23, 42, 0.75);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #a855f7;
+      --secondary: #38bdf8;
+      --accent: #10b981;
       --font-title: 'Outfit', sans-serif;
       --font-body: 'Plus Jakarta Sans', sans-serif;
     }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
-      background-color: var(--bg-color);
+      background-color: var(--bg-dark);
       color: var(--text-main);
       font-family: var(--font-body);
       line-height: 1.7;
-      margin: 0;
-      padding: 4rem 2rem;
-      background: radial-gradient(circle at top right, rgba(59, 130, 246, 0.06), transparent 50%);
+      min-height: 100vh;
+      overflow-x: hidden;
+      background: radial-gradient(circle at 80% 10%, rgba(168, 85, 247, 0.08), transparent 40%),
+                  radial-gradient(circle at 20% 80%, rgba(56, 189, 248, 0.08), transparent 40%);
     }
-    .container {
-      max-width: 800px;
+
+    /* Header */
+    header {
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      background-color: rgba(3, 7, 18, 0.85);
+      border-bottom: 1px solid var(--card-border);
+      padding: 1rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-container {
+      max-width: 1000px;
       margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      text-decoration: none;
+      color: white;
+      font-family: var(--font-title);
+      font-weight: 800;
+      font-size: 1.3rem;
+    }
+    .brand img {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+    }
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover {
+      color: white;
+    }
+
+    /* Main Container */
+    .legal-container {
+      max-width: 900px;
+      margin: 3.5rem auto 5rem;
+      padding: 0 1.5rem;
+    }
+
+    .legal-card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
-      border-radius: 24px;
-      padding: 3rem;
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      border-radius: 28px;
+      padding: 3.5rem 3rem;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
     }
+
+    .badge-meta {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: 50px;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #38bdf8;
+      font-size: 0.82rem;
+      font-weight: 700;
+      margin-bottom: 1.2rem;
+    }
+
     h1 {
       font-family: var(--font-title);
-      font-size: 2.2rem;
-      font-weight: 700;
-      margin-bottom: 2rem;
-      background: linear-gradient(135deg, var(--secondary), var(--primary));
+      font-size: 2.5rem;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 0.6rem;
+      background: linear-gradient(135deg, #ffffff, #94a3b8);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      border-bottom: 1px solid var(--card-border);
-      padding-bottom: 1rem;
     }
+
+    .last-updated {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--card-border);
+    }
+
     h2 {
       font-family: var(--font-title);
-      font-size: 1.4rem;
-      color: #fff;
-      margin-top: 2rem;
-      margin-bottom: 1rem;
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-top: 2.4rem;
+      margin-bottom: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
     }
-    p, li {
+
+    p {
       color: var(--text-muted);
       font-size: 0.98rem;
+      margin-bottom: 1.1rem;
     }
+
     ul {
-      margin-bottom: 1.5rem;
-      padding-left: 1.5rem;
+      margin-bottom: 1.4rem;
+      padding-left: 1.4rem;
     }
+
     li {
-      margin-bottom: 0.5rem;
-    }
-    .footer {
-      text-align: center;
-      margin-top: 3rem;
-      font-size: 0.85rem;
       color: var(--text-muted);
+      font-size: 0.96rem;
+      margin-bottom: 0.55rem;
+    }
+
+    strong {
+      color: #f1f5f9;
+    }
+
+    /* Callout & Alert Boxes */
+    .callout-box {
+      border-radius: 16px;
+      padding: 1.3rem 1.6rem;
+      margin: 1.5rem 0;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    .callout-warning {
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #fef3c7;
+    }
+    .callout-warning i {
+      color: #f59e0b;
+      font-size: 1.3rem;
+      margin-top: 0.15rem;
+    }
+
+    .callout-info {
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      color: #e0f2fe;
+    }
+    .callout-info i {
+      color: var(--secondary);
+      font-size: 1.3rem;
+      margin-top: 0.15rem;
+    }
+
+    code {
+      background: rgba(0, 0, 0, 0.4);
+      padding: 0.2rem 0.45rem;
+      border-radius: 6px;
+      color: #38bdf8;
+      font-family: monospace;
+      font-size: 0.9em;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    a {
+      color: var(--secondary);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    a:hover {
+      color: #7dd3fc;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--card-border);
+      padding: 3rem 2rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      background: rgba(3, 7, 18, 0.9);
+    }
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .footer-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .footer-links a:hover {
+      color: white;
+    }
+
+    @media (max-width: 768px) {
+      .legal-card {
+        padding: 2.2rem 1.6rem;
+      }
+      h1 { font-size: 2rem; }
+      .nav-links { display: none; }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Términos de Servicio de Silvania AI</h1>
-    <p>Última actualización: 21 de junio de 2026</p>
-    
-    <p>Al utilizar el asistente inteligente Silvania AI (a través de Telegram o cualquiera de sus servicios asociados), aceptas estar sujeto a los siguientes Términos de Servicio. Por favor, léelos con detenimiento.</p>
 
-    <h2>1. Descripción del Servicio</h2>
-    <p>Silvania AI proporciona un agente asistente ejecutivo impulsado por inteligencia artificial. El servicio permite al usuario automatizar flujos de trabajo personales dentro de sus cuentas integradas (como Google Workspace y YouTube) enviando instrucciones en lenguaje natural.</p>
+  <!-- Header -->
+  <header>
+    <div class="header-container">
+      <a href="/" class="brand">
+        <img src="/logo_ai.png" alt="Silvania.ai Logo"> Silvania.ai
+      </a>
+      <nav class="nav-links">
+        <a href="/"><i class="fa-solid fa-house"></i> Hub</a>
+        <a href="/coreagent">CoreAgent</a>
+        <a href="/eva-landing">Eva Logopedia</a>
+        <a href="/privacy">Política de Privacidad</a>
+      </nav>
+    </div>
+  </header>
 
-    <h2>2. Licencia y Uso Aceptable</h2>
-    <p>Se otorga una licencia limitada, no exclusiva e intransferible para el uso de Silvania AI. Te comprometes a no utilizar el asistente para fines ilegales o maliciosos, incluyendo, entre otros:</p>
-    <ul>
-      <li>Intentos de eludir la seguridad del servidor mediante inyección de comandos o scripts.</li>
-      <li>Carga de archivos ejecutables prohibidos o peligrosos.</li>
-      <li>Spamming o abuso de solicitudes (sujeto a nuestras reglas de límite de tasa/Rate Limiting).</li>
-    </ul>
+  <!-- Content -->
+  <div class="legal-container">
+    <div class="legal-card">
+      <div class="badge-meta">
+        <i class="fa-solid fa-scale-balanced"></i> Condiciones Legales y Normas de Uso
+      </div>
+      <h1>Términos de Servicio</h1>
+      <div class="last-updated">
+        Última actualización: <strong>7 de septiembre de 2026</strong> · Aplicable a toda la plataforma Silvania.ai
+      </div>
 
-    <h2>3. Integraciones de Google y Cuentas de Terceros</h2>
-    <p>El funcionamiento de Silvania AI requiere la conexión explícita con tu Google Workspace. Eres el único responsable del contenido de tu cuenta y de las acciones de automatización ejecutadas por el asistente en tu nombre. Silvania AI no se hace responsable de la pérdida accidental de archivos en Google Drive ni del borrado o alteración de registros en Gmail o Google Calendar derivados de instrucciones confusas o erróneas dadas por el usuario.</p>
+      <p>
+        Bienvenido a <strong>Silvania.ai</strong>. Al acceder al sitio web <code>https://silvania.ai</code>, utilizar el asistente <strong>Silvania CoreAgent</strong> en Telegram o la aplicación de voz <strong>Eva</strong>, aceptas cumplir y quedar vinculado a los presentes Términos de Servicio.
+      </p>
 
-    <h2>4. Suscripciones y Pagos</h2>
-    <p>Silvania AI ofrece un periodo de prueba gratis de 7 días. Transcurrido ese plazo, para mantener activas las integraciones, el usuario deberá suscribirse al Plan Premium con un coste de <strong>19,00 € al mes</strong>. El cobro se realiza mediante tarjeta a través de la pasarela segura Stripe. Las suscripciones se renuevan de manera automática mensualmente y pueden ser canceladas por el usuario en cualquier momento sin penalización.</p>
+      <!-- 1. Descripción del Servicio -->
+      <h2><i class="fa-solid fa-cube" style="color: var(--primary);"></i> 1. Descripción del Ecosistema Silvania.ai</h2>
+      <p>Silvania.ai es un ecosistema de agentes de inteligencia artificial especializados:</p>
+      <ul>
+        <li><strong>Hub Central (silvania.ai):</strong> Portal de presentación de tecnología, navegación entre agentes y documentación del ecosistema.</li>
+        <li><strong>Silvania CoreAgent:</strong> Agente ejecutivo que opera dentro de la aplicación de mensajería Telegram, permitiendo gestionar calendario, hojas de cálculo, archivos acotados en Drive y envío de correos bajo demanda mediante integración oficial OAuth 2.0 con Google Workspace.</li>
+        <li><strong>Eva:</strong> Herramienta web interactiva para la estimulación del habla, gamificación de fonemas, praxias bucales y práctica de dicción en el navegador.</li>
+      </ul>
 
-    <h2>5. Limitación de Responsabilidad</h2>
-    <p>El servicio se proporciona "tal cual" y "según disponibilidad". Silvania AI no garantiza que el servicio esté libre de interrupciones o fallos menores. En ningún caso seremos responsables de daños indirectos, imprevistos o punitivos derivados del uso del asistente.</p>
+      <!-- 2. Requisitos y Cuentas -->
+      <h2><i class="fa-solid fa-user-check" style="color: var(--secondary);"></i> 2. Requisitos de Uso y Cuentas</h2>
+      <ul>
+        <li><strong>Para CoreAgent:</strong> Requiere una cuenta activa de Telegram y, en caso de querer automatizar tareas de Google, el consentimiento explícito del usuario a través de la pasarela oficial de Google OAuth. Eres responsable de la seguridad de tu cuenta de Telegram y de las órdenes enviadas al bot.</li>
+        <li><strong>Para Eva:</strong> No requiere registro previo ni vinculación de cuentas de Google para practicar en los mundos de voz. El usuario autoriza únicamente los permisos de micrófono y cámara en su navegador si desea activar el análisis en tiempo real.</li>
+      </ul>
 
-    <div class="footer">
-      <p>&copy; 2026 Silvania AI. Todos los derechos reservados.</p>
+      <!-- 3. Uso Aceptable -->
+      <h2><i class="fa-solid fa-shield-check" style="color: var(--accent);"></i> 3. Licencia y Uso Aceptable</h2>
+      <p>Se concede una licencia limitada, revocable, no exclusiva e intransferible para usar los servicios de acuerdo con estos términos. Queda estrictamente prohibido:</p>
+      <ul>
+        <li>Utilizar el servicio para actividades ilícitas, fraudulentas, difamatorias o que vulneren derechos de terceros.</li>
+        <li>Realizar ingeniería inversa, descompilar o intentar extraer el código fuente de los servidores del servicio.</li>
+        <li>Lanzar ataques de denegación de servicio, inyección de scripts o sobrecargar intencionadamente las APIs mediante peticiones automáticas abusivas (el servicio cuenta con limitadores de tasa activos).</li>
+        <li>Transmitir malware, virus o archivos con contenido potencialmente dañino.</li>
+      </ul>
+
+      <!-- 4. Eva - Descargo Clínico -->
+      <h2><i class="fa-solid fa-notes-medical" style="color: #c084fc;"></i> 4. Advertencia de Salud y Naturaleza de Eva</h2>
+      <div class="callout-box callout-warning">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <div>
+          <strong>Aviso Sanitario Imprescindible:</strong><br>
+          La aplicación Eva es exclusivamente un recurso lúdico, educativo y de refuerzo en el hogar. <strong>No es un producto sanitario ni un dispositivo médico. No proporciona diagnósticos clínicos ni reemplaza el tratamiento, terapia o evaluación periódica realizada por un logopeda, fonoaudiólogo o médico colegiado.</strong>
+        </div>
+      </div>
+      <p>
+        Los padres, tutores o educadores son responsables de supervisar el uso adecuado de la aplicación en el ámbito familiar.
+      </p>
+
+      <!-- 5. Planes, Suscripciones y Pagos -->
+      <h2><i class="fa-solid fa-credit-card" style="color: #f59e0b;"></i> 5. Suscripciones y Facturación</h2>
+      <p>
+        El acceso a las funciones básicas o demostraciones de la plataforma es gratuito. Determinadas funcionalidades avanzadas de Silvania CoreAgent se ofrecen bajo modelo de suscripción periódica:
+      </p>
+      <ul>
+        <li><strong>Periodo de prueba:</strong> Se puede disponer de un periodo de evaluación inicial sin compromiso.</li>
+        <li><strong>Procesamiento seguro:</strong> Todos los cobros se gestionan mediante la pasarela de pagos certificada <strong>Stripe</strong>. Silvania.ai nunca almacena los números completos de tu tarjeta de crédito o débito.</li>
+        <li><strong>Cancelación:</strong> El usuario puede cancelar su suscripción en cualquier momento antes del siguiente ciclo de cobro sin penalizaciones ni costes ocultos.</li>
+      </ul>
+
+      <!-- 6. Propiedad Intelectual -->
+      <h2><i class="fa-solid fa-copyright" style="color: var(--primary);"></i> 6. Propiedad Intelectual</h2>
+      <p>
+        Todos los derechos de propiedad intelectual sobre el código, interfaces, marcas, logotipos ("Silvania.ai", "Silvania CoreAgent", "Eva"), ilustraciones y diseños pertenecen a Silvania AI o a sus respectivos licenciantes. El contenido que el usuario genera en sus propias hojas de cálculo, eventos o archivos sigue siendo en todo momento propiedad exclusiva del usuario.
+      </p>
+
+      <!-- 7. Limitación de Responsabilidad -->
+      <h2><i class="fa-solid fa-scale-unbalanced" style="color: var(--secondary);"></i> 7. Limitación de Responsabilidad</h2>
+      <p>
+        Los servicios se proporcionan "tal cual" (as is) y "según disponibilidad". Silvania.ai adopta altos estándares de ingeniería y seguridad, pero no garantiza que la plataforma opere de forma ininterrumpida o totalmente libre de errores ajenos a nuestro control (como caídas de las APIs de Telegram, Google o fallos de conexión a internet del usuario).
+      </p>
+      <p>
+        En ningún caso Silvania.ai será responsable de pérdidas de datos indirectas derivadas de instrucciones confusas, erróneas o contradictorias proporcionadas por el usuario al agente en el chat.
+      </p>
+
+      <!-- 8. Modificaciones y Ley Aplicable -->
+      <h2><i class="fa-solid fa-gavel" style="color: var(--accent);"></i> 8. Legislación Aplicable y Jurisdicción</h2>
+      <p>
+        Estos Términos se rigen e interpretan con arreglo a las leyes de <strong>España y la normativa aplicable de la Unión Europea</strong>. Para la resolución de cualquier controversia, las partes se someten a la jurisdicción de los juzgados y tribunales que correspondan conforme a la legislación de consumidores aplicable.
+      </p>
+
+      <!-- 9. Contacto -->
+      <h2><i class="fa-solid fa-envelope" style="color: #38bdf8;"></i> 9. Contacto</h2>
+      <p>
+        Si tienes preguntas o necesitas soporte respecto a estos Términos de Servicio, puedes contactarnos en:
+      </p>
+      <p>
+        <strong>Email:</strong> <a href="mailto:soporte@silvania.ai">soporte@silvania.ai</a> o <a href="mailto:eduardoqm573@gmail.com">eduardoqm573@gmail.com</a><br>
+        <strong>Titular:</strong> Eduardo Quintero Martínez · Silvania.ai
+      </p>
     </div>
   </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-links">
+      <a href="/">Silvania.ai Hub</a>
+      <a href="/coreagent">Silvania CoreAgent</a>
+      <a href="/eva-landing">Eva Logopedia</a>
+      <a href="/eva">Eva App</a>
+      <a href="/privacy">Política de Privacidad</a>
+    </div>
+    <p>&copy; 2026 Silvania.ai. Todos los derechos reservados.</p>
+  </footer>
+
 </body>
 </html>
