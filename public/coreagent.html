@@ -609,6 +609,168 @@
       color: var(--text-main);
     }
 
+    /* Footer Social Section */
+    .footer-social-section {
+      max-width: 1000px;
+      margin: 0 auto 3rem auto;
+      text-align: center;
+    }
+
+    .social-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      color: #34d399;
+      padding: 0.35rem 0.9rem;
+      border-radius: 50px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 0.9rem;
+    }
+
+    .social-heading {
+      font-family: var(--font-title);
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 0.4rem;
+    }
+
+    .social-desc {
+      color: var(--text-muted);
+      font-size: 0.92rem;
+      max-width: 600px;
+      margin: 0 auto 1.8rem auto;
+      line-height: 1.6;
+    }
+
+    .social-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+    }
+
+    .social-card {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 0.95rem 1rem;
+      text-decoration: none;
+      color: var(--text-main);
+      backdrop-filter: blur(12px);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .social-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .social-card:hover {
+      transform: translateY(-4px);
+      background: rgba(30, 41, 59, 0.8);
+    }
+
+    .social-card:hover::before {
+      opacity: 1;
+    }
+
+    .social-icon {
+      font-size: 1.35rem;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.05);
+      flex-shrink: 0;
+      transition: transform 0.2s ease;
+    }
+
+    .social-card:hover .social-icon {
+      transform: scale(1.1);
+    }
+
+    .social-info {
+      display: flex;
+      flex-direction: column;
+      text-align: left;
+      min-width: 0;
+    }
+
+    .social-name {
+      font-family: var(--font-title);
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.2;
+    }
+
+    .social-detail {
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .social-badge {
+      position: absolute;
+      top: 7px;
+      right: 7px;
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: #34d399;
+      font-size: 0.62rem;
+      font-weight: 800;
+      padding: 0.12rem 0.4rem;
+      border-radius: 50px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .social-telegram { border-color: rgba(34, 158, 217, 0.25); }
+    .social-telegram::before { background: #229ED9; }
+    .social-telegram .social-icon { color: #229ED9; background: rgba(34, 158, 217, 0.15); }
+    .social-telegram:hover { border-color: rgba(34, 158, 217, 0.6); box-shadow: 0 10px 25px rgba(34, 158, 217, 0.2); }
+
+    .social-linkedin::before { background: #0a66c2; }
+    .social-linkedin .social-icon { color: #0a66c2; background: rgba(10, 102, 194, 0.15); }
+    .social-linkedin:hover { border-color: rgba(10, 102, 194, 0.6); box-shadow: 0 10px 25px rgba(10, 102, 194, 0.2); }
+
+    .social-x::before { background: #e2e8f0; }
+    .social-x .social-icon { color: #f8fafc; background: rgba(255, 255, 255, 0.1); }
+    .social-x:hover { border-color: rgba(255, 255, 255, 0.4); box-shadow: 0 10px 25px rgba(255, 255, 255, 0.1); }
+
+    .social-youtube::before { background: #ff0000; }
+    .social-youtube .social-icon { color: #ff0000; background: rgba(255, 0, 0, 0.15); }
+    .social-youtube:hover { border-color: rgba(255, 0, 0, 0.6); box-shadow: 0 10px 25px rgba(255, 0, 0, 0.2); }
+
+    .social-tiktok::before { background: linear-gradient(90deg, #00f2fe, #fe0979); }
+    .social-tiktok .social-icon { color: #00f2fe; background: rgba(0, 242, 254, 0.15); }
+    .social-tiktok:hover { border-color: rgba(254, 9, 121, 0.5); box-shadow: 0 10px 25px rgba(0, 242, 254, 0.2); }
+
+    .social-facebook::before { background: #1877f2; }
+    .social-facebook .social-icon { color: #1877f2; background: rgba(24, 119, 242, 0.15); }
+    .social-facebook:hover { border-color: rgba(24, 119, 242, 0.6); box-shadow: 0 10px 25px rgba(24, 119, 242, 0.2); }
+
     @media (max-width: 900px) {
       .hero {
         grid-template-columns: 1fr;
@@ -808,9 +970,74 @@
   </div>
 
   <footer>
+    <!-- Sección de Redes y Canales Oficiales -->
+    <div class="footer-social-section">
+      <div class="social-tag"><i class="fa-solid fa-satellite-dish"></i> Redes & Canales Oficiales</div>
+      <h3 class="social-heading">Únete a la Comunidad de Silvania.ai</h3>
+      <p class="social-desc">Descubre demostraciones prácticas en vídeo, tutoriales paso a paso y avisos de nuevas funciones.</p>
+      
+      <div class="social-grid">
+        <!-- Canal de Silvania (Destacado Principal) -->
+        <a href="https://t.me/silvania_ai" target="_blank" rel="noopener noreferrer" class="social-card social-telegram" title="Canal Oficial de Silvania en Telegram">
+          <div class="social-icon"><i class="fa-brands fa-telegram"></i></div>
+          <div class="social-info">
+            <span class="social-name">Canal Silvania</span>
+            <span class="social-detail">Novedades & Demos</span>
+          </div>
+          <span class="social-badge">Oficial</span>
+        </a>
+
+        <!-- LinkedIn -->
+        <a href="https://www.linkedin.com/company/silvania-ai" target="_blank" rel="noopener noreferrer" class="social-card social-linkedin" title="Silvania en LinkedIn">
+          <div class="social-icon"><i class="fa-brands fa-linkedin-in"></i></div>
+          <div class="social-info">
+            <span class="social-name">LinkedIn</span>
+            <span class="social-detail">Casos de Uso B2B</span>
+          </div>
+        </a>
+
+        <!-- X (Twitter) -->
+        <a href="https://x.com/silvania_ai" target="_blank" rel="noopener noreferrer" class="social-card social-x" title="Silvania en X / Twitter">
+          <div class="social-icon"><i class="fa-brands fa-x-twitter"></i></div>
+          <div class="social-info">
+            <span class="social-name">X (Twitter)</span>
+            <span class="social-detail">Noticias & Hilos</span>
+          </div>
+        </a>
+
+        <!-- YouTube -->
+        <a href="https://www.youtube.com/@silvania_ai" target="_blank" rel="noopener noreferrer" class="social-card social-youtube" title="Silvania en YouTube">
+          <div class="social-icon"><i class="fa-brands fa-youtube"></i></div>
+          <div class="social-info">
+            <span class="social-name">YouTube</span>
+            <span class="social-detail">Vídeos & Demos</span>
+          </div>
+        </a>
+
+        <!-- TikTok -->
+        <a href="https://www.tiktok.com/@silvania.ai" target="_blank" rel="noopener noreferrer" class="social-card social-tiktok" title="Silvania en TikTok">
+          <div class="social-icon"><i class="fa-brands fa-tiktok"></i></div>
+          <div class="social-info">
+            <span class="social-name">TikTok</span>
+            <span class="social-detail">Shorts & Tips de IA</span>
+          </div>
+        </a>
+
+        <!-- Facebook -->
+        <a href="https://www.facebook.com/silvania.ai" target="_blank" rel="noopener noreferrer" class="social-card social-facebook" title="Silvania en Facebook">
+          <div class="social-icon"><i class="fa-brands fa-facebook-f"></i></div>
+          <div class="social-info">
+            <span class="social-name">Facebook</span>
+            <span class="social-detail">Comunidad Digital</span>
+          </div>
+        </a>
+      </div>
+    </div>
+
     <div class="footer-links">
       <a href="/">Silvania.ai Hub</a>
-      <a href="/eva-landing">Eva Logopedia</a>
+      <a href="/#marketing">Agente Marketing (Próximamente)</a>
+      <a href="/#eva">Eva Agent (Próximamente)</a>
       <a href="/privacy">Política de Privacidad</a>
       <a href="/terms">Términos de Servicio</a>
     </div>
