@@ -170,7 +170,19 @@ export const telegramReview = {
         }
       }
 
-      // 2. Enviar a Facebook Page si está configurado
+      // 2. Publicar en X (Twitter) de forma nativa si las claves están configuradas
+      if (config.marketing?.twitterApiKey && config.marketing?.twitterAccessToken) {
+        const imagePath = draft.imageUrls && draft.imageUrls.length > 0 ? draft.imageUrls[0] : undefined;
+        const twitterRes = await socialPublisher.publishToTwitter(socialPack.twitter, imagePath);
+        if (twitterRes.success) {
+          const tweetLink = twitterRes.url ? `\n🔗 [Ver Tweet en X](${twitterRes.url})` : "";
+          publishReport.push(`🕇 *X (Twitter):* Publicado en @Silvania_AI${tweetLink}`);
+        } else {
+          publishReport.push(`⚠️ *X (Twitter):* ${twitterRes.error}`);
+        }
+      }
+
+      // 3. Enviar a Facebook Page si está configurado
       if (config.marketing?.facebookPageAccessToken) {
         const fbRes = await socialPublisher.publishToFacebook(socialPack.facebook);
         if (fbRes.success) {
@@ -180,7 +192,7 @@ export const telegramReview = {
         }
       }
 
-      // 3. Publicación en Canal Oficial de Telegram
+      // 4. Publicación en Canal Oficial de Telegram
       if (channelId && channelId.trim().length > 0) {
         try {
           console.log(`📢 [Marketing] Publicando borrador #${draftId} en canal ${channelId}...`);

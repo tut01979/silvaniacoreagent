@@ -66,7 +66,9 @@ export const config = {
     facebookPageAccessToken: process.env.FACEBOOK_PAGE_ACCESS_TOKEN || "",
     facebookPageId: process.env.FACEBOOK_PAGE_ID || "",
     twitterApiKey: process.env.TWITTER_API_KEY || "",
-    twitterAccessToken: process.env.TWITTER_ACCESS_TOKEN || ""
+    twitterApiSecret: process.env.TWITTER_API_SECRET || "",
+    twitterAccessToken: process.env.TWITTER_ACCESS_TOKEN || "",
+    twitterAccessSecret: process.env.TWITTER_ACCESS_SECRET || ""
   },
   tempDir: "./temp"
 };

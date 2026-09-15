@@ -1,4 +1,6 @@
 import axios from "axios";
+import { TwitterApi } from "twitter-api-v2";
+import fs from "fs";
 import { MarketingDraft, SocialPost, VideoScript } from "../types.js";
 import { config } from "../../config/config.js";
 
@@ -144,6 +146,53 @@ export const socialPublisher = {
     } catch (err: any) {
       console.error("❌ Error publicando en Facebook:", err.response?.data?.error?.message || err.message);
       return { platform: "Facebook", success: false, error: err.response?.data?.error?.message || err.message };
+    }
+  },
+
+  /**
+   * Publica de forma directa y nativa en X (Twitter) usando Twitter API v2
+   */
+  async publishToTwitter(text: string, imagePath?: string): Promise<PublishResult> {
+    const { twitterApiKey, twitterApiSecret, twitterAccessToken, twitterAccessSecret } = config.marketing;
+
+    if (!twitterApiKey || !twitterApiSecret || !twitterAccessToken || !twitterAccessSecret) {
+      return { platform: "X (Twitter)", success: false, error: "Faltan claves de X en variables de entorno" };
+    }
+
+    try {
+      console.log("🐦 [Marketing] Publicando tweet en @Silvania_AI...");
+      const client = new TwitterApi({
+        appKey: twitterApiKey,
+        appSecret: twitterApiSecret,
+        accessToken: twitterAccessToken,
+        accessSecret: twitterAccessSecret,
+      });
+
+      const rwClient = client.readWrite;
+      let tweetRes: any;
+
+      if (imagePath && fs.existsSync(imagePath)) {
+        try {
+          const mediaId = await client.v1.uploadMedia(imagePath);
+          tweetRes = await rwClient.v2.tweet({
+            text: text.slice(0, 280),
+            media: { media_ids: [mediaId] }
+          });
+        } catch (mediaErr: any) {
+          console.warn("⚠️ Falló subida de imagen a Twitter, publicando solo texto:", mediaErr.message);
+          tweetRes = await rwClient.v2.tweet(text.slice(0, 280));
+        }
+      } else {
+        tweetRes = await rwClient.v2.tweet(text.slice(0, 280));
+      }
+
+      const tweetId = tweetRes?.data?.id;
+      const tweetUrl = tweetId ? `https://x.com/Silvania_AI/status/${tweetId}` : undefined;
+      console.log(`✅ Tweet publicado con éxito: ${tweetUrl || tweetId}`);
+      return { platform: "X (Twitter)", success: true, messageId: tweetId, url: tweetUrl };
+    } catch (err: any) {
+      console.error("❌ Error publicando en X (Twitter):", err?.data || err.message);
+      return { platform: "X (Twitter)", success: false, error: err?.data?.detail || err.message };
     }
   }
 };
