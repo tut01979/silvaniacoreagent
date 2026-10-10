@@ -232,16 +232,28 @@ export const driveMemoryService = {
           console.log("✅ [Drive Memory] Historial de conversación restaurado con éxito.");
         }
       } catch (histRestoreErr: any) {
-        await criticalLogService.logCritical(
-          "Restauración Historial Fallida",
-          `Error al intentar restaurar el historial de chat desde Drive para usuario ${userId}: ${histRestoreErr.message}`
-        );
+        const histMsg = histRestoreErr.message || "";
+        const isAuthErr = histMsg.includes("Tu sesión de Google expiró") || histMsg.includes("invalid_grant") || histMsg.includes("unauthorized_client");
+        if (!isAuthErr) {
+          await criticalLogService.logCritical(
+            "Restauración Historial Fallida",
+            `Error al intentar restaurar el historial de chat desde Drive para usuario ${userId}: ${histMsg}`
+          );
+        } else {
+          console.warn(`⚠️ [Drive Memory] Sesión no válida al restaurar historial para ${userId}.`);
+        }
       }
     } catch (err: any) {
-      await criticalLogService.logCritical(
-        "Fallo Sincronización Inicial (syncFromDrive)",
-        `Error fatal en la sincronización inicial desde Drive para usuario ${userId}: ${err.message}`
-      );
+      const msg = err.message || "";
+      const isAuthErr = msg.includes("Tu sesión de Google expiró") || msg.includes("invalid_grant") || msg.includes("unauthorized_client");
+      if (!isAuthErr) {
+        await criticalLogService.logCritical(
+          "Fallo Sincronización Inicial (syncFromDrive)",
+          `Error fatal en la sincronización inicial desde Drive para usuario ${userId}: ${msg}`
+        );
+      } else {
+        console.warn(`⚠️ [Drive Memory] Sesión no válida durante syncFromDrive para ${userId}.`);
+      }
     }
   },
 
@@ -314,10 +326,16 @@ export const driveMemoryService = {
         console.error("❌ [Drive Memory] Error al actualizar memoria_conversacion.json:", sumErr.message);
       }
     } catch (err: any) {
-      await criticalLogService.logCritical(
-        "Fallo Guardado Historial (syncToDrive)",
-        `Error al intentar subir el historial estructurado de hoy para usuario ${userId}: ${err.message}`
-      );
+      const msg = err.message || "";
+      const isAuthErr = msg.includes("Tu sesión de Google expiró") || msg.includes("invalid_grant") || msg.includes("unauthorized_client");
+      if (!isAuthErr) {
+        await criticalLogService.logCritical(
+          "Fallo Guardado Historial (syncToDrive)",
+          `Error al intentar subir el historial estructurado de hoy para usuario ${userId}: ${msg}`
+        );
+      } else {
+        console.warn(`⚠️ [Drive Memory] Sesión no válida durante syncToDrive para ${userId}.`);
+      }
     }
   },
 

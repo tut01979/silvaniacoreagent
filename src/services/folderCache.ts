@@ -66,6 +66,13 @@ export const folderCacheService = {
           searchFiles = parsed.files || (Array.isArray(parsed) ? parsed : []);
         } catch (searchErr: any) {
           console.warn(`⚠️ [Folder Cache] Búsqueda de carpeta '${part}' en parent '${parentId}' falló: ${searchErr.message}.`);
+          if (
+            searchErr.message?.includes("Tu sesión de Google expiró") ||
+            searchErr.message?.includes("invalid_grant") ||
+            searchErr.message?.includes("unauthorized_client")
+          ) {
+            throw searchErr;
+          }
         }
 
         // Si la búsqueda con parent no devolvió nada y estamos en root o silvania, intentar búsqueda global de fallback
@@ -82,6 +89,13 @@ export const folderCacheService = {
             }
           } catch (gErr: any) {
             console.warn(`⚠️ [Folder Cache] Búsqueda global de fallback para '${part}' falló:`, gErr.message);
+            if (
+              gErr.message?.includes("Tu sesión de Google expiró") ||
+              gErr.message?.includes("invalid_grant") ||
+              gErr.message?.includes("unauthorized_client")
+            ) {
+              throw gErr;
+            }
           }
         }
 

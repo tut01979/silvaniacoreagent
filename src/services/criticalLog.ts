@@ -36,7 +36,8 @@ export const criticalLogService = {
     // 2. Despachar notificación
     if (alertCallback) {
       try {
-        await alertCallback(`🚨 **ALERTA CRÍTICA DE SISTEMA**\n\n📌 **Asunto:** ${title}\n📅 **Hora (UTC):** ${timestamp}\n💬 **Mensaje:** ${message}`);
+        const cleanMsg = message.length > 2500 ? message.slice(0, 2500) + "\n...[truncado]" : message;
+        await alertCallback(`🚨 **ALERTA CRÍTICA DE SISTEMA**\n\n📌 **Asunto:** ${title}\n📅 **Hora (UTC):** ${timestamp}\n💬 **Mensaje:**\n${cleanMsg}`);
       } catch (err: any) {
         console.error("❌ Falló el envío del callback de alerta crítica:", err.message);
       }

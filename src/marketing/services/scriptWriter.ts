@@ -67,9 +67,9 @@ ${angle ? `Ángulo específico: "${angle}"` : ""}
 
 Reglas obligatorias de redacción:
 1. Tono ejecutivo, sobrio, claro y sin relleno ni frases vacías.
-2. Si el post habla de Eva Agent: Preséntala como avance exclusivo de laboratorio ("Próximamente").
-3. Si el post habla de CoreAgent: Enfatiza la productividad real de Google Workspace en Telegram.
-4. Si el post habla de Marketing Agent (tú mismo): Usa el enfoque de "dogfooding" (demostrar con el propio post cómo la IA ahorra tiempo con revisión humana).
+2. Si el post habla de Eva Agent: Preséntala SIEMPRE en estado 'Próximamente / En el laboratorio'. NUNCA vendas acceso público directo aún; destaca la estimulación fonética interactiva y la privacidad 100% local en navegador (sin enviar audio de menores a servidores ni requerir cuentas de Google de niños).
+3. Si el post habla de CoreAgent: Enfatiza la productividad real de Google Workspace en Telegram con scopes mínimos y privacidad. Disponible ya en Acceso Anticipado (https://silvania.ai/coreagent).
+4. Si el post habla de Marketing Studio / Marketing Agent: Preséntalo SIEMPRE en estado 'Próximamente / Fase interna' (no vender acceso público directo todavía). Usa el enfoque de 'dogfooding' y supervisión obligatoria Human-in-the-Loop donde el founder aprueba cada borrador.
 5. Estructura:
    - Gancho magnético (primera línea impactante que obligue a seguir leyendo).
    - Desarrollo en 3-4 puntos accionables de alto valor con datos o aprendizajes concretos.

@@ -75,6 +75,7 @@ export async function runGogRaw(command: string, customEnv?: any): Promise<strin
     const lowerOutput = errorOutput.toLowerCase();
     if (
       lowerOutput.includes("invalid_grant") ||
+      lowerOutput.includes("unauthorized_client") ||
       lowerOutput.includes("token has been expired") ||
       lowerOutput.includes("token has been revoked")
     ) {
@@ -343,6 +344,17 @@ export async function runGog(command: string, userId?: number): Promise<string> 
   
   const tokenObj = await dbService.getUserToken(uId);
   if (tokenObj) {
+    const tokenTier = tokenObj.authTier || tokenObj.client;
+    // Si el tier del token no coincide con el tier configurado para este usuario (mismatch prod vs beta)
+    if (tokenTier && userCreds && tokenTier !== userCreds.tier) {
+      console.warn(`⚠️ [GOG] Mismatch de tier para usuario ${uId}: token tiene '${tokenTier}', pero tier configurado es '${userCreds.tier}'. Purgando para solicitar /auth.`);
+      try {
+        await dbService.deleteUserToken(uId);
+        await clearUserGogCredentials(uId, email);
+      } catch {}
+      throw new Error("Tu sesión de Google expiró o fue revocada. Usa /auth una vez.");
+    }
+
     try {
       const preparedToken = {
         ...tokenObj,
@@ -363,11 +375,13 @@ export async function runGog(command: string, userId?: number): Promise<string> 
     return await runGogRaw(finalCmd, customEnv);
   } catch (err: any) {
     const msg = err.message || "";
+    const lowerMsg = msg.toLowerCase();
     if (
       msg.includes("Tu sesión de Google expiró") ||
-      msg.includes("invalid_grant") ||
-      msg.includes("expired") ||
-      msg.includes("revoked")
+      lowerMsg.includes("invalid_grant") ||
+      lowerMsg.includes("unauthorized_client") ||
+      lowerMsg.includes("expired") ||
+      lowerMsg.includes("revoked")
     ) {
       console.error(`🚨 [GOG] Sesión revocada/expirada detectada para usuario ${uId}. Purgando tokens locales...`);
       try {

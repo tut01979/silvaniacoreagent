@@ -33,6 +33,7 @@ import { clearUserGogCredentials } from "./tools/gogWrapper.js";
 import { configManager } from "./services/configManager.js";
 import { morningRadarService } from "./services/morningRadar.js";
 import { folderCacheService } from "./services/folderCache.js";
+import { startMarketingAdminCron } from "./marketing/cron.js";
 
 if (process.env.GOOGLE_CREDS_JSON) {
   try {
@@ -119,23 +120,33 @@ initGogCredentials();
 
 const bot = new Bot(config.telegram.token);
 
-// Configurar el notificador de Telegram del administrador
+// Configurar el notificador de Telegram del administrador con fallback seguro
 setAdminTelegramNotifier(async (message: string) => {
+  const adminId = config.telegram.allowedUsers[0] || 1572946817;
   try {
-    const adminId = config.telegram.allowedUsers[0] || 1572946817;
     await bot.api.sendMessage(adminId, message, { parse_mode: "Markdown" });
   } catch (err: any) {
-    console.error("❌ Falló el envío de la alerta de Telegram al admin:", err.message);
+    // Fallback inmediato a texto plano para evitar Telegram 400 "can't parse entities"
+    try {
+      await bot.api.sendMessage(adminId, message.replace(/[*_`\[\]()]/g, ""));
+    } catch (err2: any) {
+      console.error("❌ Falló el envío de la alerta de Telegram al admin incluso en texto plano:", err2.message);
+    }
   }
 });
 
-// Configurar el receptor de alertas críticas de Silvania CoreAgent
+// Configurar el receptor de alertas críticas de Silvania CoreAgent con fallback seguro
 criticalLogService.registerCallback(async (msg: string) => {
+  const adminId = 1572946817; // ID prioritario de Jesús
   try {
-    const adminId = 1572946817; // ID prioritario de Jesús
     await bot.api.sendMessage(adminId, msg, { parse_mode: "Markdown" });
   } catch (err: any) {
-    console.error("❌ Falló el envío de alerta de Telegram de logs críticos al admin:", err.message);
+    // Fallback inmediato a texto plano para evitar Telegram 400 "can't parse entities"
+    try {
+      await bot.api.sendMessage(adminId, msg.replace(/[*_`\[\]()]/g, ""));
+    } catch (err2: any) {
+      console.error("❌ Falló el envío de alerta de Telegram de logs críticos al admin en texto plano:", err2.message);
+    }
   }
 });
 
@@ -1708,6 +1719,8 @@ export async function sendMorningMessages(botInstance: Bot) {
   console.log("🌞 [Cron] Iniciando generación de mensajes matutinos...");
   try {
     const users = await dbService.getAllUsers();
+    const usersNeedingAuth: Array<{ userId: number; email?: string; reason: string }> = [];
+
     for (const u of users) {
       const { userId, email } = u;
       console.log(`🌞 [Cron] Procesando usuario ${userId} (${email})...`);
@@ -1724,14 +1737,57 @@ export async function sendMorningMessages(botInstance: Bot) {
             console.warn(`[Cron] No se pudo cargar config para ${userId}, usando 'es':`, cfgErr.message);
           }
 
-          // 1. Obtener eventos de hoy
+          // 1. Obtener eventos de hoy verificando token previamente
           let calendarSummary = userLocale === "en" ? "No events scheduled for today." : "No hay eventos programados para hoy.";
-          try {
-            const eventsRes = await executeTool("calendar_list", { days_ahead: 1 }, userId);
-            calendarSummary = eventsRes;
-          } catch (e: any) {
-            calendarSummary = userLocale === "en" ? "Could not read calendar for today." : "No pude leer el calendario para hoy.";
-            console.warn(`[Cron] No se pudieron obtener eventos para ${userId}:`, e.message);
+          const userToken = await dbService.getUserToken(userId);
+
+          if (!userToken || !userToken.refresh_token) {
+            calendarSummary = userLocale === "en" 
+              ? "Could not access calendar. Reconnect with /auth to view your schedule." 
+              : "No pude acceder a tu agenda de hoy. Vincula de nuevo con /auth para ver tus eventos y citas.";
+            usersNeedingAuth.push({ userId, email, reason: "sin cuenta vinculada" });
+          } else {
+            try {
+              const eventsRes = await executeTool("calendar_list", { days_ahead: 1 }, userId);
+              const lowerRes = (eventsRes || "").toLowerCase();
+              if (
+                lowerRes.includes("invalid_grant") ||
+                lowerRes.includes("unauthorized_client") ||
+                lowerRes.includes("sesión de google expiró") ||
+                lowerRes.includes("no has vinculado") ||
+                lowerRes.includes("revocada")
+              ) {
+                console.warn(`⚠️ [Cron] Token expirado o revocado detectado para usuario ${userId}. Purgando...`);
+                try {
+                  await dbService.deleteUserToken(userId);
+                  await clearUserGogCredentials(userId, email);
+                } catch {}
+                calendarSummary = userLocale === "en"
+                  ? "Could not access calendar. Reconnect with /auth to view your schedule."
+                  : "No pude acceder a tu agenda de hoy. Vincula de nuevo con /auth para ver tus eventos y citas.";
+                usersNeedingAuth.push({ userId, email, reason: "sesión expirada/revocada" });
+              } else {
+                calendarSummary = eventsRes;
+              }
+            } catch (e: any) {
+              const errMsg = e.message || "";
+              const lowerErr = errMsg.toLowerCase();
+              if (
+                lowerErr.includes("invalid_grant") ||
+                lowerErr.includes("unauthorized_client") ||
+                lowerErr.includes("sesión de google expiró")
+              ) {
+                try {
+                  await dbService.deleteUserToken(userId);
+                  await clearUserGogCredentials(userId, email);
+                } catch {}
+                usersNeedingAuth.push({ userId, email, reason: "sesión expirada/revocada" });
+              }
+              calendarSummary = userLocale === "en" 
+                ? "Could not read calendar for today. Reconnect with /auth to view your schedule." 
+                : "No pude acceder a tu agenda de hoy. Vincula de nuevo con /auth para ver tus eventos y citas.";
+              console.warn(`[Cron] No se pudieron obtener eventos para ${userId}:`, errMsg);
+            }
           }
 
           // 2. Obtener Radar del día (Economía, IA, Mundo) con tolerancia a fallos
@@ -1764,7 +1820,7 @@ Frase inspiradora del día:
 
 Estructura obligatoria de tu respuesta:
 [SALUDO_Y_AGENDA]
-Saluda con cordialidad y energía. Resume de forma clara los eventos/citas del día (usa emojis 🗓️, ⏰). Si no hay eventos o no se pudo leer el calendario, indícalo de forma amable y natural.
+Saluda con cordialidad y energía. Resume de forma clara los eventos/citas del día (usa emojis 🗓️, ⏰). Si no hay eventos o el usuario necesita vincular su cuenta, indícalo de forma amable y breve en una línea ("Vincula de nuevo con /auth para ver tu agenda") sin alarmismo.
 
 [MOTIVACION]
 Cierra el briefing de manera fluida y elegante incorporando y desarrollando la frase inspiradora del día para motivar su jornada laboral.
@@ -1815,6 +1871,23 @@ IMPORTANTE: No inventes noticias ni añadas secciones adicionales. Respeta las e
         }
       });
     }
+
+    // 5. Enviar como máximo 1 resumen diario al admin si hay usuarios que necesitan re-vincularse
+    if (usersNeedingAuth.length > 0) {
+      try {
+        const adminId = 1572946817; // ID de Jesús
+        const count = usersNeedingAuth.length;
+        const listStr = usersNeedingAuth.map(u => `• Usuario \`${u.userId}\`${u.email ? ` (${u.email})` : ''}: ${u.reason}`).join("\n");
+        const adminSummary = `ℹ️ **Resumen Matutino (Cuentas Google)**\n\n${count} usuario(s) necesitan /auth:\n${listStr}`;
+        try {
+          await botInstance.api.sendMessage(adminId, adminSummary, { parse_mode: "Markdown" });
+        } catch {
+          await botInstance.api.sendMessage(adminId, adminSummary.replace(/[*_`]/g, ""));
+        }
+      } catch (adminErr: any) {
+        console.error("❌ [Cron] Error enviando resumen matutino de cuentas al admin:", adminErr.message);
+      }
+    }
   } catch (err: any) {
     console.error("❌ [Cron] Error general en sendMorningMessages:", err.message);
   }
@@ -1843,6 +1916,9 @@ function startMorningCron(botInstance: Bot) {
 
 // Iniciar cron matutino
 startMorningCron(bot);
+
+// Iniciar cron de marketing rotativo exclusivo para administradores (HITL)
+startMarketingAdminCron(bot);
 
 // Middleware de prioridad absoluta para el administrador Jesús
 bot.use(async (ctx, next) => {
@@ -1910,27 +1986,39 @@ bot.use(async (ctx, next) => {
 
 // Comando /start - Onboarding Fase 0 (Early Access / Producción)
 bot.command("start", async (ctx) => {
-  const channelUrl = config.marketing?.telegramChannelUrl;
-  const channelLine = channelUrl 
-    ? `\n📢 **Canal Oficial de Novedades y Demos:** ${channelUrl}\n` 
-    : `\n📢 Usa /canal para conocer nuestro canal oficial de demos.\n`;
+  try {
+    const channelUrl = config.marketing?.telegramChannelUrl;
+    const channelLine = channelUrl 
+      ? `\n📢 **Canal Oficial de Novedades y Demos:** ${channelUrl}\n` 
+      : `\n📢 Usa /canal para conocer nuestro canal oficial de demos.\n`;
 
-  const welcomeText = 
-    `👋 **¡Hola! Te doy la bienvenida a Silvania CoreAgent.**\n\n` +
-    `Soy tu asistente ejecutivo en Telegram, diseñado para ejecutar acciones reales en tu día a día integrado con **Google Workspace** mediante texto o notas de voz:\n\n` +
-    `📁 **Google Drive:** Búsqueda rápida, organización y consulta de documentos.\n` +
-    `✉️ **Gmail:** Redacción y envío seguro de correos bajo tu orden directa.\n` +
-    `📅 **Google Calendar:** Creación de eventos, citas y gestión de agenda.\n` +
-    `📊 **Google Sheets:** Registro de datos, facturación estructurada y tablas.\n` +
-    `🌐 **Navegación Web:** Búsqueda e inspección de páginas y empresas en tiempo real.\n\n` +
-    `🚀 **Acceso Anticipado (Early Access):**\n` +
-    `Para conectar tus herramientas de Google con permisos oficiales y seguros, pulsa:\n` +
-    `👉 /auth\n` +
-    channelLine +
-    `\n🌐 Más información y documentación: https://silvania.ai/coreagent\n` +
-    `💬 Tu feedback directo por privado es clave en esta fase. ¿Qué tarea te gustaría automatizar hoy?`;
+    const welcomeText = 
+      `👋 **¡Hola! Te doy la bienvenida a Silvania CoreAgent.**\n\n` +
+      `Soy tu asistente ejecutivo en Telegram, diseñado para ejecutar acciones reales en tu día a día integrado con **Google Workspace** mediante texto o notas de voz:\n\n` +
+      `📁 **Google Drive:** Búsqueda rápida, organización y consulta de documentos.\n` +
+      `✉️ **Gmail:** Redacción y envío seguro de correos bajo tu orden directa.\n` +
+      `📅 **Google Calendar:** Creación de eventos, citas y gestión de agenda.\n` +
+      `📊 **Google Sheets:** Registro de datos, facturación estructurada y tablas.\n` +
+      `🌐 **Navegación Web:** Búsqueda e inspección de páginas y empresas en tiempo real.\n\n` +
+      `🚀 **Acceso Anticipado (Early Access):**\n` +
+      `Para conectar tus herramientas de Google con permisos oficiales y seguros, pulsa:\n` +
+      `👉 /auth\n` +
+      channelLine +
+      `\n🌐 Más información y documentación: https://silvania.ai/coreagent\n` +
+      `💬 Tu feedback directo por privado es clave en esta fase. ¿Qué tarea te gustaría automatizar hoy?`;
 
-  await ctx.reply(welcomeText, { parse_mode: "Markdown", link_preview_options: { is_disabled: true } });
+    await safeReply(ctx, welcomeText);
+  } catch (err: any) {
+    console.error("❌ Error en comando /start:", err.message);
+    try {
+      await ctx.reply(
+        "👋 ¡Hola! Te doy la bienvenida a Silvania CoreAgent.\n\n" +
+        "Para conectar tus herramientas de Google con permisos oficiales y seguros, pulsa:\n👉 /auth\n\n" +
+        "🌐 Más información: https://silvania.ai/coreagent",
+        { link_preview_options: { is_disabled: true } }
+      );
+    } catch {}
+  }
 });
 
 // Comando /canal para consultar o acceder al canal vitrina
@@ -2158,18 +2246,40 @@ bot.command("marketing", async (ctx) => {
     return ctx.reply(
       "🚀 *Silvania Marketing Studio (Low-Cost P0)*\n\n" +
       "Uso del comando:\n" +
+      "• `/marketing draft [coreagent|eva|marketing]` - Genera el borrador diario rotativo de producto para revisión HITL.\n" +
       "• `/marketing post [tema]` - Genera post social con imagen FLUX (gratis) y locución Edge-TTS (gratis).\n" +
       "• `/marketing video [tema]` - Genera guión de YouTube (larga duración) con miniatura y hook locutado.\n" +
       "• `/marketing short [tema]` - Genera guión de YouTube Short.\n" +
       "• `/marketing tiktok [tema]` - Genera guión vertical (9:16) para TikTok con ganchos de alta retención.\n" +
       "• `/marketing status` - Consulta el estado del último borrador generado.\n\n" +
-      "_Ejemplo:_ `/marketing tiktok 3 trucos de Google Calendar que nadie conoce`",
+      "_Ejemplo:_ `/marketing draft` o `/marketing tiktok 3 trucos de Google Calendar`",
       { parse_mode: "Markdown" }
     );
   }
 
   const parts = rawArgs.split(" ");
   const subCmd = parts[0].toLowerCase();
+
+  // Subcomando de borrador rotativo diario bajo demanda (HITL)
+  if (subCmd === "draft" || subCmd === "cron" || subCmd === "rotativo") {
+    await ctx.reply("⏳ Generando propuesta diaria rotativa de producto para revisión HITL...");
+    try {
+      const { runMarketingDailyDraft } = await import("./marketing/cron.js");
+      let forceIdx: number | undefined;
+      const targetProd = parts[1]?.toLowerCase();
+      if (targetProd?.includes("core")) forceIdx = 0;
+      else if (targetProd?.includes("eva")) forceIdx = 1;
+      else if (targetProd?.includes("market")) forceIdx = 2;
+
+      const draft = await runMarketingDailyDraft(bot, userId, forceIdx);
+      if (!draft) {
+        await ctx.reply("❌ No se pudo generar el borrador rotativo. Revisa la consola o las claves LLM.");
+      }
+      return;
+    } catch (err: any) {
+      return ctx.reply(`❌ Error generando borrador rotativo: ${err.message}`);
+    }
+  }
 
   // Subcomando de estado
   if (subCmd === "status") {

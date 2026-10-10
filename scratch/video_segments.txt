@@ -1,0 +1,44 @@
+[00:00 -> 00:08]  Hola a todos, muy buenas, soy Eduardo Quintero de Silvania.ai y hoy traigo a relación nuestro
+[00:08 -> 00:15]  primer producto, Silvania Corallian. Es un agente de inteligencia artificial que trabaja
+[00:15 -> 00:20]  desde Telegram y está conectado directamente al Google Workspace del usuario con permisos
+[00:20 -> 00:29]  mínimos. No tiene permisos restringidos, o sea que no tiene acceso completo al Gmail,
+[00:29 -> 00:34]  pero si puede enviar correos por petición del usuario no tiene acceso completo al drive pero
+[00:34 -> 00:42]  si puede crear carpetas y documentos y revisar o visitar todas las carpetas que la gente haya
+[00:42 -> 00:53]  creado por petición del usuario también puede con el google calendar agendar citas crear eventos
+[00:53 -> 01:00]  reuniones entre en el chip puede generar hojas de cálculo crear plantillas entre
+[01:00 -> 01:05]  otras muchas cosas vamos a hacer una demostración
+[01:07 -> 01:12]  este es nuestro sitio web es una plataforma de agentes de inteligencia
+[01:12 -> 01:17]  artificial aquí está nuestro agente a verificar
+[01:17 -> 01:22]  ya hemos descrito anteriormente ahora vamos a ver cómo funciona son tres
+[01:22 -> 01:24]  sencillos pasos.
+[01:24 -> 01:25]  Como habíamos dicho también
+[01:25 -> 01:27]  anteriormente, trabaja desde Telegram.
+[01:27 -> 01:45]  Iniciamos normalmente la conversaci con el agente y solamente le pedimos que nos genere un enlace con lenguaje natural o a trav de este comando para poder vincular nuestra cuenta a la gente y
+[01:45 -> 01:51]  que pueda llevar con seamos todos los permisos y a partir de allí ya podemos trabajar con él vamos a
+[01:51 -> 01:51]  hacerlo
+[01:57 -> 02:03]  Aquí se presenta la gente, una nave de descripción de las cosas que puede hacer.
+[02:03 -> 02:06]  Ahora le vamos a pedir que nos genere el enlace.
+[02:06 -> 02:12]  Aquí en el enlace podemos ver el client ID del usuario, los scopes.
+[02:12 -> 02:13]  Escogemos la cuenta.
+[02:13 -> 02:28]  En esta página podemos ver los permisos que le concedemos, no más que son mínimos, no
+[02:28 -> 02:34]  hay scope amplios ni restringidos.
+[02:34 -> 02:42]  podemos observar aquí que coincide el client ID del usuario con el que generó
+[02:42 -> 02:49]  en el enlace el agente con el que nos da la página lo que confirma que es el
+[02:49 -> 02:54]  mismo client ID. Otorgamos los permisos y le damos a
+[02:54 -> 03:13]  continuar y ya a partir de aqu ya podemos empezar a trabajar con el agente Gracias Perfecto ahora quiero que me crees
+[03:13 -> 03:15]  un evento para el próximo lunes
+[03:15 -> 03:17]  a las 11 de la mañana
+[03:17 -> 03:18]  reunión con el equipo de Google
+[03:18 -> 03:21]  lugar Palacio de Congresos de Valencia
+[03:30 -> 03:44]  He creado un evento en tu calendario para el próximo lunes, 14 de septiembre, a las 11 y 00, con el título Reunión con el equipo de Google y la descripción Lugar, Palacio de Congresos de Valencia.
+[03:44 -> 03:47]  Aquí tienes el enlace para abrir el evento.
+[03:47 -> 03:49]  Abrir enlace ID en pantalla por favor.
+[03:49 -> 03:52]  Verifica si este enlace funciona correctamente.
+[04:00 -> 04:02]  ¡Gracias!
+[04:30 -> 04:31]  Gracias.
+[04:33 -> 04:55]  Excelente.
+[04:55 -> 05:15]  Ahora quiero que crees una hoja de cálculo que sea una plantilla de factura con todos los campos de una factura profesional que calcule el IVA al 21%, calcule los subtotales y totales con el nombre Google Factura Test.
+[05:25 -> 05:36]  He creado la plantilla de factura Google Factura Test con todos los campos necesarios, incluyendo el cálculo automático del IVA al 21%, subtotal y total.
+[05:37 -> 05:47]  Puedes acceder a ella aquí. Google Factura Test. Abrir enlace ID en pantalla barra edit. Esta hoja de cálculo ha sido guardada en tu carpeta Sylvania barra en Google Drive.
+[05:47 -> 06:06]  Vale, con esto damos por finalizado nuestra prueba, nuestra demostración. Espero que haya sido de su agrado y muchas gracias por su colaboración y la atención prestada.
+[06:07 -> 06:09]  Un saludo y hasta pronto.

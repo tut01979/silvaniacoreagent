@@ -1,0 +1,335 @@
+1
+00:00:00,640 --> 00:00:04,770
+Hola a todos, muy
+buenas, soy Eduardo Quintero
+
+2
+00:00:04,770 --> 00:00:08,900
+de Silvania.ai y hoy
+traigo a colación nuestro
+
+3
+00:00:08,900 --> 00:00:11,950
+primer producto, Silvania CoreAgent. Es un
+
+4
+00:00:11,950 --> 00:00:15,000
+agente de inteligencia artificial que trabaja
+
+5
+00:00:15,600 --> 00:00:18,074
+desde Telegram y está conectado directamente
+
+6
+00:00:18,074 --> 00:00:20,960
+al Google Workspace del usuario con permisos
+
+7
+00:00:20,960 --> 00:00:24,990
+mínimos. No tiene
+permisos restringidos, o sea
+
+8
+00:00:24,990 --> 00:00:29,020
+que no tiene acceso completo al Gmail,
+
+9
+00:00:29,020 --> 00:00:31,930
+pero si puede enviar correos por petición del
+
+10
+00:00:31,930 --> 00:00:34,840
+usuario no tiene acceso
+completo al drive pero
+
+11
+00:00:34,840 --> 00:00:38,595
+si puede crear carpetas
+y documentos y revisar
+
+12
+00:00:38,595 --> 00:00:42,820
+o visitar todas las
+carpetas que la gente haya
+
+13
+00:00:42,820 --> 00:00:47,608
+creado por petición del usuario también puede
+
+14
+00:00:47,608 --> 00:00:53,080
+con el google calendar
+agendar citas crear eventos
+
+15
+00:00:53,080 --> 00:00:57,040
+reuniones entre en Sheets puede generar
+
+16
+00:00:57,040 --> 00:01:00,999
+hojas de cálculo crear plantillas entre
+
+17
+00:01:00,999 --> 00:01:05,840
+otras muchas cosas vamos
+a hacer una demostración
+
+18
+00:01:07,400 --> 00:01:12,020
+este es nuestro sitio web es
+una plataforma de agentes de inteligencia
+
+19
+00:01:12,020 --> 00:01:17,580
+artificial aquí está
+nuestro agente a verificar
+
+20
+00:01:17,580 --> 00:01:19,950
+ya hemos descrito anteriormente ahora vamos
+
+21
+00:01:19,950 --> 00:01:22,320
+a ver cómo funciona son tres
+
+22
+00:01:22,320 --> 00:01:24,120
+sencillos pasos.
+
+23
+00:01:24,120 --> 00:01:25,580
+Como habíamos dicho también
+
+24
+00:01:25,580 --> 00:01:27,600
+anteriormente, trabaja desde Telegram.
+
+25
+00:01:27,600 --> 00:01:31,742
+Iniciamos normalmente la conversación
+con el agente y
+
+26
+00:01:31,742 --> 00:01:36,401
+solamente le pedimos que
+nos genere un enlace con
+
+27
+00:01:36,401 --> 00:01:40,543
+lenguaje natural o a través de este comando
+
+28
+00:01:40,543 --> 00:01:45,203
+para poder vincular nuestra
+cuenta a la gente y
+
+29
+00:01:45,203 --> 00:01:48,092
+que pueda llevar concedemos
+todos los permisos y a
+
+30
+00:01:48,092 --> 00:01:51,303
+partir de allí ya podemos
+trabajar con él vamos a
+
+31
+00:01:51,303 --> 00:01:51,683
+hacerlo
+
+32
+00:01:57,923 --> 00:02:00,743
+Aquí se presenta la gente, una breve
+
+33
+00:02:00,743 --> 00:02:03,563
+descripción de las cosas que puede hacer.
+
+34
+00:02:03,563 --> 00:02:06,163
+Ahora le vamos a pedir
+que nos genere el enlace.
+
+35
+00:02:06,163 --> 00:02:08,932
+Aquí en el enlace podemos ver
+
+36
+00:02:08,932 --> 00:02:12,163
+el Client ID del usuario, los scopes.
+
+37
+00:02:12,163 --> 00:02:13,163
+Escogemos la cuenta.
+
+38
+00:02:13,163 --> 00:02:20,623
+En esta página podemos ver los permisos que
+
+39
+00:02:20,623 --> 00:02:28,083
+le concedemos, no más que son mínimos, no
+
+40
+00:02:28,083 --> 00:02:34,003
+hay scope amplios ni restringidos.
+
+41
+00:02:34,003 --> 00:02:38,283
+podemos observar aquí que coincide el Client
+
+42
+00:02:38,283 --> 00:02:42,563
+ID del usuario con el que generó
+
+43
+00:02:42,563 --> 00:02:46,233
+en el enlace el agente con el que nos
+
+44
+00:02:46,233 --> 00:02:49,903
+da la página lo que confirma que es el
+
+45
+00:02:49,903 --> 00:02:54,923
+mismo Client ID. Otorgamos los
+permisos y le damos a
+
+46
+00:02:54,923 --> 00:03:04,244
+continuar y ya a partir
+de aquí ya podemos empezar a
+
+47
+00:03:04,244 --> 00:03:13,565
+trabajar con el agente Gracias
+Perfecto ahora quiero que me crees
+
+48
+00:03:13,565 --> 00:03:15,585
+un evento para el próximo lunes
+
+49
+00:03:15,585 --> 00:03:17,385
+a las 11 de la mañana
+
+50
+00:03:17,385 --> 00:03:18,945
+reunión con el equipo de Google
+
+51
+00:03:18,945 --> 00:03:21,425
+lugar Palacio de Congresos de Valencia
+
+52
+00:03:30,845 --> 00:03:34,105
+He creado un evento en tu calendario para el
+
+53
+00:03:34,105 --> 00:03:37,364
+próximo lunes, 14 de septiembre, a las 11 y
+
+54
+00:03:37,364 --> 00:03:40,624
+00, con el título Reunión con el equipo de
+
+55
+00:03:40,624 --> 00:03:44,245
+Google y la descripción Lugar,
+Palacio de Congresos de Valencia.
+
+56
+00:03:44,805 --> 00:03:47,005
+Aquí tienes el enlace para abrir el evento.
+
+57
+00:03:47,425 --> 00:03:49,465
+Abrir enlace ID en pantalla por favor.
+
+58
+00:03:49,805 --> 00:03:52,465
+Verifica si este
+enlace funciona correctamente.
+
+59
+00:04:00,845 --> 00:04:02,845
+¡Gracias!
+
+60
+00:04:30,845 --> 00:04:31,845
+Gracias.
+
+61
+00:04:33,768 --> 00:04:55,868
+Excelente.
+
+62
+00:04:55,868 --> 00:05:00,405
+Ahora quiero que crees
+una hoja de cálculo que
+
+63
+00:05:00,405 --> 00:05:05,446
+sea una plantilla de factura
+con todos los campos de
+
+64
+00:05:05,446 --> 00:05:10,487
+una factura profesional que calcule
+el IVA al 21%, calcule
+
+65
+00:05:10,487 --> 00:05:15,528
+los subtotales y totales con
+el nombre Google Factura Test.
+
+66
+00:05:25,868 --> 00:05:31,196
+He creado la plantilla de factura
+Google Factura Test con todos los
+
+67
+00:05:31,196 --> 00:05:33,860
+campos necesarios, incluyendo
+el cálculo automático
+
+68
+00:05:33,860 --> 00:05:36,968
+del IVA al 21%, subtotal y total.
+
+69
+00:05:37,548 --> 00:05:39,914
+Puedes acceder a ella aquí. Google Factura
+
+70
+00:05:39,914 --> 00:05:42,279
+Test. Abrir enlace ID en pantalla /edit.
+
+71
+00:05:42,279 --> 00:05:44,645
+Esta hoja de cálculo ha sido guardada
+
+72
+00:05:44,645 --> 00:05:47,348
+en tu carpeta Silvania barra en Google Drive.
+
+73
+00:05:47,348 --> 00:05:51,632
+Vale, con esto damos por finalizado
+
+74
+00:05:51,632 --> 00:05:56,631
+nuestra prueba, nuestra
+demostración. Espero que haya
+
+75
+00:05:56,631 --> 00:06:01,629
+sido de su agrado y muchas gracias
+
+76
+00:06:01,629 --> 00:06:06,628
+por su colaboración y la atención prestada.
+
+77
+00:06:07,128 --> 00:06:09,068
+Un saludo y hasta pronto.

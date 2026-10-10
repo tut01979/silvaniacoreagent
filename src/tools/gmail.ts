@@ -193,6 +193,30 @@ export async function gmailSearch(userId: number, query: string, count?: number)
 
     return formatGmailList(formattedMessages, activeQuery);
   } catch (error: any) {
+    const errorMsg = error.message || "";
+    const lower = errorMsg.toLowerCase();
+
+    if (
+      lower.includes("insufficient") ||
+      lower.includes("scope") ||
+      lower.includes("permission") ||
+      lower.includes("403")
+    ) {
+      return (
+        "⚠️ **Permisos de Gmail limitados:** Tu cuenta de Google vinculada tiene permisos de solo envío (`gmail.send`) en producción para proteger tu privacidad. No tengo permisos para leer o listar los correos de tu bandeja de entrada.\n\n" +
+        "✉️ Si lo deseas, puedes pedirme que **redacte y envíe un correo** nuevo, o consultar tus correos directamente en [Gmail](https://mail.google.com/mail/u/0/#inbox)."
+      );
+    }
+
+    if (
+      lower.includes("invalid_grant") ||
+      lower.includes("unauthorized_client") ||
+      lower.includes("expiró") ||
+      lower.includes("revocada")
+    ) {
+      return "❌ Tu sesión de Google expiró o fue revocada. Usa el comando /auth para volver a conectar tu cuenta.";
+    }
+
     const queryLink = generateGmailSearchLink(query);
     return `❌ Error buscando emails: ${error.message}\n\n🔗 **Navegación Directa:** [Intentar búsqueda manual en Gmail](${queryLink})`;
   }
@@ -253,6 +277,15 @@ export async function gmailThread(userId: number, threadId: string): Promise<str
     finalOutput += `\n\n💡 *Para responder a este correo, pídeme que redacte una respuesta indicando el destinatario y el asunto.*`;
     return finalOutput.trim();
   } catch (error: any) {
+    const lower = (error.message || "").toLowerCase();
+    if (
+      lower.includes("insufficient") ||
+      lower.includes("scope") ||
+      lower.includes("permission") ||
+      lower.includes("403")
+    ) {
+      return "⚠️ **Permisos de Gmail limitados:** Tu cuenta tiene permisos de solo envío (`gmail.send`). No tengo autorización para leer el contenido de este correo.";
+    }
     return `❌ Error leyendo el correo: ${error.message}`;
   }
 }

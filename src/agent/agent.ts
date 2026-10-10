@@ -715,21 +715,33 @@ export function isUltraSimpleCourtesy(text: string): boolean {
 export function sanitizeAlucinatedLinks(responseText: string, history: any[]): string {
   const validIds = new Set<string>();
   const validUrls = new Set<string>();
-  const idRegex = /\b([a-zA-Z0-9_-]{8,65})\b/g;
 
   // 1. Escanear SOLO las respuestas de herramientas (role === "tool") de la sesión/turno actual
   // para recopilar IDs y URLs verificados y legítimos
   for (const msg of history) {
     if (msg.role === "tool" && msg.content) {
-      let match;
-      idRegex.lastIndex = 0;
-      while ((match = idRegex.exec(msg.content)) !== null) {
-        validIds.add(match[1]);
-      }
-      
-      const urls = msg.content.match(/(https?:\/\/[^\s)\]`'"]+)/gi) || [];
+      const content = String(msg.content);
+
+      // A. Extraer URLs completas verificadas
+      const urls = content.match(/(https?:\/\/[^\s)\]`'"]+)/gi) || [];
       for (const u of urls) {
-        validUrls.add(u.trim());
+        validUrls.add(u.trim().replace(/[.,;:]+$/, ""));
+      }
+
+      // B. Extraer IDs explícitos de Workspace (Drive, Gmail, Sheets, Calendar)
+      const explicitMatches = content.matchAll(/(?:ID:\s*`?|id["']?\s*:\s*["']?|\/d\/|\/folders\/|#inbox\/|[?&]id=)([a-zA-Z0-9_-]{10,65})/gi);
+      for (const m of explicitMatches) {
+        if (m[1]) validIds.add(m[1]);
+      }
+
+      // C. Extraer identificadores técnicos entre backticks que contengan dígitos y letras (ej. `1aILvwkAH7NauwhUEQmduA79u0JmtuyAi`)
+      const backtickMatches = content.matchAll(/`([a-zA-Z0-9_-]{12,65})`/g);
+      for (const bm of backtickMatches) {
+        const val = bm[1];
+        // Asegurar que no sea una palabra de diccionario: debe tener al menos un dígito o guión
+        if (/[0-9_-]/.test(val)) {
+          validIds.add(val);
+        }
       }
     }
   }
@@ -835,14 +847,16 @@ function enforceHardLimit(text: string): string {
 export function filterFinalOutput(text: string): string {
   if (!text) return "";
 
-  // 1. Limpiar bloques de código o pseudo-código simulando llamadas a herramientas (print(...), tools., etc.)
   let cleaned = text;
 
-  // Eliminar bloques ```python o ```typescript que contengan print( o tools.
-  cleaned = cleaned.replace(/```(?:python|javascript|typescript|bash|sh)?\s*(?:print\(|tools\.|await\s+tools\.)[\s\S]*?```/gi, "");
+  // 1. Eliminar cualquier bloque de código markdown ```...``` que contenga print( o tools. en cualquier parte de su interior
+  cleaned = cleaned.replace(/```(?:[a-zA-Z0-9_-]+)?[\s\S]*?(?:print\(|tools\.|await\s+tools\.|executeTool\(|gmail_|drive_|sheets_|calendar_)[\s\S]*?```/gi, "");
 
-  // Eliminar líneas individuales sueltas que simulen ejecución de tools
-  cleaned = cleaned.replace(/^\s*(?:print\([^\n]+\)|tools\.[a-zA-Z0-9_-]+\([^\n]*\)|await\s+tools\.[a-zA-Z0-9_-]+\([^\n]*\))\s*$/gmi, "");
+  // 2. Eliminar líneas individuales sueltas que simulen ejecución de tools o llamadas a print
+  cleaned = cleaned.replace(/^\s*(?:print\([^\n]*\)|tools\.[a-zA-Z0-9_-]+\([^\n]*\)|await\s+tools\.[a-zA-Z0-9_-]+\([^\n]*\))\s*$/gmi, "");
+
+  // 3. Eliminar sentencias sueltas de print(...) dentro del texto
+  cleaned = cleaned.replace(/\bprint\((?:['"][^'"]*['"]|[a-zA-Z0-9_.]+\([^)]*\)|[^\n)]*)\);?/gi, "");
 
   // 2. Detectar si aún contiene simulaciones crudas residuales de tool calls
   const hasToolSimulations = /tools\.[a-zA-Z0-9_-]+\(/i.test(cleaned) || 

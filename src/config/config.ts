@@ -68,7 +68,10 @@ export const config = {
     twitterApiKey: process.env.TWITTER_API_KEY || "",
     twitterApiSecret: process.env.TWITTER_API_SECRET || "",
     twitterAccessToken: process.env.TWITTER_ACCESS_TOKEN || "",
-    twitterAccessSecret: process.env.TWITTER_ACCESS_SECRET || ""
+    twitterAccessSecret: process.env.TWITTER_ACCESS_SECRET || "",
+    cronEnabled: process.env.MARKETING_CRON_ENABLED !== "false",
+    cronHour: parseInt(process.env.MARKETING_CRON_HOUR || "11"),
+    cronMinute: parseInt(process.env.MARKETING_CRON_MINUTE || "0")
   },
   tempDir: "./temp"
 };

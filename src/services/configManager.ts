@@ -49,6 +49,44 @@ export const configManager = {
       locale: "es"
     };
 
+    // Helper interno para resolver fallback local rápido
+    const getLocalFallback = async (): Promise<UserConfig> => {
+      try {
+        if (fs.existsSync(localConfigPath)) {
+          const cachedContent = fs.readFileSync(localConfigPath, "utf8");
+          return JSON.parse(cachedContent);
+        }
+      } catch {}
+
+      try {
+        const cp = await dbService.getCustomPrompt(userId) || "";
+        const mv = await dbService.getMuteVoice(userId) || false;
+        return {
+          version: CURRENT_VERSION,
+          customPrompt: cp,
+          muteVoice: mv,
+          installedSkills: [],
+          language: "es",
+          locale: "es"
+        };
+      } catch (dbErr: any) {
+        return {
+          version: CURRENT_VERSION,
+          customPrompt: "",
+          muteVoice: false,
+          installedSkills: [],
+          language: "es",
+          locale: "es"
+        };
+      }
+    };
+
+    // 0. Si el usuario no tiene token vinculado, usar directamente el fallback local sin tocar Drive
+    const userToken = await dbService.getUserToken(userId);
+    if (!userToken || !userToken.refresh_token) {
+      return await getLocalFallback();
+    }
+
     try {
       const silvaniaFolderId = await this.getOrCreateFolderPath(userId, ["silvania"]);
       const fileName = "config.json";
@@ -152,38 +190,25 @@ export const configManager = {
 
       return configObj;
     } catch (err: any) {
-      // Registro en sistema de logs críticos
-      await criticalLogService.logCritical(
-        "Fallo Carga Configuración",
-        `No se pudo cargar la configuración de Drive para usuario ${userId}. Se utilizó fallback seguro. Error: ${err.message}`
-      );
+      const errMsg = err.message || "";
+      const isAuthError =
+        errMsg.includes("Tu sesión de Google expiró") ||
+        errMsg.includes("invalid_grant") ||
+        errMsg.includes("unauthorized_client") ||
+        errMsg.includes("expiró") ||
+        errMsg.includes("revocada");
 
-      // Fallback robusto de tres capas (Drive -> local DB -> defaults)
-      try {
-        if (fs.existsSync(localConfigPath)) {
-          const cachedContent = fs.readFileSync(localConfigPath, "utf8");
-          return JSON.parse(cachedContent);
-        }
-      } catch {}
-
-      try {
-        const cp = await dbService.getCustomPrompt(userId) || "";
-        const mv = await dbService.getMuteVoice(userId) || false;
-        return {
-          version: CURRENT_VERSION,
-          customPrompt: cp,
-          muteVoice: mv,
-          installedSkills: []
-        };
-      } catch (dbErr: any) {
-        console.error("❌ Fallback de base de datos también falló:", dbErr.message);
-        return {
-          version: CURRENT_VERSION,
-          customPrompt: "",
-          muteVoice: false,
-          installedSkills: []
-        };
+      // Solo registrar alerta crítica si NO es un error ordinario de autenticación / token expirado
+      if (!isAuthError) {
+        await criticalLogService.logCritical(
+          "Fallo Carga Configuración",
+          `No se pudo cargar la configuración de Drive para usuario ${userId}. Se utilizó fallback seguro. Error: ${errMsg}`
+        );
+      } else {
+        console.warn(`⚠️ [Config Manager] Sesión de Google expirada o no válida para usuario ${userId}, usando fallback seguro.`);
       }
+
+      return await getLocalFallback();
     }
   },
 
@@ -238,10 +263,22 @@ export const configManager = {
         console.log(`ℹ️ [Config Manager] Configuración guardada en caché local para usuario ${userId} (Drive en modo offline/degradado).`);
       }
     } catch (err: any) {
-      await criticalLogService.logCritical(
-        "Fallo Guardado Configuración",
-        `No se pudo guardar la configuración de Drive para usuario ${userId}. Error: ${err.message}`
-      );
+      const errMsg = err.message || "";
+      const isAuthError =
+        errMsg.includes("Tu sesión de Google expiró") ||
+        errMsg.includes("invalid_grant") ||
+        errMsg.includes("unauthorized_client") ||
+        errMsg.includes("expiró") ||
+        errMsg.includes("revocada");
+
+      if (!isAuthError) {
+        await criticalLogService.logCritical(
+          "Fallo Guardado Configuración",
+          `No se pudo guardar la configuración de Drive para usuario ${userId}. Error: ${errMsg}`
+        );
+      } else {
+        console.warn(`⚠️ [Config Manager] No se pudo guardar config en Drive para ${userId} (sesión expirada). Guardado en caché local.`);
+      }
     }
   },
 

@@ -2,6 +2,7 @@ import { runGog } from "../tools/gogWrapper.js";
 import { configManager } from "./configManager.js";
 import { criticalLogService } from "./criticalLog.js";
 import { uploadSkillToDrive } from "../tools/skills.js";
+import { dbService } from "../database/db.js";
 import fs from "fs";
 import path from "path";
 
@@ -14,6 +15,12 @@ export const skillLoader = {
    */
   async syncSkillsFromDrive(userId: number): Promise<void> {
     try {
+      const token = await dbService.getUserToken(userId);
+      if (!token || !token.refresh_token) {
+        console.log(`ℹ️ [Skill Loader] Usuario ${userId} sin token de Google, omitiendo syncSkillsFromDrive.`);
+        return;
+      }
+
       console.log(`🔄 [Skill Loader] Sincronizando habilidades desde Drive para usuario ${userId}...`);
       
       const skillsFolderId = await configManager.getOrCreateFolderPath(userId, ["silvania", "skills"]);
@@ -90,10 +97,16 @@ export const skillLoader = {
 
       console.log(`✅ [Skill Loader] Sincronización de habilidades completada para usuario ${userId} (${driveSkillsCount} skills activas).`);
     } catch (err: any) {
-      await criticalLogService.logCritical(
-        "Fallo Sincronización Habilidades (syncSkillsFromDrive)",
-        `Error al intentar sincronizar las habilidades desde Drive para usuario ${userId}: ${err.message}`
-      );
+      const msg = err.message || "";
+      const isAuthErr = msg.includes("Tu sesión de Google expiró") || msg.includes("invalid_grant") || msg.includes("unauthorized_client");
+      if (!isAuthErr) {
+        await criticalLogService.logCritical(
+          "Fallo Sincronización Habilidades (syncSkillsFromDrive)",
+          `Error al intentar sincronizar las habilidades desde Drive para usuario ${userId}: ${msg}`
+        );
+      } else {
+        console.warn(`⚠️ [Skill Loader] Sesión expirada para usuario ${userId}, omitiendo syncSkillsFromDrive.`);
+      }
     }
   }
 };

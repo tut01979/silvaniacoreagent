@@ -579,5 +579,11 @@ export const dbService = {
     } catch (err: any) {
       console.error(`❌ Error en setConfigSyncInfo para usuario ${userId}:`, err.message);
     }
+  },
+
+  close: (): void => {
+    try {
+      db.close();
+    } catch {}
   }
 };
