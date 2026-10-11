@@ -310,19 +310,390 @@
       position: relative;
       display: flex;
       justify-content: center;
+      align-items: center;
+      perspective: 1000px;
     }
 
     .hero-mockup-wrapper img {
       width: 100%;
       max-width: 440px;
       border-radius: 28px;
-      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(16, 185, 129, 0.15);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 40px rgba(16, 185, 129, 0.2);
       border: 1px solid rgba(255, 255, 255, 0.12);
-      transition: transform 0.4s ease;
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
+      display: block;
     }
 
     .hero-mockup-wrapper:hover img {
-      transform: scale(1.02) rotate(-0.5deg);
+      transform: scale(1.025) translateY(-4px);
+      box-shadow: 0 35px 75px rgba(0, 0, 0, 0.95), 0 0 55px rgba(16, 185, 129, 0.3);
+    }
+
+    /* Robot en Oficina Interactivo & Brain Card */
+    .brain-card-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 3.5rem;
+      align-items: center;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 32px;
+      padding: 3.5rem;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .brain-card-grid::before {
+      content: '';
+      position: absolute;
+      top: -100px;
+      right: -100px;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .brain-text h2 {
+      font-family: var(--font-title);
+      font-size: 2.3rem;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 1.2rem;
+    }
+
+    .brain-text h2 span {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brain-text p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      line-height: 1.7;
+    }
+
+    .hero-image-container {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      perspective: 1000px;
+    }
+
+    .robot-wrapper {
+      position: relative;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(99, 102, 241, 0.12));
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 32px;
+      padding: 12px;
+      box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.8), 0 0 50px rgba(16, 185, 129, 0.2);
+      backdrop-filter: blur(16px);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+      will-change: transform;
+      transform-style: preserve-3d;
+      transform: perspective(1000px) rotateX(0deg) rotateY(0deg);
+      max-width: 420px;
+      width: 100%;
+    }
+
+    .robot-wrapper:hover {
+      box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.9), 0 0 60px rgba(16, 185, 129, 0.35);
+    }
+
+    .robot-image {
+      width: 100%;
+      height: auto;
+      border-radius: 24px;
+      display: block;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transform: translateZ(20px);
+    }
+
+    .robot-glow {
+      position: absolute;
+      width: 320px;
+      height: 320px;
+      background: radial-gradient(circle, rgba(16, 185, 129, 0.28) 0%, transparent 70%);
+      filter: blur(50px);
+      z-index: -1;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    .robot-floating-badge {
+      position: absolute;
+      bottom: -15px;
+      right: 20px;
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      padding: 0.6rem 1.1rem;
+      border-radius: 50px;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+      transform: translateZ(35px);
+    }
+
+    .pulse-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+      animation: pulseGreen 2s infinite;
+    }
+    @keyframes pulseGreen {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    .robot-floating-badge strong {
+      font-size: 0.85rem;
+      color: #fff;
+      display: block;
+      line-height: 1.2;
+    }
+    .robot-floating-badge span {
+      font-size: 0.72rem;
+      color: #34d399;
+    }
+
+    /* Video Showcase Section */
+    .video-section-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      color: #a5b4fc;
+      padding: 0.4rem 1rem;
+      border-radius: 50px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 1.2rem;
+    }
+
+    .video-showcase-grid {
+      display: grid;
+      grid-template-columns: 1.55fr 0.95fr;
+      gap: 2.5rem;
+      align-items: start;
+    }
+
+    .video-player-container {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      padding: 1.2rem;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+    }
+
+    .video-frame {
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #000;
+      aspect-ratio: 16 / 9;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .video-frame video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .video-overlay-badge {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      background: rgba(3, 7, 18, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #34d399;
+      padding: 0.35rem 0.85rem;
+      border-radius: 50px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      backdrop-filter: blur(8px);
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .video-info-box {
+      padding: 1.4rem 0.5rem 0.5rem;
+    }
+
+    .video-info-box h3 {
+      font-family: var(--font-title);
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.5rem;
+    }
+
+    .video-info-box p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin-bottom: 1.2rem;
+    }
+
+    .video-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding-top: 1.2rem;
+    }
+
+    .video-meta-time {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    /* Video Playlist */
+    .video-playlist {
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+
+    .playlist-header {
+      font-family: var(--font-title);
+      font-size: 1rem;
+      font-weight: 700;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 0.3rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .playlist-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: rgba(17, 24, 39, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 18px;
+      padding: 1rem 1.15rem;
+      text-align: left;
+      cursor: pointer;
+      color: var(--text-main);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      overflow: hidden;
+      width: 100%;
+    }
+
+    .playlist-item:hover {
+      background: rgba(30, 41, 59, 0.7);
+      border-color: rgba(255, 255, 255, 0.15);
+      transform: translateX(4px);
+    }
+
+    .playlist-item.active {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(99, 102, 241, 0.15));
+      border-color: rgba(16, 185, 129, 0.5);
+      box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.2);
+    }
+
+    .playlist-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: #10b981;
+    }
+
+    .playlist-item-num {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.95rem;
+      color: #94a3b8;
+      flex-shrink: 0;
+      transition: all 0.2s ease;
+    }
+
+    .playlist-item.active .playlist-item-num {
+      background: #10b981;
+      color: #030712;
+    }
+
+    .playlist-item-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .playlist-item-info h4 {
+      font-family: var(--font-title);
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .playlist-item-info p {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin: 0;
+    }
+
+    .playlist-time {
+      font-size: 0.75rem;
+      color: #64748b;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+
+    .playlist-item.active .playlist-time {
+      color: #34d399;
+      background: rgba(16, 185, 129, 0.1);
+    }
+
+    @media (max-width: 992px) {
+      .video-showcase-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     /* Section styling */
@@ -807,6 +1178,7 @@
       </a>
       <nav>
         <a href="/" class="nav-hub"><i class="fa-solid fa-arrow-left"></i> Ecosistema Hub</a>
+        <a href="#tutoriales"><i class="fa-solid fa-play"></i> Vídeos Demos</a>
         <a href="#como-funciona">Cómo Funciona</a>
         <a href="#herramientas">Herramientas</a>
         <a href="#seguridad">Seguridad</a>
@@ -834,13 +1206,13 @@
         <a href="https://t.me/{{BOT_USERNAME}}" target="_blank" class="btn-main">
           <i class="fa-brands fa-telegram"></i> Iniciar en Telegram
         </a>
-        <a href="#como-funciona" class="btn-secondary">
-          <i class="fa-solid fa-circle-play"></i> Cómo Funciona
+        <a href="#tutoriales" class="btn-secondary">
+          <i class="fa-solid fa-circle-play"></i> Ver Vídeos Demos
         </a>
       </div>
     </div>
     <div class="hero-mockup-wrapper">
-      <img src="/silvaniacoreagent_mockup.png" alt="Silvania CoreAgent Mockup Telegram">
+      <img src="/silvaniacoreagent_mockup.png" alt="Silvania CoreAgent Mockup Telegram" class="phone-image">
     </div>
   </section>
 
@@ -865,6 +1237,83 @@
         <div class="step-badge">3</div>
         <h3>Pide lo que necesites</h3>
         <p>Dicta un audio o escribe: <em>"Agenda reunión mañana a las 10 con David"</em> o <em>"Anota este gasto en la hoja de Finanzas"</em>. Silvania lo ejecuta.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Sección de Vídeos / Tutoriales en Píldoras -->
+  <section class="section-container" id="tutoriales">
+    <div class="section-title">
+      <span class="video-section-badge"><i class="fa-solid fa-circle-play"></i> Demostraciones Reales</span>
+      <h2>Aprende a Usar CoreAgent en <span>Píldoras Rápidas</span></h2>
+      <p>Mira demostraciones paso a paso de cada funcionalidad clave grabadas directamente sobre el producto real.</p>
+    </div>
+
+    <div class="video-showcase-grid">
+      <!-- Reproductor Principal -->
+      <div class="video-player-container">
+        <div class="video-frame">
+          <video id="pildora-video" controls playsinline preload="metadata" poster="/robot.png">
+            <source id="video-source" src="/videos/coreagent_pildora_1.mp4" type="video/mp4">
+            Tu navegador no soporta la reproducción de video HTML5.
+          </video>
+          <div class="video-overlay-badge" id="video-current-badge">
+            <i class="fa-solid fa-bolt"></i> Píldora 1: Tu Oficina en Telegram
+          </div>
+        </div>
+        <div class="video-info-box">
+          <h3 id="video-title">Píldora 1: Tu Oficina Ejecutiva en Telegram</h3>
+          <p id="video-desc">Descubre qué es Silvania CoreAgent, qué herramientas controla y cómo opera dentro de Telegram sin necesidad de instalar apps pesadas.</p>
+          <div class="video-actions">
+            <a href="https://t.me/{{BOT_USERNAME}}" target="_blank" class="btn-main" style="padding: 0.7rem 1.4rem; font-size: 0.9rem;">
+              <i class="fa-brands fa-telegram"></i> Probar esto en Telegram
+            </a>
+            <span class="video-meta-time" id="video-duration-text"><i class="fa-regular fa-clock"></i> ~30 seg</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lista de Reproducción Interactiva -->
+      <div class="video-playlist">
+        <div class="playlist-header">
+          <i class="fa-solid fa-list-ol"></i> Serie de Demostraciones
+        </div>
+
+        <button type="button" class="playlist-item active" onclick="switchPildora(1, this)">
+          <div class="playlist-item-num">1</div>
+          <div class="playlist-item-info">
+            <h4>Tu Oficina en Telegram</h4>
+            <p>Qué es CoreAgent y Google Workspace</p>
+          </div>
+          <span class="playlist-time">0:30</span>
+        </button>
+
+        <button type="button" class="playlist-item" onclick="switchPildora(2, this)">
+          <div class="playlist-item-num">2</div>
+          <div class="playlist-item-info">
+            <h4>Conexión Segura en 3 Clics</h4>
+            <p>Vinculación OAuth y permisos mínimos</p>
+          </div>
+          <span class="playlist-time">0:28</span>
+        </button>
+
+        <button type="button" class="playlist-item" onclick="switchPildora(3, this)">
+          <div class="playlist-item-num">3</div>
+          <div class="playlist-item-info">
+            <h4>Google Calendar al Instante</h4>
+            <p>Agenda citas en lenguaje natural</p>
+          </div>
+          <span class="playlist-time">0:26</span>
+        </button>
+
+        <button type="button" class="playlist-item" onclick="switchPildora(4, this)">
+          <div class="playlist-item-num">4</div>
+          <div class="playlist-item-info">
+            <h4>Hojas de Cálculo & Drive</h4>
+            <p>Facturas con IVA 21% automáticas</p>
+          </div>
+          <span class="playlist-time">0:26</span>
+        </button>
       </div>
     </div>
   </section>
@@ -933,6 +1382,42 @@
       </div>
     </div>
   </div>
+
+  <!-- Sección del Cerebro Ejecutivo: Robot en la Oficina -->
+  <section class="section-container" id="cerebro" style="padding-top: 1rem;">
+    <div class="brain-card-grid">
+      <div class="brain-text">
+        <span class="badge-pill" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: var(--primary); margin-bottom: 1rem; display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.9rem; border-radius: 50px; font-size: 0.82rem; font-weight: 700; text-transform: uppercase;">
+          <i class="fa-solid fa-brain"></i> Inteligencia Autónoma
+        </span>
+        <h2>El Cerebro Ejecutivo detrás de <span>tu Asistente</span></h2>
+        <p>Silvania CoreAgent combina modelos de lenguaje avanzados con herramientas de ejecución en tiempo real sobre Google Workspace. No es solo un chatbot de respuestas: es un agente que comprende tus prioridades, consulta tus documentos y ejecuta acciones de oficina con precisión milimétrica.</p>
+        <ul class="check-list" style="margin-top: 1.5rem;">
+          <li><i class="fa-solid fa-check"></i> <strong>Procesamiento Multimodal:</strong> Entiende notas de voz, videonotas y documentos adjuntos.</li>
+          <li><i class="fa-solid fa-check"></i> <strong>Aislamiento y Soberanía:</strong> Tus datos se gestionan en tu propio Google Workspace.</li>
+          <li><i class="fa-solid fa-check"></i> <strong>Disponibilidad Continua:</strong> Listo 24/7 desde cualquier dispositivo a través de Telegram.</li>
+        </ul>
+        <div style="margin-top: 2rem;">
+          <a href="https://t.me/{{BOT_USERNAME}}" target="_blank" class="btn-main">
+            <i class="fa-brands fa-telegram"></i> Probar Silvania CoreAgent
+          </a>
+        </div>
+      </div>
+      <div class="hero-image-container">
+        <div class="robot-wrapper" id="interactive-robot">
+          <img src="/robot.png" alt="Silvania Asistente Ejecutivo - Robot en Oficina" class="robot-image">
+          <div class="robot-glow"></div>
+          <div class="robot-floating-badge">
+            <span class="pulse-dot"></span>
+            <div>
+              <strong>CoreAgent Activo</strong>
+              <span>Google Workspace 24/7</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <!-- FAQ -->
   <section class="section-container" id="faq">
@@ -1043,5 +1528,93 @@
     </div>
     <p>&copy; 2026 Silvania.ai — Todos los derechos reservados. Arquitectura de agentes de IA modular.</p>
   </footer>
+
+  <script>
+    // ─── PLAYLIST DE PÍLDORAS EN VÍDEO ───
+    const pildorasData = {
+      1: {
+        title: "Píldora 1: Tu Oficina Ejecutiva en Telegram",
+        badge: "Píldora 1: Tu Oficina en Telegram",
+        icon: "fa-bolt",
+        desc: "Descubre qué es Silvania CoreAgent, qué herramientas controla y cómo opera dentro de Telegram sin necesidad de instalar apps pesadas.",
+        duration: "~30 seg",
+        src: "/videos/coreagent_pildora_1.mp4"
+      },
+      2: {
+        title: "Píldora 2: Conexión Segura en 3 Clics",
+        badge: "Píldora 2: Google OAuth 2.0",
+        icon: "fa-shield-halved",
+        desc: "Aprende cómo funciona el comando /auth, la pantalla oficial de Google OAuth 2.0 y la estricta política de permisos mínimos para proteger tu privacidad.",
+        duration: "~28 seg",
+        src: "/videos/coreagent_pildora_2.mp4"
+      },
+      3: {
+        title: "Píldora 3: Google Calendar en Lenguaje Natural",
+        badge: "Píldora 3: Google Calendar",
+        icon: "fa-calendar-days",
+        desc: "Agenda citas y reuniones complejas con fecha, hora y lugar solo con un mensaje de voz o texto. El bot te entrega el enlace directo al evento al instante.",
+        duration: "~26 seg",
+        src: "/videos/coreagent_pildora_3.mp4"
+      },
+      4: {
+        title: "Píldora 4: Automatización de Sheets y Drive",
+        badge: "Píldora 4: Sheets & Drive",
+        icon: "fa-table",
+        desc: "Pide la creación de hojas de cálculo complejas como plantillas de facturación con IVA al 21% y tenlas archivadas y organizadas en tu carpeta de Google Drive.",
+        duration: "~26 seg",
+        src: "/videos/coreagent_pildora_4.mp4"
+      }
+    };
+
+    function switchPildora(id, btnElement) {
+      const data = pildorasData[id];
+      if (!data) return;
+
+      // Actualizar botones de lista
+      document.querySelectorAll('.playlist-item').forEach(el => el.classList.remove('active'));
+      if (btnElement) btnElement.classList.add('active');
+
+      // Actualizar reproductor
+      const video = document.getElementById('pildora-video');
+      const source = document.getElementById('video-source');
+      const badge = document.getElementById('video-current-badge');
+      const title = document.getElementById('video-title');
+      const desc = document.getElementById('video-desc');
+      const duration = document.getElementById('video-duration-text');
+
+      if (badge) badge.innerHTML = `<i class="fa-solid ${data.icon}"></i> ${data.badge}`;
+      if (title) title.innerText = data.title;
+      if (desc) desc.innerText = data.desc;
+      if (duration) duration.innerHTML = `<i class="fa-regular fa-clock"></i> ${data.duration}`;
+
+      if (video && source) {
+        source.src = data.src;
+        video.load();
+        video.play().catch(() => {});
+      }
+    }
+
+    // ─── EFECTO 3D TILT CON EL RATÓN (SUAVE Y ALINEADO) ───
+    const card = document.getElementById('interactive-robot');
+    if (card) {
+      card.addEventListener('mousemove', (e) => {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        
+        // Tilt suave máximo de 5 grados centrado en la tarjeta
+        const rotateX = ((centerY - y) / centerY) * 5;
+        const rotateY = ((x - centerX) / centerX) * 5;
+        
+        card.style.transform = `perspective(1000px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) scale(1.015)`;
+      });
+      
+      card.addEventListener('mouseleave', () => {
+        card.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale(1)';
+      });
+    }
+  </script>
 </body>
 </html>

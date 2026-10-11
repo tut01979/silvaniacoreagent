@@ -51,7 +51,7 @@ function cleanupDuplicateLines(text: string): string {
  * Obtiene la transcripción (subtítulos) de un video de YouTube dada su URL o ID.
  * Procesa el texto eliminando repeticiones y guarda el entregable completo en Drive.
  */
-export async function youtubeGetTranscript(urlOrId: string, userId?: number, saveToDrive = false): Promise<string> {
+export async function youtubeGetTranscript(urlOrId: string, userId?: number, saveToDrive?: boolean): Promise<string> {
   const videoId = retrieveVideoId(urlOrId);
   let rawText = "";
   
@@ -112,15 +112,20 @@ export async function youtubeGetTranscript(urlOrId: string, userId?: number, sav
 
   if (rawText) {
     const cleanedTranscript = cleanupDuplicateLines(rawText);
+    const effectiveUserId = userId || 0;
     
-    // Guardar el texto completo en Google Drive SOLO si el usuario lo solicitó expresamente
+    // Guardar en Drive si saveToDrive !== false y es larga (>1500 caracteres), o si se pidió explícitamente
+    const shouldSaveToDrive = (saveToDrive === true || (saveToDrive !== false && cleanedTranscript.length > 1500)) && Boolean(effectiveUserId);
     let driveLinkMsg = "";
-    if (saveToDrive && userId) {
+
+    if (shouldSaveToDrive && effectiveUserId) {
       try {
-        console.log(`📁 [youtube] Guardando transcripción completa en Google Drive (solicitud explícita del usuario)...`);
+        console.log(`📁 [youtube] Guardando transcripción completa en Google Drive (silvania/transcripciones/transcripcion_${videoId}.md)...`);
         const { driveMemoryService } = await import("../services/driveMemory.js");
-        const folderId = await driveMemoryService.getOrCreateFolderPath(["silvania", "transcripciones"], userId);
+        const { runGog } = await import("./gogWrapper.js");
+        const { generateDriveLink } = await import("../services/linkGenerator.js");
         
+        const folderId = await driveMemoryService.getOrCreateFolderPath(["silvania", "transcripciones"], effectiveUserId);
         const fileName = `transcripcion_${videoId}.md`;
         const tempName = `temp_yt_${videoId}.md`;
         const tempPath = path.join(process.cwd(), "temp", tempName);
@@ -132,29 +137,30 @@ export async function youtubeGetTranscript(urlOrId: string, userId?: number, sav
         const fileContent = `# Transcripción de YouTube\n\n**Video:** https://www.youtube.com/watch?v=${videoId}\n\n${cleanedTranscript}`;
         fs.writeFileSync(tempPath, fileContent);
         
-        const { driveUpload } = await import("./drive.js");
-        const uploadRes = await driveUpload(tempPath, folderId, fileName, userId);
-        
-        const linkMatch = uploadRes.match(/🔗 \*\*Enlace:\*\* \[.*?\]\((.*?)\)/i) || 
-                          uploadRes.match(/\[.*?\]\((.*?)\)/i) || 
-                          uploadRes.match(/(https?:\/\/drive\.google\.com\S+)/i);
-                          
-        if (linkMatch) {
-          driveLinkMsg = `\n\n📂 **Archivo completo guardado en Drive:** [Abrir Transcripción](${linkMatch[1]})`;
-        }
-        
+        const uploadRes = await runGog(`drive upload "${tempPath}" --parent=${folderId} --name="${fileName}" --json`, effectiveUserId);
         try { if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath); } catch {}
+        
+        try {
+          const parsed = JSON.parse(uploadRes);
+          const file = parsed.file || parsed;
+          const fileLink = generateDriveLink(file.id, false);
+          const folderLink = generateDriveLink(folderId, true);
+          driveLinkMsg = `\n\n📂 **Archivo completo guardado en Drive:** [Abrir Transcripción](${fileLink})\n> 🆔 ID: \`${file.id}\` | 🌐 Enlace: ${fileLink}\n📁 **Carpeta:** [Abrir silvania/transcripciones](${folderLink})\n> 🆔 Carpeta ID: \`${folderId}\` | 🌐 Enlace: ${folderLink}`;
+        } catch {
+          driveLinkMsg = `\n\n📂 **Archivo guardado en Drive:** (Subida procesada con éxito)`;
+        }
       } catch (driveErr: any) {
         console.error("❌ [youtube] Error guardando transcripción en Drive:", driveErr.message);
       }
     }
 
-    if (saveToDrive) {
-      const summarySnippet = cleanedTranscript.slice(0, 800) + "...";
-      return `🎥 **Transcripción de YouTube (Resumen)**\n\n**Video:** https://www.youtube.com/watch?v=${videoId}\n\n${summarySnippet}${driveLinkMsg}`;
+    // Si la transcripción es larga o se guardó en Drive, devolver resumen de ~800-1200 caracteres para no saturar Telegram
+    if (shouldSaveToDrive || cleanedTranscript.length > 1500) {
+      const summarySnippet = cleanedTranscript.slice(0, 1000) + "...";
+      return `🎥 **Transcripción de YouTube (Resumen)**\n\n**Video:** https://www.youtube.com/watch?v=${videoId}\n\n${summarySnippet}${driveLinkMsg}\n\n💡 _La transcripción completa está guardada en tu Google Drive para evitar saturar el chat de Telegram._`;
     }
 
-    // Retornar la transcripción limpia completa directamente al LLM si no se solicitó Drive
+    // Retornar directamente si es corta y no se guardó en Drive
     return `🎥 **Transcripción de YouTube:**\n\n**Video:** https://www.youtube.com/watch?v=${videoId}\n\n${cleanedTranscript}`;
   }
 

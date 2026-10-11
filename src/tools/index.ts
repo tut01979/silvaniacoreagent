@@ -95,7 +95,12 @@ export const tools = {
       const file = parsed.file || parsed;
       const isFolder = file.mimeType === "application/vnd.google-apps.folder";
       const link = generateDriveLink(file.id, isFolder);
-      return `✅ **Archivo subido con éxito**\n\n🆔 **ID:** \`${file.id}\`\n📁 **Nombre:** ${file.name}\n🔗 **Enlace:** [Abrir archivo](${link})`;
+      let outMsg = `✅ **Archivo subido con éxito**\n\n📄 **${file.name}** · 🔗 [Abrir archivo](${link})\n> 🆔 ID: \`${file.id}\` | 🌐 Enlace: ${link}`;
+      if (resolvedParentId && resolvedParentId !== "root" && resolvedParentId !== ".") {
+        const parentFolderLink = generateDriveLink(resolvedParentId, true);
+        outMsg += `\n📁 **Carpeta Destino:** [Abrir carpeta contenedora](${parentFolderLink})\n> 🆔 ID: \`${resolvedParentId}\` | 🌐 Enlace: ${parentFolderLink}`;
+      }
+      return outMsg;
     } catch {
       return `✅ **Archivo subido** (No se pudo parsear el ID)\n\n*Resultado:* ${result}`;
     }
@@ -135,7 +140,12 @@ export const tools = {
       const file = parsed.file || parsed;
       const isFolder = file.mimeType === "application/vnd.google-apps.folder";
       const link = generateDriveLink(file.id, isFolder);
-      return `✅ **Archivo de texto creado con éxito**\n\n📁 **Nombre:** ${file.name}\n🆔 **ID:** \`${file.id}\`\n🔗 **Enlace:** [Abrir archivo](${link})`;
+      let outMsg = `✅ **Archivo de texto creado con éxito**\n\n📄 **${file.name}** · 🔗 [Abrir archivo](${link})\n> 🆔 ID: \`${file.id}\` | 🌐 Enlace: ${link}`;
+      if (resolvedParentId && resolvedParentId !== "root" && resolvedParentId !== ".") {
+        const parentFolderLink = generateDriveLink(resolvedParentId, true);
+        outMsg += `\n📁 **Ubicación en Carpeta:** [Abrir carpeta contenedora](${parentFolderLink})\n> 🆔 ID: \`${resolvedParentId}\` | 🌐 Enlace: ${parentFolderLink}`;
+      }
+      return outMsg;
     } catch {
       return `✅ **Archivo de texto subido**\n\n*Resultado:* ${result}`;
     }
@@ -221,7 +231,7 @@ export const tools = {
 
   youtube_get_transcript: async ({ url, save_to_drive, userId }: { url: string; save_to_drive?: boolean; userId?: number }) => {
     const uId = userId || userContextStore.getStore()?.userId;
-    return await youtubeGetTranscript(url, uId, !!save_to_drive);
+    return await youtubeGetTranscript(url, uId, save_to_drive);
   },
 
   youtube_search: async ({ query, max_results }: { query: string; max_results?: number }) => {

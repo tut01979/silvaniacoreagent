@@ -89,5 +89,11 @@ export const marketingDb = {
 
     this.saveDraft(draft);
     return true;
+  },
+
+  close(): void {
+    try {
+      db.close();
+    } catch {}
   }
 };

@@ -48,8 +48,14 @@ export const telegramReview = {
       summaryText = `📢 *Borrador:* ${draft.topic}` + techFooter;
     }
 
+    const hasImage = Boolean(draft.imageUrls && draft.imageUrls.length > 0 && fs.existsSync(draft.imageUrls[0]));
+
+    // Si la imagen falló pero se intentó, avisar explícitamente en la tarjeta sin fingir que hay creativo
+    if (!hasImage && draft.imageError) {
+      summaryText = `⚠️ *Imagen no generada:* ${draft.imageError}\n\n` + summaryText;
+    }
+
     // 1. Enviar imagen si existe
-    const hasImage = draft.imageUrls && draft.imageUrls.length > 0 && fs.existsSync(draft.imageUrls[0]);
     if (hasImage) {
       if (summaryText.length <= 1000) {
         try {
@@ -75,7 +81,6 @@ export const telegramReview = {
       } else {
         // Si el texto supera los 1000 caracteres, Telegram rechaza caption > 1024.
         // Enviamos la imagen primero y el texto completo con los botones interactivos después.
-        // Enviar foto primero y texto completo después
         await bot.api.sendPhoto(draft.userId, new InputFile(draft.imageUrls[0]));
         try {
           await bot.api.sendMessage(draft.userId, summaryText, {
@@ -105,11 +110,41 @@ export const telegramReview = {
     const hasAudio = draft.audioUrls && draft.audioUrls.length > 0 && fs.existsSync(draft.audioUrls[0]);
     if (hasAudio) {
       try {
+        const audioTitle = draft.videoScript?.title || draft.socialContent?.title || draft.topic;
         await bot.api.sendVoice(draft.userId, new InputFile(draft.audioUrls[0]), {
-          caption: `🎙️ Locución (${draft.voiceProvider || "Edge-TTS Neural"}): "${draft.topic}"`,
+          caption: `🎙️ Locución Completa (${draft.voiceProvider || "Edge-TTS Neural"}): "${audioTitle}"`,
         });
       } catch (err: any) {
         console.warn("⚠️ Falló envío de audio voice:", err.message);
+      }
+    }
+
+    // 3. Si es un guión de vídeo, adjuntar el guión completo particionado para que no se corte en Telegram
+    if (draft.videoScript && draft.videoScript.scenes && draft.videoScript.scenes.length > 0) {
+      try {
+        let scriptMsg = `📜 *GUIÓN COMPLETO: ${draft.videoScript.title}*\n🎣 *Hook:* "${draft.videoScript.hook}"\n\n`;
+        for (const scene of draft.videoScript.scenes) {
+          const sceneBlock = `🎬 *Escena ${scene.sceneNumber} (${scene.timestamp})*\n🗣️ _"${scene.narration}"_\n🖼️ Visual: \`${scene.visualPrompt}\`${scene.onScreenText ? `\n🔤 En pantalla: _${scene.onScreenText}_` : ""}\n\n`;
+          if ((scriptMsg + sceneBlock).length > 3800) {
+            try {
+              await bot.api.sendMessage(draft.userId, scriptMsg, { parse_mode: "Markdown" });
+            } catch {
+              await bot.api.sendMessage(draft.userId, scriptMsg.replace(/[*_`]/g, ""));
+            }
+            scriptMsg = sceneBlock;
+          } else {
+            scriptMsg += sceneBlock;
+          }
+        }
+        if (scriptMsg.trim().length > 0) {
+          try {
+            await bot.api.sendMessage(draft.userId, scriptMsg, { parse_mode: "Markdown" });
+          } catch {
+            await bot.api.sendMessage(draft.userId, scriptMsg.replace(/[*_`]/g, ""));
+          }
+        }
+      } catch (scriptErr: any) {
+        console.warn("⚠️ Falló envío de guión completo en Telegram:", scriptErr.message);
       }
     }
   },

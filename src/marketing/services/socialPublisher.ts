@@ -192,7 +192,9 @@ export const socialPublisher = {
       return { platform: "X (Twitter)", success: true, messageId: tweetId, url: tweetUrl };
     } catch (err: any) {
       console.error("❌ Error publicando en X (Twitter):", err?.data || err.message);
-      return { platform: "X (Twitter)", success: false, error: err?.data?.detail || err.message };
+      const isUnauthorized = err?.data?.status === 401 || err?.status === 401 || (err?.message && err.message.toLowerCase().includes("unauthorized"));
+      const errorMsg = isUnauthorized ? "X no configurado" : (err?.data?.detail || err.message);
+      return { platform: "X (Twitter)", success: false, error: errorMsg };
     }
   }
 };

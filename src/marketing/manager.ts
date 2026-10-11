@@ -50,6 +50,7 @@ export const marketingManager = {
         draft.imageProvider = imgRes.provider;
       } catch (err: any) {
         console.warn("⚠️ Falló generación de imagen:", err.message);
+        draft.imageError = err.message || "Error al generar imagen con FLUX";
       }
 
       // 3. Generación de Audio (Edge-TTS Free por defecto)
@@ -84,16 +85,29 @@ export const marketingManager = {
         draft.imageProvider = imgRes.provider;
       } catch (err: any) {
         console.warn("⚠️ Falló miniatura visual:", err.message);
+        draft.imageError = err.message || "Error al generar miniatura con FLUX";
       }
 
-      // 3. Locución del Gancho (Hook + Escena 1) con Edge-TTS
+      // 3. Locución Completa del Guión (Hook + Todas las escenas estructuradas) con Edge-TTS
       try {
-        const hookText = `${scriptRes.data.hook}. ${scriptRes.data.scenes[0]?.narration || ""}`;
-        const voiceRes = await voiceStudio.generateNarration(hookText, userId);
-        draft.audioUrls.push(voiceRes.audioPath);
-        draft.voiceProvider = voiceRes.provider;
+        const narrationBlocks: string[] = [];
+        if (scriptRes.data.hook && scriptRes.data.hook.trim().length > 0) {
+          narrationBlocks.push(scriptRes.data.hook.trim());
+        }
+        for (const scene of scriptRes.data.scenes || []) {
+          if (scene.narration && scene.narration.trim().length > 0) {
+            narrationBlocks.push(scene.narration.trim());
+          }
+        }
+        const fullNarrationText = narrationBlocks.join("\n\n").trim();
+        if (fullNarrationText.length > 0) {
+          console.log(`🎙️ [Marketing Video] Sintetizando locución completa (${fullNarrationText.length} caracteres) para "${scriptRes.data.title}"...`);
+          const voiceRes = await voiceStudio.generateNarration(fullNarrationText, userId);
+          draft.audioUrls.push(voiceRes.audioPath);
+          draft.voiceProvider = voiceRes.provider;
+        }
       } catch (err: any) {
-        console.warn("⚠️ Falló locución:", err.message);
+        console.warn("⚠️ Falló locución completa de vídeo:", err.message);
       }
     }
 

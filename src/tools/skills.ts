@@ -419,6 +419,8 @@ export async function uploadSkillToDrive(userId: number, folderName: string, loc
       config.installedSkills.push(folderName);
       await configManager.saveConfig(userId, config);
     }
+    const { skillLoader } = await import("../services/skillLoader.js");
+    skillLoader.invalidateCache(userId);
     return true;
   } catch (err: any) {
     console.error(`❌ [Skills Drive] Error al sincronizar skill '${folderName}' a Google Drive:`, err.message);

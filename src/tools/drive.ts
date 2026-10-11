@@ -249,15 +249,27 @@ export async function resolveOrCreateParentId(parentId: string | undefined, user
     return "root";
   }
 
-  // Si parece un file/folder ID de Drive (alfanumérico largo sin barras "/") -> usarlo tal cual.
-  const isDriveId = /^[a-zA-Z0-9_-]{15,}$/.test(parentId) && !parentId.includes("/");
+  const cleanParent = parentId.trim();
+  const lowerParent = cleanParent.toLowerCase();
+
+  // Caso especial canónico: si se solicita 'transcripciones', resolverlo en silvania/transcripciones
+  if (lowerParent === "transcripciones" || lowerParent === "silvania/transcripciones") {
+    try {
+      return await driveMemoryService.getOrCreateFolderPath(["silvania", "transcripciones"], userId);
+    } catch (err: any) {
+      console.warn("⚠️ [Drive Tool] Falló resolución canónica de transcripciones, usando fallback:", err.message);
+    }
+  }
+
+  // Un ID de Google Drive genuino tiene al menos 16 caracteres, no tiene barras y contiene dígitos
+  const isDriveId = /^[a-zA-Z0-9_-]{16,}$/.test(cleanParent) && !cleanParent.includes("/") && /[0-9]/.test(cleanParent);
   if (isDriveId) {
-    return parentId;
+    return cleanParent;
   }
 
   // Si contiene "/" o es una ruta tipo silvania/skills/... -> resolver y crear la jerarquía con getOrCreateFolderPath.
-  console.log(`📂 [Drive Tool] Detectada ruta de carpeta en parentId: "${parentId}". Resolviendo/Creando...`);
-  const parts = parentId.split("/").filter(p => p.trim().length > 0);
+  console.log(`📂 [Drive Tool] Detectada ruta de carpeta en parentId: "${cleanParent}". Resolviendo/Creando...`);
+  const parts = cleanParent.split(/[/\\]/).filter(p => p.trim().length > 0);
   if (parts.length === 0) return "root";
 
   try {
@@ -273,15 +285,22 @@ export const driveMkdir = async (name: string, parentId?: string, userId?: numbe
   const cleanName = (name || "").trim();
   const lowerName = cleanName.toLowerCase();
 
-  // Guarda canónica: prohibir creación manual de silvania/* y redirigir al resolvedor canónico
+  // Guarda canónica: redirigir transcripciones o silvania/* al resolvedor canónico
+  if (lowerName === "transcripciones" || lowerName === "silvania/transcripciones" || lowerName === "silvania\\transcripciones") {
+    console.log(`🔒 [Drive Tool] Petición de creación para carpeta de transcripciones '${cleanName}'. Redirigiendo a canónica silvania/transcripciones...`);
+    const { folderCacheService } = await import("../services/folderCache.js");
+    const canonicalId = await folderCacheService.getOrCreateFolderPath(uId, ["silvania", "transcripciones"]);
+    const link = generateDriveLink(canonicalId, true);
+    return `📁 La carpeta canónica **"silvania/transcripciones"** ya está lista.\n\n🔗 **Enlace:** [Abrir carpeta](${link})\n> 🆔 ID: \`${canonicalId}\` | 🌐 Enlace: ${link}\n\nNo se crean carpetas duplicadas en Drive.`;
+  }
+
   if (lowerName === "silvania" || lowerName.startsWith("silvania/") || lowerName.startsWith("silvania\\")) {
     console.log(`🔒 [Drive Tool] Petición de creación para ruta silvania protegida '${cleanName}'. Redirigiendo a canónica...`);
     const parts = cleanName.split(/[/\\]/).filter(p => p.length > 0);
     const { folderCacheService } = await import("../services/folderCache.js");
     const canonicalId = await folderCacheService.getOrCreateFolderPath(uId, parts);
     const link = generateDriveLink(canonicalId, true);
-    const linkStr = formatFolderLink(cleanName, link);
-    return `📁 La carpeta canónica **"${cleanName}"** ya está configurada (ID: \`${canonicalId}\`).\n\n${linkStr}\nNo se crean carpetas duplicadas en Drive.`;
+    return `📁 La carpeta canónica **"${cleanName}"** ya está configurada.\n\n🔗 **Enlace:** [Abrir carpeta](${link})\n> 🆔 ID: \`${canonicalId}\` | 🌐 Enlace: ${link}\n\nNo se crean carpetas duplicadas en Drive.`;
   }
 
   const resolvedParentId = await resolveOrCreateParentId(parentId, uId);
@@ -302,7 +321,8 @@ export const driveMkdir = async (name: string, parentId?: string, userId?: numbe
     if (files.length > 0) {
       const existing = files[0];
       console.log(`✅ Carpeta encontrada: ${existing.id}`);
-      return `📁 La carpeta **"${name}"** ya existe (ID: \`${existing.id}\`).\n\nNo se ha creado una nueva para mantener tu Drive organized.`;
+      const link = generateDriveLink(existing.id, true);
+      return `📁 La carpeta **"${name}"** ya existe.\n\n🔗 **Enlace:** [Abrir carpeta](${link})\n> 🆔 ID: \`${existing.id}\` | 🌐 Enlace: ${link}\n\nNo se ha creado una nueva para mantener tu Drive organizado.`;
     }
   } catch (err) {
     console.warn("⚠️ Advertencia: No se pudo verificar si la carpeta ya existe. Procediendo con cautela.");
@@ -317,9 +337,13 @@ export const driveMkdir = async (name: string, parentId?: string, userId?: numbe
   try {
     const parsed = JSON.parse(result);
     const folder = parsed.folder || parsed;
-    const link = generateDriveLink(folder.id, true);
-    const linkStr = formatFolderLink(folder.name, link);
-    return `✅ **Carpeta creada con éxito**\n\n${linkStr}\n> 🆔 \`${folder.id}\``;
+    const folderId = folder.id || (folder.folder && folder.folder.id);
+    const folderName = folder.name || name;
+    if (folderId) {
+      const link = generateDriveLink(folderId, true);
+      return `✅ **Carpeta creada con éxito**\n\n📁 **${folderName}** · 🔗 [Abrir carpeta](${link})\n> 🆔 ID: \`${folderId}\` | 🌐 Enlace: ${link}`;
+    }
+    return result;
   } catch {
     return result;
   }

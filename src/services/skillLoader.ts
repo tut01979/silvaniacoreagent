@@ -6,14 +6,34 @@ import { dbService } from "../database/db.js";
 import fs from "fs";
 import path from "path";
 
+interface CachedSkillMeta {
+  fileId: string;
+  modifiedTime?: string;
+}
+
+interface UserSkillCacheEntry {
+  lastSyncTime: number;
+  skills: Map<string, CachedSkillMeta>;
+}
+
+const userSkillCache = new Map<number, UserSkillCacheEntry>();
+const SKILL_SYNC_TTL_MS = 20 * 60 * 1000; // 20 minutos
+
 export const skillLoader = {
+  /**
+   * Invalida la caché de sincronización de habilidades de un usuario
+   */
+  invalidateCache(userId: number): void {
+    userSkillCache.delete(userId);
+  },
+
   /**
    * Sincroniza todas las habilidades activas del usuario desde su Google Drive a la caché local aislada.
    * Utiliza estrictamente el ID canónico de 'silvania/skills'.
    * Si en la carpeta canónica no hay skills pero el código local tiene SKILL.md,
    * re-sube/instala las skills en la canónica sin borrar carpetas viejas duplicadas.
    */
-  async syncSkillsFromDrive(userId: number): Promise<void> {
+  async syncSkillsFromDrive(userId: number, forceSync: boolean = false): Promise<void> {
     try {
       const token = await dbService.getUserToken(userId);
       if (!token || !token.refresh_token) {
@@ -21,10 +41,23 @@ export const skillLoader = {
         return;
       }
 
+      const localSkillsDir = path.resolve("skills", userId.toString());
+      const cached = userSkillCache.get(userId);
+
+      // Verificación de TTL en memoria: evitar llamadas de red innecesarias en cada mensaje
+      if (!forceSync && cached && (Date.now() - cached.lastSyncTime < SKILL_SYNC_TTL_MS)) {
+        if (fs.existsSync(localSkillsDir)) {
+          const localFolders = fs.readdirSync(localSkillsDir);
+          if (localFolders.length > 0) {
+            console.log(`ℹ️ [Skill Loader] Caché válida para usuario ${userId} (TTL: 20 min, ${localFolders.length} skills locales). Omitiendo re-descargas de Drive.`);
+            return;
+          }
+        }
+      }
+
       console.log(`🔄 [Skill Loader] Sincronizando habilidades desde Drive para usuario ${userId}...`);
       
       const skillsFolderId = await configManager.getOrCreateFolderPath(userId, ["silvania", "skills"]);
-      const localSkillsDir = path.resolve("skills", userId.toString());
       if (!fs.existsSync(localSkillsDir)) {
         fs.mkdirSync(localSkillsDir, { recursive: true });
       }
@@ -38,6 +71,9 @@ export const skillLoader = {
       const items = parsed.files || (Array.isArray(parsed) ? parsed : []);
 
       let driveSkillsCount = 0;
+      let downloadCount = 0;
+      let omittedCount = 0;
+      const newSkillsMap = new Map<string, CachedSkillMeta>();
 
       for (const item of items) {
         if (item.mimeType === "application/vnd.google-apps.folder") {
@@ -58,7 +94,26 @@ export const skillLoader = {
 
           if (fFiles.length > 0) {
             driveSkillsCount++;
-            const skillFileId = fFiles[0].id;
+            const skillFile = fFiles[0];
+            const skillFileId = skillFile.id;
+            const skillModifiedTime = skillFile.modifiedTime || "";
+            const localSkillMd = path.join(localFolder, "SKILL.md");
+
+            newSkillsMap.set(folderName, {
+              fileId: skillFileId,
+              modifiedTime: skillModifiedTime
+            });
+
+            // Verificar si el archivo ya existe localmente y coincide con los metadatos de Drive
+            const prevCached = cached?.skills.get(folderName);
+            const isLocalPresent = fs.existsSync(localSkillMd) && fs.statSync(localSkillMd).size > 0;
+            const isMetaMatch = prevCached && prevCached.fileId === skillFileId && (!skillModifiedTime || prevCached.modifiedTime === skillModifiedTime);
+
+            if (isLocalPresent && isMetaMatch && !forceSync) {
+              omittedCount++;
+              continue;
+            }
+
             const tempDownloadPath = path.join(process.cwd(), "temp", `download_skill_${userId}_${folderName}.md`);
             if (!fs.existsSync(path.dirname(tempDownloadPath))) {
               fs.mkdirSync(path.dirname(tempDownloadPath), { recursive: true });
@@ -68,8 +123,9 @@ export const skillLoader = {
             await runGog(`drive download ${skillFileId} --out="${tempDownloadPath}"`, userId);
             
             if (fs.existsSync(tempDownloadPath)) {
-              fs.copyFileSync(tempDownloadPath, path.join(localFolder, "SKILL.md"));
+              fs.copyFileSync(tempDownloadPath, localSkillMd);
               try { fs.unlinkSync(tempDownloadPath); } catch {}
+              downloadCount++;
             }
           }
         }
@@ -87,6 +143,7 @@ export const skillLoader = {
                 console.log(`ℹ️ [Skill Loader] Re-enlazando y subiendo skill '${f}' a la carpeta canónica en Drive...`);
                 await uploadSkillToDrive(userId, f, localFolder);
                 driveSkillsCount++;
+                downloadCount++;
               }
             }
           } catch (skillUploadErr: any) {
@@ -95,7 +152,13 @@ export const skillLoader = {
         }
       }
 
-      console.log(`✅ [Skill Loader] Sincronización de habilidades completada para usuario ${userId} (${driveSkillsCount} skills activas).`);
+      // Actualizar la caché en memoria para este usuario
+      userSkillCache.set(userId, {
+        lastSyncTime: Date.now(),
+        skills: newSkillsMap
+      });
+
+      console.log(`✅ [Skill Loader] Sincronización de habilidades completada para usuario ${userId}: ${driveSkillsCount} skills activas (${downloadCount} descargas, ${omittedCount} omitidas por caché).`);
     } catch (err: any) {
       const msg = err.message || "";
       const isAuthErr = msg.includes("Tu sesión de Google expiró") || msg.includes("invalid_grant") || msg.includes("unauthorized_client");

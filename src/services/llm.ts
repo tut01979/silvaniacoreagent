@@ -148,11 +148,12 @@ export const llmService = {
         type: "function",
         function: {
           name: "youtube_get_transcript",
-          description: "Obtiene la transcripción (subtítulos) de un video de YouTube dada su URL o ID del video.",
+          description: "Obtiene la transcripción (subtítulos) de un video de YouTube dada su URL o ID del video. Por defecto guarda el archivo completo en Google Drive bajo silvania/transcripciones/ y devuelve un resumen limpio en el chat con enlace directo.",
           parameters: {
             type: "object",
             properties: {
-              url: { type: "string", description: "URL completa del video de YouTube o ID del video (ej: https://www.youtube.com/watch?v=dQw4w9WgXcQ o dQw4w9WgXcQ)" }
+              url: { type: "string", description: "URL completa del video de YouTube o ID del video (ej: https://www.youtube.com/watch?v=dQw4w9WgXcQ o dQw4w9WgXcQ)" },
+              save_to_drive: { type: "boolean", description: "Opcional. Si es true o si la transcripción es larga (>1500 caracteres), guarda el texto completo en Google Drive y devuelve un resumen con enlace clickeable." }
             },
             required: ["url"]
           }
