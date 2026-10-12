@@ -1,9 +1,19 @@
 import { Bot, InlineKeyboard, InputFile } from "grammy";
 import fs from "fs";
+import path from "path";
 import { MarketingDraft } from "./types.js";
 import { marketingDb } from "./database.js";
 import { config } from "../config/config.js";
 import { socialPublisher } from "./services/socialPublisher.js";
+
+function formatImageBreakdown(draft: MarketingDraft): string {
+  const net = draft.networkImageCount ?? (draft.distinctImageCount || 0);
+  const loc = draft.localFallbackImageCount ?? 0;
+  if (net > 0 && loc > 0) return `${net} red, ${loc} slides locales`;
+  if (net > 0 && loc === 0) return `${net} imágenes red`;
+  if (loc > 0 && net === 0) return `${loc} slides locales`;
+  return `${draft.distinctImageCount || draft.sceneImageCount || 1} imágenes`;
+}
 
 export const telegramReview = {
   /**
@@ -35,13 +45,24 @@ export const telegramReview = {
         techFooter;
     } else if (draft.videoScript) {
       const formatLabel = draft.format === "youtube_long" ? "YouTube Largo" : draft.format === "tiktok" ? "TikTok (9:16)" : "YouTube Short";
-      const durationSeconds = draft.videoScript.totalEstimatedDurationSeconds || 60;
-      const durationLabel = durationSeconds < 60 ? `~${durationSeconds} seg` : `~${Math.round(durationSeconds / 60)} min`;
+      const scenesInScript = draft.videoScript.scenes.length;
+      const imgBreakdown = formatImageBreakdown(draft);
+      const realDurStr = draft.realDurationSeconds
+        ? `${Math.floor(draft.realDurationSeconds / 60)}:${Math.round(draft.realDurationSeconds % 60) < 10 ? "0" : ""}${Math.round(draft.realDurationSeconds % 60)}`
+        : null;
+      const durLabel = realDurStr ? `${realDurStr} (audio real)` : `~${Math.round((draft.videoScript.totalEstimatedDurationSeconds || 60) / 60)} min (guion)`;
+
+      const videoStatus = draft.videoPath
+        ? `\n🎥 *Vídeo MP4:* ✅ MP4 ${realDurStr || ""} (audio real) · ${scenesInScript} escenas (${imgBreakdown})`
+        : draft.videoError
+        ? `\n⚠️ *Vídeo MP4:* ${draft.videoError}`
+        : "";
       summaryText =
         `🎬 *GUION DE VIDEO (${formatLabel})*\n\n` +
         `📌 *Título:* ${draft.videoScript.title}\n` +
-        `⏱️ *Duración estimada:* ${durationLabel}\n` +
-        `🎞️ *Escenas:* ${draft.videoScript.scenes.length} bloques estructurados\n\n` +
+        `⏱️ *Duración:* ${durLabel}\n` +
+        `🎞️ *Escenas:* ${scenesInScript} escenas (${imgBreakdown})` +
+        videoStatus + `\n\n` +
         `🎣 *Hook:* "${draft.videoScript.hook}"` +
         techFooter;
     } else {
@@ -147,6 +168,81 @@ export const telegramReview = {
         console.warn("⚠️ Falló envío de guión completo en Telegram:", scriptErr.message);
       }
     }
+
+    // 4. Enviar vídeo MP4 generado al administrador para revisión HITL
+    if (draft.videoPath && fs.existsSync(draft.videoPath)) {
+      try {
+        const stats = fs.statSync(draft.videoPath);
+        const maxTgBytes = 49 * 1024 * 1024; // 49 MB límite seguro Telegram Bot API
+        const realDurStr = draft.realDurationSeconds
+          ? `${Math.floor(draft.realDurationSeconds / 60)}:${Math.round(draft.realDurationSeconds % 60) < 10 ? "0" : ""}${Math.round(draft.realDurationSeconds % 60)}`
+          : `${Math.round(draft.videoScript?.totalEstimatedDurationSeconds || 60)}s`;
+        const scenesInScript = draft.videoScript?.scenes.length || draft.sceneImageCount || 1;
+        const imgBreakdown = formatImageBreakdown(draft);
+        const videoCaption = `🎬 *MP4 ${realDurStr} (audio real) · ${scenesInScript} escenas (${imgBreakdown})*\n📌 "${draft.videoScript?.title || draft.topic}"\n\n⚙️ _Revisa el vídeo arriba. Para publicarlo en el canal oficial pulsa "Aprobar y Publicar"._`;
+
+        if (stats.size <= maxTgBytes) {
+          console.log(`🎬 [telegramReview] Enviando MP4 (${(stats.size / (1024 * 1024)).toFixed(2)} MB) al admin ${draft.userId}...`);
+          try {
+            await bot.api.sendVideo(draft.userId, new InputFile(draft.videoPath), {
+              caption: videoCaption,
+              parse_mode: "Markdown",
+              supports_streaming: true,
+            });
+          } catch (sendErr: any) {
+            // Fallback sin Markdown si Telegram rechaza caracteres
+            await bot.api.sendVideo(draft.userId, new InputFile(draft.videoPath), {
+              caption: videoCaption.replace(/[*_`]/g, ""),
+              supports_streaming: true,
+            });
+          }
+        } else {
+          // Si supera 50MB, subir a Google Drive si el admin tiene tier beta/permisos
+          let uploaded = false;
+          const { isBetaUser } = await import("../services/authHelper.js");
+          if (isBetaUser(draft.userId)) {
+            try {
+              const { driveMemoryService } = await import("../services/driveMemory.js");
+              const folderId = await driveMemoryService.getOrCreateFolderPath(["silvania", "marketing", "videos"], draft.userId);
+              const fileName = path.basename(draft.videoPath);
+              const fileId = await driveMemoryService.uploadOrReplace(draft.userId, draft.videoPath, fileName, folderId);
+              if (fileId) {
+                const driveLink = `https://drive.google.com/file/d/${fileId}/view`;
+                draft.videoUrl = driveLink;
+                marketingDb.saveDraft(draft);
+                await bot.api.sendMessage(
+                  draft.userId,
+                  `🎬 *Vídeo MP4 generado (${(stats.size / (1024 * 1024)).toFixed(1)} MB)*\nSupera el límite de Telegram (50MB).\n\n📂 **Guardado en tu Google Drive:** [Abrir Vídeo](${driveLink})\n📁 Carpeta: \`silvania/marketing/videos\``,
+                  { parse_mode: "Markdown" }
+                );
+                uploaded = true;
+              }
+            } catch (driveErr: any) {
+              console.warn("⚠️ Falló subida de vídeo pesado a Google Drive:", driveErr.message);
+            }
+          }
+          if (!uploaded) {
+            await bot.api.sendMessage(
+              draft.userId,
+              `🎬 *Vídeo MP4 generado (${(stats.size / (1024 * 1024)).toFixed(1)} MB)*\nSupera los 50MB de Telegram. Archivo local guardado en servidor:\n\`${draft.videoPath}\``,
+              { parse_mode: "Markdown" }
+            );
+          }
+        }
+      } catch (videoSendErr: any) {
+        console.warn("⚠️ Falló envío de vídeo MP4 en Telegram:", videoSendErr.message);
+      }
+    } else if (draft.videoError) {
+      try {
+        await bot.api.sendMessage(
+          draft.userId,
+          `⚠️ *Aviso VideoAssembler:* No se pudo ensamblar el archivo MP4:\n_${draft.videoError}_\n\n(El guión y audio están disponibles arriba).`,
+          { parse_mode: "Markdown" }
+        );
+      } catch (err: any) {
+        console.warn("⚠️ Falló envío de aviso videoError:", err.message);
+      }
+    }
   },
 
   /**
@@ -238,6 +334,7 @@ export const telegramReview = {
       if (channelId && channelId.trim().length > 0) {
         try {
           console.log(`📢 [Marketing] Publicando borrador #${draftId} en canal ${channelId}...`);
+          const hasVideo = Boolean(draft.videoPath && fs.existsSync(draft.videoPath));
           const hasImage = draft.imageUrls && draft.imageUrls.length > 0 && fs.existsSync(draft.imageUrls[0]);
           let channelMsg: any = null;
 
@@ -245,7 +342,17 @@ export const telegramReview = {
             ? `${draft.socialContent.title}\n\n${draft.socialContent.copy}\n\n${draft.socialContent.hashtags.join(" ")}`
             : `${draft.videoScript?.title || draft.topic}`;
 
-          if (hasImage) {
+          if (hasVideo && fs.statSync(draft.videoPath!).size <= 49 * 1024 * 1024) {
+            try {
+              channelMsg = await bot.api.sendVideo(channelId, new InputFile(draft.videoPath!), {
+                caption: publishCaption.slice(0, 1000),
+                supports_streaming: true,
+              });
+            } catch {
+              channelMsg = await bot.api.sendVideo(channelId, new InputFile(draft.videoPath!));
+              await bot.api.sendMessage(channelId, publishCaption);
+            }
+          } else if (hasImage) {
             if (publishCaption.length <= 1000) {
               try {
                 channelMsg = await bot.api.sendPhoto(channelId, new InputFile(draft.imageUrls[0]), {

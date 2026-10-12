@@ -117,22 +117,25 @@ Responde ÚNICAMENTE con un JSON válido con esta estructura:
   /**
    * Genera un guión estructurado de YouTube con retención y desglose de escenas.
    */
-  async generateYouTubeScript(topic: string, targetDurationMinutes: number = 8): Promise<ScriptResult<VideoScript>> {
-    const estimatedScenes = Math.max(4, Math.round(targetDurationMinutes * 1.2));
+  async generateYouTubeScript(topic: string, targetDurationMinutes: number = 2): Promise<ScriptResult<VideoScript>> {
+    const isShortTest = /3\s*escena|corto|short|prueba|test|60s/i.test(topic);
+    const targetScenes = isShortTest ? 3 : Math.min(5, Math.max(3, Math.round(targetDurationMinutes * 1.0)));
+    const durationSeconds = isShortTest ? 60 : Math.min(120, targetScenes * 20);
 
     const prompt = `Eres el guionista principal de Silvania Content Studio.
 
 ${ECOSISTEMA_KNOWLEDGE}
 
-Crea el guión completo y estructurado para un video de YouTube de ${targetDurationMinutes} minutos sobre:
+Crea el guión completo y estructurado para un video de formato conciso y ágil sobre:
 Tema: "${topic}"
 
 Reglas:
-1. Hook inicial (0 a 30 segundos) que atrape la atención sin rodeos.
+1. Hook inicial (10 a 20 segundos) que atrape la atención sin rodeos.
 2. Si el guión trata sobre Eva: Destaca su tecnología de privacidad y pronación como innovación en camino (Próximamente).
 3. Si trata sobre CoreAgent: Muestra la productividad de Google Workspace en Telegram.
-4. Exactamente ${estimatedScenes} escenas secuenciales con timestamp, locución en español natural y prompt visual en inglés.
-5. Título con alto CTR, descripción optimizada con mención a silvania.ai si aplica, y tags relevantes.
+4. EXACTAMENTE ${targetScenes} escenas secuenciales (ni más ni menos, exactamente ${targetScenes} objetos en el array "scenes").
+5. Cada escena con timestamp, locución concisa en español natural (30-40 palabras máx por escena) y prompt visual en inglés.
+6. Título con alto CTR, descripción optimizada con mención a silvania.ai si aplica, y tags relevantes.
 
 Responde ÚNICAMENTE con un JSON:
 {
@@ -140,13 +143,13 @@ Responde ÚNICAMENTE con un JSON:
   "hook": "Texto del gancho inicial",
   "description": "Descripción para YouTube",
   "tags": ["tag1", "tag2"],
-  "totalEstimatedDurationSeconds": ${targetDurationMinutes * 60},
+  "totalEstimatedDurationSeconds": ${durationSeconds},
   "scenes": [
     {
       "sceneNumber": 1,
-      "timestamp": "00:00 - 00:30",
+      "timestamp": "00:00 - 00:20",
       "visualPrompt": "Cinematic visual description in English",
-      "narration": "Texto de la locución",
+      "narration": "Texto de la locución concisa",
       "onScreenText": "Texto clave en pantalla"
     }
   ]
@@ -164,6 +167,10 @@ Responde ÚNICAMENTE con un JSON:
 
       const raw = completion.choices[0].message?.content || "{}";
       const script = JSON.parse(raw) as VideoScript;
+      if (script.scenes && script.scenes.length > targetScenes) {
+        script.scenes = script.scenes.slice(0, targetScenes);
+      }
+      script.totalEstimatedDurationSeconds = durationSeconds;
       return { data: script, llmModel: preferredModel };
     } catch (err: any) {
       console.warn("⚠️ Falló OpenRouter en YouTubeScript, usando Groq:", err.message);
@@ -176,6 +183,10 @@ Responde ÚNICAMENTE con un JSON:
       const raw = groqCompletion.choices[0].message?.content || "{}";
       const cleanJson = raw.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
       const script = JSON.parse(cleanJson) as VideoScript;
+      if (script.scenes && script.scenes.length > targetScenes) {
+        script.scenes = script.scenes.slice(0, targetScenes);
+      }
+      script.totalEstimatedDurationSeconds = durationSeconds;
       return { data: script, llmModel: "llama-3.3-70b-versatile" };
     }
   },

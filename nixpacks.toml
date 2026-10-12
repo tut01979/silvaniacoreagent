@@ -1,0 +1,5 @@
+# Nixpacks configuration for Silvania CoreAgent / Marketing Studio
+# Guarantees FFmpeg is installed system-wide on Railway builds alongside ffmpeg-static
+
+[phases.setup]
+nixPkgs = ["ffmpeg"]

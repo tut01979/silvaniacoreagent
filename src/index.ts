@@ -2248,9 +2248,9 @@ bot.command("marketing", async (ctx) => {
       "Uso del comando:\n" +
       "• `/marketing draft [coreagent|eva|marketing]` - Genera el borrador diario rotativo de producto para revisión HITL.\n" +
       "• `/marketing post [tema]` - Genera post social con imagen FLUX (gratis) y locución Edge-TTS (gratis).\n" +
-      "• `/marketing video [tema]` - Genera guión de YouTube (larga duración) con miniatura y hook locutado.\n" +
-      "• `/marketing short [tema]` - Genera guión de YouTube Short.\n" +
-      "• `/marketing tiktok [tema]` - Genera guión vertical (9:16) para TikTok con ganchos de alta retención.\n" +
+      "• `/marketing video [tema]` - Genera guión y vídeo MP4 con locución completa e imágenes por escena.\n" +
+      "• `/marketing short [tema]` - Genera guión y vídeo corto MP4.\n" +
+      "• `/marketing tiktok [tema]` - Genera guión y vídeo vertical (9:16) MP4 para TikTok.\n" +
       "• `/marketing status` - Consulta el estado del último borrador generado.\n\n" +
       "_Ejemplo:_ `/marketing draft` o `/marketing tiktok 3 trucos de Google Calendar`",
       { parse_mode: "Markdown" }
@@ -2289,11 +2289,23 @@ bot.command("marketing", async (ctx) => {
       if (!lastDraft) {
         return ctx.reply("ℹ️ No hay borradores de marketing registrados todavía.");
       }
+      const realDurStr = lastDraft.realDurationSeconds
+        ? `${Math.floor(lastDraft.realDurationSeconds / 60)}:${Math.round(lastDraft.realDurationSeconds % 60) < 10 ? "0" : ""}${Math.round(lastDraft.realDurationSeconds % 60)} (audio real)`
+        : null;
+      const scenesInScript = lastDraft.videoScript?.scenes.length || lastDraft.sceneImageCount || 0;
+      const net = lastDraft.networkImageCount ?? (lastDraft.distinctImageCount || 0);
+      const loc = lastDraft.localFallbackImageCount ?? 0;
+      const imgBreakdown = net > 0 && loc > 0 ? `${net} red, ${loc} slides locales` : net > 0 ? `${net} red` : loc > 0 ? `${loc} slides locales` : `${lastDraft.distinctImageCount || 0} imágenes`;
+      const videoStatusStr = lastDraft.videoPath
+        ? `Listo (${realDurStr ? `MP4 ${realDurStr} · ` : ""}${scenesInScript} escenas [${imgBreakdown}])`
+        : (lastDraft.videoError ? `Error: ${lastDraft.videoError}` : "N/A");
+
       return ctx.reply(
         `📊 *Último Borrador:* #${lastDraft.id.slice(0, 8)}\n\n` +
         `📌 *Tema:* ${lastDraft.topic}\n` +
         `📦 *Formato:* ${lastDraft.format}\n` +
         `🚦 *Estado:* \`${lastDraft.status}\`\n` +
+        `🎬 *Vídeo MP4:* ${videoStatusStr}\n` +
         `🎙️ *Voz:* ${lastDraft.voiceProvider || "edge"}\n` +
         `🎨 *Imagen:* ${lastDraft.imageProvider || "flux"}\n` +
         `🤖 *Modelo LLM:* ${lastDraft.llmModel || "gemini"}\n` +
@@ -2324,7 +2336,17 @@ bot.command("marketing", async (ctx) => {
 
   try {
     const { marketingManager } = await import("./marketing/manager.js");
-    await marketingManager.createAndReviewDraft(topic, format, userId, bot);
+    const draft = await marketingManager.createAndReviewDraft(topic, format, userId, bot);
+    if (draft && draft.videoPath) {
+      const realDurStr = draft.realDurationSeconds
+        ? `${Math.floor(draft.realDurationSeconds / 60)}:${Math.round(draft.realDurationSeconds % 60) < 10 ? "0" : ""}${Math.round(draft.realDurationSeconds % 60)}`
+        : `${Math.round(draft.videoScript?.totalEstimatedDurationSeconds || 60)}s`;
+      const scenesInScript = draft.videoScript?.scenes.length || draft.sceneImageCount || 1;
+      const net = draft.networkImageCount ?? (draft.distinctImageCount || 0);
+      const loc = draft.localFallbackImageCount ?? 0;
+      const imgBreakdown = net > 0 && loc > 0 ? `${net} red, ${loc} slides locales` : net > 0 ? `${net} red` : loc > 0 ? `${loc} slides locales` : `${draft.distinctImageCount || 0} imágenes`;
+      await ctx.reply(`🎬 *Vídeo MP4 generado:* MP4 ${realDurStr} (audio real) · ${scenesInScript} escenas (${imgBreakdown}).\nRevisa el resultado interactivo arriba con los controles HITL de aprobación.`, { parse_mode: "Markdown" });
+    }
   } catch (err: any) {
     console.error("❌ Error en Marketing Studio:", err);
     await ctx.reply(`❌ Error generando el borrador de marketing: ${err.message}`);

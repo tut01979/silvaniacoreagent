@@ -1,61 +1,56 @@
-# Plan de Implementación P0: Silvania CoreAgent (Post-Deploy Octubre 2026)
+# Plan de Implementación: VideoAssembler MP4 para Silvania Marketing Studio (P0)
 
 ## Contexto y Principios
-- **Regla Absoluta de Preservación**: No borrar ni eliminar herramientas, skills, carpeta `silvania/`, Eva clínica, Marketing Studio, scopes de producción (`gmail.send`, `calendar.events`, `spreadsheets`, `drive.file`) ni flujos HITL existentes.
-- **Tier Beta**: Usuario admin `1572946817` se mantiene en `BETA_USER_IDS` con scopes amplios. Producción mantiene scopes mínimos.
-- **X/Twitter**: Devolver mensaje claro "X no configurado" si no hay credenciales autorizadas.
-- **Facturas / Sheets**: Flujo verificado y preservado.
+- **Regla Absoluta de Preservación**: No borrar ni eliminar ninguna herramienta, skill, carpeta canónica `silvania/`, Eva clínica, CoreAgent OAuth/scopes de producción, ni los flujos HITL existentes.
+- **Cero publicación sin aprobación**: El vídeo MP4 se entrega al admin para revisión y nunca se publica en canales ni redes sin clic en "Aprobar y Publicar".
+- **Low-Cost y Máxima Eficiencia**: Sin APIs externas de vídeo de pago. Renderizado local ultrarrápido con FFmpeg (`ffmpeg-static` + fallback a PATH del sistema).
 
 ---
 
-## 1. Skill Loader Ruidoso (Prioridad Alta)
-- **Problema**: Cada mensaje ejecuta decenas de `drive search` y `drive download` de los mismos `SKILL.md` (rrhh-*, agente-*, etc.), saturando logs y latencia.
-- **Solución**:
-  - Implementar en `src/services/skillLoader.ts` una caché en memoria/disco con TTL (20 minutos) por usuario.
-  - Comprobar metadatos (`modifiedTime` / `fileId` y existencia local) antes de descargar. Si no ha cambiado, omitir descarga.
-  - Logging unificado en 1 sola línea resumen: `✅ [Skill Loader] Sincronización completada para usuario {userId}: {total} skills ({descargas} descargas, {omitidas} omitidas por caché)`.
+## 1. Módulo Modular `VideoAssembler` (`src/marketing/services/videoAssembler.ts`)
+- **Detección de Binario FFmpeg**:
+  1. `process.env.FFMPEG_PATH` (si se especifica en variables de entorno).
+  2. `ffmpeg-static` (paquete npm multiplataforma verificado en Windows y Linux).
+  3. `ffmpeg` global en el `PATH` del sistema.
+  - Error explícito si falta el binario, sin colgar el bot.
+- **Cálculo de Duración y Sincronización**:
+  - Obtiene la duración del audio completo de voz mediante FFmpeg.
+  - Calcula la duración proporcional de cada escena según la longitud del texto de narración (o reparto equitativo).
+- **Ensamblado FFmpeg**:
+  - Genera archivo de lista `concat` con cada imagen y su duración.
+  - Renderizado con `-c:v libx264 -pix_fmt yuv420p -c:a aac -b:a 128k -movflags +faststart -shortest`.
+  - Escala y padding automático a 1280x720 (16:9) o 720x1280 (9:16 para TikTok/Shorts).
+  - Timeout de seguridad (120s) y limpieza de archivos temporales.
 
-## 2. Enlaces Reales al Crear Carpeta / Archivo en Drive
-- **Problema**: `drive_mkdir` y `drive_create_text_file` devuelven mensajes que no exponen el `id` y `webViewLink` de forma limpia al `sanitizeAlucinatedLinks`, provocando `[Enlace no disponible — no devuelto por la herramienta]`.
-- **Solución**:
-  - En `src/tools/drive.ts` (`driveMkdir`) y `src/tools/index.ts` (`drive_create_text_file`):
-    - Devolver siempre `id`, `name`, `webViewLink` y `[Abrir]({url})` con formato reconocible tanto al crear como cuando la carpeta ya existe.
-    - Soporte explícito para rutas de carpetas tipo `silvania/transcripciones` o `transcripciones` resolviendo en la estructura canónica sin duplicar.
-  - En `src/agent/agent.ts`:
-    - Instrucción explícita para no inventar ni usar `my-drive` si se tiene el ID real devuelto por la herramienta.
+## 2. Generación Visual por Escena (`src/marketing/manager.ts`)
+- En el flujo de vídeo (`youtube_long`, `youtube_short`, `tiktok`):
+  - Iterar por cada escena del guion generado (límite de seguridad: hasta 6–8 escenas en P0).
+  - Generar imagen fotorrealista para cada escena con `imageGenerator` (FLUX).
+  - Tolerancia a fallos: reintento de 1 vez; si falla, reutiliza la imagen previa o portada sin abortar el vídeo si >= 50% de imágenes fueron exitosas.
+- Ensamblado del vídeo llamando a `videoAssembler.assembleVideo(...)`.
+- Registro de `videoPath`, `sceneImageCount` o `videoError` en el borrador.
 
-## 3. YouTube Transcripción: Resumen en Chat + Guardado + Enlace
-- **Problema**: Transcripciones completas saturan el chat de Telegram y se truncan.
-- **Solución**:
-  - En `src/tools/youtube.ts`:
-    - Por defecto (o cuando longitud > 1500 caracteres), guardar el texto completo en Drive (`silvania/transcripciones/transcripcion_{videoId}.md`).
-    - En el chat devolver resumen estructurado (~800–1200 caracteres) + enlace real y verificado de Drive al archivo completo.
-    - No volcar la transcripción completa al chat.
+## 3. Entrega HITL en Telegram (`src/marketing/telegramReview.ts`)
+- Si `draft.videoPath` está disponible:
+  - Envía el archivo `.mp4` a Telegram con `bot.api.sendVideo` (soporta hasta 50MB, vídeos de 1-3 min pesan ~10-25MB).
+  - Si supera los límites o falla el envío directo, fallback a enlace o archivo persistente.
+- Si `draft.videoError` ocurrió, muestra aviso explícito: `⚠️ Vídeo MP4 no generado: {motivo}`.
+- Mantiene la locución de voz completa, el guion particionado multipart y los botones interactivos HITL (Aprobar, Regenerar, Descartar, Pack).
 
-## 4. /marketing video: Texto Completo + Audio Completo
-- **Problema**: `/marketing video` genera guion largo pero TTS dice solo el tema (ej. "coreagent") y el texto se percibe truncado.
-- **Solución**:
-  - En `src/marketing/manager.ts`: sintetizar para TTS la narración real (hook + resumen/escenas), nunca solo el slug del tema.
-  - En `src/marketing/telegramReview.ts`:
-    - Adjuntar el guion completo estructurado por escenas en Telegram (partiendo en mensajes si supera límites de caracteres).
-    - Locución con título real en la leyenda (no el slug simple).
-    - Preservar botones HITL.
-
-## 5. UX Menor Auth / Gmail
-- En `src/agent/agent.ts`:
-  - Si el usuario dice "ya lo vinculé", "inténtalo ahora", "reintenta", no llamar a `generate_authorization_link`; ejecutar la acción solicitada.
-  - Si pide enviar correo ("envíalo tú"), llamar a `gmail_send` y no responder solo con enlace a webmail.
-
-## 6. Cron Matutino / Rotativo de Marketing: Borradores con Imagen
-- En `src/marketing/cron.ts`, `manager.ts` y `telegramReview.ts`:
-  - Asegurar que el pipeline de imagen FLUX se ejecute siempre.
-  - Si la generación de imagen falla, loguear y mostrar aviso explícito `⚠️ Imagen no generada: {motivo}`, manteniendo botones HITL y 0 mensajes a usuarios no-admin.
+## 4. Tipos, Persistencia y UX
+- Extender `MarketingDraft` en `src/marketing/types.ts`:
+  - `videoPath?: string;`
+  - `videoUrl?: string;`
+  - `sceneImageCount?: number;`
+  - `videoError?: string;`
+- Persistencia automática en SQLite (`marketingDb`) en formato JSON.
+- En `/marketing status` de `src/index.ts`, reportar el estado del vídeo MP4.
+- Archivo `nixpacks.toml` en raíz para redundancia en Railway con `nixPkgs = ["ffmpeg"]`.
 
 ---
 
 ## Verificación
-1. `npm run build` / `npx tsc --noEmit` -> 0 errores.
-2. Test script para `skillLoader`: verificar que la 2ª llamada en < TTL no descargue las skills.
-3. Test de enlaces en `drive_mkdir` y `drive_create_text_file` con `sanitizeAlucinatedLinks`.
-4. Test de transcripción de YouTube: resumen + archivo Drive.
-5. Test de `/marketing video` y rotación de cron admin con aviso de imagen.
+1. `npx tsc --noEmit` y `npm run build` -> 0 errores.
+2. Test scratch (`scratch/test_video_assembler.ts`) con audio y múltiples imágenes locales generando un MP4 válido.
+3. Test de tolerancia a fallos cuando una imagen falla o cuando FFmpeg no está disponible.
+4. Resumen final: Añadido / Modificado / Preservado.

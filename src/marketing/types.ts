@@ -44,6 +44,14 @@ export interface MarketingDraft {
   channelPublished?: boolean;
   channelMessageId?: number;
   imageError?: string;
+  videoPath?: string;
+  videoUrl?: string;
+  sceneImageCount?: number;
+  distinctImageCount?: number;
+  networkImageCount?: number;
+  localFallbackImageCount?: number;
+  realDurationSeconds?: number;
+  videoError?: string;
   feedbackNote?: string;
   createdAt: string;
   updatedAt: string;
