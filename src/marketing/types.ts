@@ -19,12 +19,15 @@ export interface VideoScript {
   totalEstimatedDurationSeconds: number;
 }
 
+export type SocialPlatform = "linkedin" | "x" | "telegram" | "threads" | "generic";
+
 export interface SocialPost {
   title: string;
   copy: string;
   hashtags: string[];
   imagePrompt: string;
   callToAction: string;
+  platform?: SocialPlatform;
 }
 
 export interface MarketingDraft {
@@ -38,6 +41,7 @@ export interface MarketingDraft {
   imageUrls: string[];
   audioUrls: string[];
   targetChannels: string[]; // ["telegram_channel", "linkedin", "youtube", "tiktok"]
+  targetPlatform?: SocialPlatform;
   voiceProvider?: string; // "edge" | "elevenlabs" | "polly" | "google"
   imageProvider?: string; // "pollinations_flux" | "dalle"
   llmModel?: string; // "gemini-2.5-flash" | "llama-3.3-70b"
@@ -56,6 +60,18 @@ export interface MarketingDraft {
   createdAt: string;
   updatedAt: string;
   publishedAt?: string;
+}
+
+export interface CampaignPackDraft {
+  id: string;
+  userId: number;
+  topic: string;
+  createdAt: string;
+  youtubeLongDraft?: MarketingDraft; // 16:9 full (2-3 min, N scenes)
+  tiktokShortDraft?: MarketingDraft; // 9:16 vertical (45-60s)
+  linkedinPostDraft?: MarketingDraft; // Storytelling
+  xPostDraft?: MarketingDraft; // Punchy hook
+  telegramPostDraft?: MarketingDraft; // Formatted summary
 }
 
 export interface ReviewCallbackPayload {

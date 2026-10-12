@@ -2233,6 +2233,40 @@ bot.on("callback_query:data", async (ctx, next) => {
   await next();
 });
 
+// Comando /campaña (Campaña Omnicanal Multired)
+bot.command(["campaña", "campana", "campaign"], async (ctx) => {
+  const userId = ctx.from!.id;
+  const adminIds = config.marketing?.adminIds || [1572946817];
+
+  if (!adminIds.includes(userId)) {
+    return ctx.reply("❌ No tienes permisos para acceder a Silvania Marketing Studio.");
+  }
+
+  const topic = ctx.match ? ctx.match.toString().trim() : "";
+  if (!topic) {
+    return ctx.reply(
+      "🚀 *Campaña Omnicanal de Silvania*\n\n" +
+      "Genera a partir de una sola idea todo el ecosistema coordinado de contenidos:\n" +
+      "• 🎬 *YouTube Largo (16:9)*: Vídeo extendido (admite hasta 30 escenas y duración > 2-3 min)\n" +
+      "• 📱 *TikTok / Shorts (9:16)*: Vídeo vertical condensado (3-4 microescenas clave, ~40s)\n" +
+      "• 💼 *LinkedIn*: Copy profesional con storytelling y aprendizajes de negocio\n" +
+      "• 𝕏 *X / Twitter*: Gancho viral sintético (< 280 caracteres)\n" +
+      "• ✈️ *Telegram*: Digest con viñetas para lectura en móvil en el canal\n\n" +
+      "_Uso:_ `/campaña [tu idea o tema]`\n" +
+      "_Ejemplo:_ `/campaña Historia de David y Goliat 30 escenas` o `/campaña Productividad ejecutiva con Google Calendar`",
+      { parse_mode: "Markdown" }
+    );
+  }
+
+  try {
+    const { marketingManager } = await import("./marketing/manager.js");
+    await marketingManager.createCampaignPack(topic, userId, bot);
+  } catch (err: any) {
+    console.error("❌ Error en Campaña Omnicanal:", err);
+    await ctx.reply(`❌ Error generando la campaña omnicanal: ${err.message}`);
+  }
+});
+
 bot.command("marketing", async (ctx) => {
   const userId = ctx.from!.id;
   const adminIds = config.marketing?.adminIds || [1572946817];
@@ -2244,21 +2278,39 @@ bot.command("marketing", async (ctx) => {
   const rawArgs = ctx.match ? ctx.match.toString().trim() : "";
   if (!rawArgs) {
     return ctx.reply(
-      "🚀 *Silvania Marketing Studio (Low-Cost P0)*\n\n" +
+      "🚀 *Silvania Marketing Studio (Omnicanal & Low-Cost)*\n\n" +
       "Uso del comando:\n" +
-      "• `/marketing draft [coreagent|eva|marketing]` - Genera el borrador diario rotativo de producto para revisión HITL.\n" +
-      "• `/marketing post [tema]` - Genera post social con imagen FLUX (gratis) y locución Edge-TTS (gratis).\n" +
-      "• `/marketing video [tema]` - Genera guión y vídeo MP4 con locución completa e imágenes por escena.\n" +
-      "• `/marketing short [tema]` - Genera guión y vídeo corto MP4.\n" +
-      "• `/marketing tiktok [tema]` - Genera guión y vídeo vertical (9:16) MP4 para TikTok.\n" +
+      "• `/campaña [tema]` o `/marketing campaña [tema]` - Genera el pack omnicanal completo (YouTube + TikTok + LinkedIn + X + Telegram).\n" +
+      "• `/marketing video [youtube] [tema]` - Vídeo 16:9 extendido (admite hasta 30 escenas y duración > 2-3 min).\n" +
+      "• `/marketing short [tiktok] [tema]` - Vídeo vertical 9:16 ágil (3-4 escenas condensadas, ~40s).\n" +
+      "• `/marketing post [linkedin|x|telegram] [tema]` - Post adaptado a la red con imagen y audio.\n" +
+      "• `/marketing draft [coreagent|eva|marketing]` - Borrador diario rotativo de producto para revisión HITL.\n" +
       "• `/marketing status` - Consulta el estado del último borrador generado.\n\n" +
-      "_Ejemplo:_ `/marketing draft` o `/marketing tiktok 3 trucos de Google Calendar`",
+      "_Ejemplos:_\n" +
+      "• `/campaña Relatos de fe y esperanza 30 escenas`\n" +
+      "• `/marketing video youtube Historias biblicas 15 escenas`\n" +
+      "• `/marketing post linkedin Caso de exito con Google Calendar`",
       { parse_mode: "Markdown" }
     );
   }
 
-  const parts = rawArgs.split(" ");
+  const parts = rawArgs.split(/\s+/);
   const subCmd = parts[0].toLowerCase();
+
+  // Subcomando de Campaña Omnicanal
+  if (subCmd === "campaña" || subCmd === "campana" || subCmd === "campaign" || subCmd === "pack") {
+    const topic = parts.slice(1).join(" ").trim();
+    if (!topic) {
+      return ctx.reply("⚠️ Indica el tema de la campaña. Ejemplo: `/marketing campaña David y Goliat 30 escenas`", { parse_mode: "Markdown" });
+    }
+    try {
+      const { marketingManager } = await import("./marketing/manager.js");
+      await marketingManager.createCampaignPack(topic, userId, bot);
+      return;
+    } catch (err: any) {
+      return ctx.reply(`❌ Error generando campaña: ${err.message}`);
+    }
+  }
 
   // Subcomando de borrador rotativo diario bajo demanda (HITL)
   if (subCmd === "draft" || subCmd === "cron" || subCmd === "rotativo") {
@@ -2317,26 +2369,50 @@ bot.command("marketing", async (ctx) => {
     }
   }
 
-  const topic = parts.slice(1).join(" ").trim();
-
-  if (!topic) {
-    return ctx.reply("⚠️ Por favor indica el tema después del subcomando. Ejemplo: `/marketing post mi tema`", { parse_mode: "Markdown" });
-  }
-
+  // Enrutamiento de subcomandos y redes específicas
   let format: any = "social_post";
-  if (subCmd === "video" || subCmd === "youtube") {
+  let targetPlatform: any = undefined;
+  let topicStartIndex = 1;
+
+  if (subCmd === "post") {
+    const nextArg = (parts[1] || "").toLowerCase();
+    if (nextArg === "linkedin" || nextArg === "x" || nextArg === "twitter" || nextArg === "telegram") {
+      targetPlatform = nextArg === "twitter" ? "x" : nextArg;
+      topicStartIndex = 2;
+    }
+  } else if (subCmd === "video" || subCmd === "youtube") {
     format = "youtube_long";
-  } else if (subCmd === "short") {
+    if (subCmd === "video" && (parts[1] || "").toLowerCase() === "youtube") {
+      topicStartIndex = 2;
+    }
+  } else if (subCmd === "short" || subCmd === "shorts") {
     format = "youtube_short";
+    if ((parts[1] || "").toLowerCase() === "tiktok") {
+      format = "tiktok";
+      topicStartIndex = 2;
+    }
   } else if (subCmd === "tiktok") {
     format = "tiktok";
+  } else if (subCmd === "linkedin") {
+    format = "social_post";
+    targetPlatform = "linkedin";
+  } else if (subCmd === "x" || subCmd === "twitter") {
+    format = "social_post";
+    targetPlatform = "x";
   }
 
-  await ctx.reply(`🧠 *Silvania Marketing Studio en marcha...*\nInvestigando y redactando propuesta para:\n_${topic}_...`, { parse_mode: "Markdown" });
+  const topic = parts.slice(topicStartIndex).join(" ").trim();
+
+  if (!topic) {
+    return ctx.reply("⚠️ Por favor indica el tema después del subcomando. Ejemplo: `/marketing post linkedin mi tema` o `/marketing video 30 escenas de fe`", { parse_mode: "Markdown" });
+  }
+
+  const platformBadge = targetPlatform ? ` [${targetPlatform.toUpperCase()}]` : "";
+  await ctx.reply(`🧠 *Silvania Marketing Studio en marcha...*\nInvestigando y preparando propuesta${platformBadge} para:\n_${topic}_...`, { parse_mode: "Markdown" });
 
   try {
     const { marketingManager } = await import("./marketing/manager.js");
-    const draft = await marketingManager.createAndReviewDraft(topic, format, userId, bot);
+    const draft = await marketingManager.createAndReviewDraft(topic, format, userId, bot, { targetPlatform });
     if (draft && draft.videoPath) {
       const realDurStr = draft.realDurationSeconds
         ? `${Math.floor(draft.realDurationSeconds / 60)}:${Math.round(draft.realDurationSeconds % 60) < 10 ? "0" : ""}${Math.round(draft.realDurationSeconds % 60)}`

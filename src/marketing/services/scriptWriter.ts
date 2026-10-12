@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import Groq from "groq-sdk";
 import { config } from "../../config/config.js";
-import { SocialPost, VideoScript } from "../types.js";
+import { SocialPost, VideoScript, SocialPlatform } from "../types.js";
 
 const openRouter = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
@@ -55,27 +55,58 @@ CONOCIMIENTO DEL ECOSISTEMA DE PRODUCTO (SILVANIA.AI):
 export const scriptWriter = {
   /**
    * Genera un post de alto impacto orientado a retención y conversión sutil hacia silvania.ai.
+   * Adaptado a la red de destino (LinkedIn, X/Twitter, Telegram o genérico).
    */
-  async generateSocialPost(topic: string, angle?: string): Promise<ScriptResult<SocialPost>> {
+  async generateSocialPost(
+    topic: string,
+    angle?: string,
+    platform: SocialPlatform = "generic"
+  ): Promise<ScriptResult<SocialPost>> {
+    let platformInstructions = "";
+    if (platform === "linkedin") {
+      platformInstructions = `
+PLATAFORMA OBJETIVO: LINKEDIN (B2B & LIDERAZGO EJECUTIVO)
+- Tono: Profesional, reflexivo, de liderazgo tecnológico y productividad empresarial.
+- Formato: Estructura de storytelling con saltos de línea limpios, párrafos cortos (1 a 2 oraciones), 3 o 4 aprendizajes o puntos clave con viñetas.
+- Cierre: Pregunta abierta que invite a debate técnico o empresarial en comentarios.
+- Hashtags: 3 a 5 hashtags profesionales (ej: #Productividad #InteligenciaArtificial #Liderazgo #GoogleWorkspace #SilvaniaAI).
+- Longitud del copy: 150 a 250 palabras ricas en sustancia.`;
+    } else if (platform === "x") {
+      platformInstructions = `
+PLATAFORMA OBJETIVO: X / TWITTER (MÁXIMA CURIOSIDAD & SÍNTESIS VIRAL)
+- Tono: Directo, intrigante, con gancho contracíclico o dato sorprendente.
+- REGLA CRÍTICA DE LONGITUD: El campo "copy" debe tener MENOS DE 260 CARACTERES para entrar holgadamente en el límite de un solo tweet sin cortarse.
+- Cierre: Llamada a la acción muy concisa ("¿Lo sabías?", "Pruébalo aquí 👇").
+- Hashtags: Máximo 2 o 3 hashtags breves (#IA #Tech #SilvaniaAI).`;
+    } else if (platform === "telegram") {
+      platformInstructions = `
+PLATAFORMA OBJETIVO: CANAL DE TELEGRAM (DIGEST ÁGIL & COMUNIDAD)
+- Tono: Cercano, directo, formato resumen ejecutivo para lectura en móvil en 20 segundos.
+- Formato: Titular con emoji llamativo, resumen del valor en 3 viñetas concisas con emojis, enlace o invitación clara.
+- Cierre: Botón / llamada clara a probar el bot o ver el vídeo extendido.
+- Longitud: 80 a 140 palabras muy escaneables visualmente.`;
+    } else {
+      platformInstructions = `
+PLATAFORMA OBJETIVO: MULTIRED PROFESIONAL
+- Tono: Ejecutivo, sobrio, claro y de alta retención.
+- Desarrollo en 3-4 puntos accionables de alto valor.`;
+    }
+
     const prompt = `Eres el Director de Estrategia de Contenidos de Silvania Marketing Studio.
-Tu objetivo es redactar un post altamente persuasivo, directo y de gran retención para canales profesionales (LinkedIn y Telegram).
+Tu objetivo es redactar un post altamente persuasivo, directo y de gran retención.
 
 ${ECOSISTEMA_KNOWLEDGE}
 
 Tema del Post: "${topic}"
 ${angle ? `Ángulo específico: "${angle}"` : ""}
+${platformInstructions}
 
 Reglas obligatorias de redacción:
 1. Tono ejecutivo, sobrio, claro y sin relleno ni frases vacías.
-2. Si el post habla de Eva Agent: Preséntala SIEMPRE en estado 'Próximamente / En el laboratorio'. NUNCA vendas acceso público directo aún; destaca la estimulación fonética interactiva y la privacidad 100% local en navegador (sin enviar audio de menores a servidores ni requerir cuentas de Google de niños).
+2. Si el post habla de Eva Agent: Preséntala SIEMPRE en estado 'Próximamente / En el laboratorio'. NUNCA vendas acceso público directo aún; destaca la estimulación fonética interactiva y la privacidad 100% local en navegador.
 3. Si el post habla de CoreAgent: Enfatiza la productividad real de Google Workspace en Telegram con scopes mínimos y privacidad. Disponible ya en Acceso Anticipado (https://silvania.ai/coreagent).
 4. Si el post habla de Marketing Studio / Marketing Agent: Preséntalo SIEMPRE en estado 'Próximamente / Fase interna' (no vender acceso público directo todavía). Usa el enfoque de 'dogfooding' y supervisión obligatoria Human-in-the-Loop donde el founder aprueba cada borrador.
-5. Estructura:
-   - Gancho magnético (primera línea impactante que obligue a seguir leyendo).
-   - Desarrollo en 3-4 puntos accionables de alto valor con datos o aprendizajes concretos.
-   - Mención natural y elegante al agente correspondiente de silvania.ai si aplica.
-   - Llamada a la acción clara para abrir debate en comentarios o invitar al canal.
-6. Prompt de imagen en inglés para FLUX: descripción cinematográfica fotorrealista, iluminación limpia, sin texto sobre la imagen, encuadre óptimo para pantallas móviles.
+5. Prompt de imagen en inglés para FLUX: descripción cinematográfica fotorrealista, iluminación limpia, sin texto sobre la imagen, encuadre óptimo para pantallas móviles.
 
 Responde ÚNICAMENTE con un JSON válido con esta estructura:
 {
@@ -98,6 +129,7 @@ Responde ÚNICAMENTE con un JSON válido con esta estructura:
 
       const raw = completion.choices[0].message?.content || "{}";
       const post = JSON.parse(raw) as SocialPost;
+      post.platform = platform;
       return { data: post, llmModel: preferredModel };
     } catch (err: any) {
       console.warn("⚠️ Falló OpenRouter en SocialPost, usando Groq (Llama-3.3-70b):", err.message);
@@ -110,17 +142,46 @@ Responde ÚNICAMENTE con un JSON válido con esta estructura:
       const raw = groqCompletion.choices[0].message?.content || "{}";
       const cleanJson = raw.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
       const post = JSON.parse(cleanJson) as SocialPost;
+      post.platform = platform;
       return { data: post, llmModel: "llama-3.3-70b-versatile" };
     }
   },
 
   /**
    * Genera un guión estructurado de YouTube con retención y desglose de escenas.
+   * Admite hasta 30 escenas si se solicitan explícitamente y garantiza duración real >= 2 minutos por defecto.
    */
   async generateYouTubeScript(topic: string, targetDurationMinutes: number = 2): Promise<ScriptResult<VideoScript>> {
     const isShortTest = /3\s*escena|corto|short|prueba|test|60s/i.test(topic);
-    const targetScenes = isShortTest ? 3 : Math.min(5, Math.max(3, Math.round(targetDurationMinutes * 1.0)));
-    const durationSeconds = isShortTest ? 60 : Math.min(120, targetScenes * 20);
+
+    // Detección de petición explícita de escenas (ej: "30 escenas", "20 imágenes", "15 fotos")
+    const explicitScenesMatch = topic.match(/(?:(\d+))\s*(?:escenas?|im[aá]genes?|fotos?)/i);
+    const requestedScenes = explicitScenesMatch ? parseInt(explicitScenesMatch[1], 10) : null;
+
+    let targetScenes: number;
+    let wordsPerScene: string;
+    let durationSeconds: number;
+
+    if (requestedScenes && requestedScenes > 0) {
+      // En YouTube se admite capacidad extendida de hasta 30 escenas
+      targetScenes = Math.min(30, Math.max(1, requestedScenes));
+      if (targetScenes <= 6) {
+        wordsPerScene = "55 a 70 palabras de locución fluida y reflexiva con pausas (garantizar > 2 minutos de duración total)";
+        durationSeconds = Math.max(120, targetScenes * 25);
+      } else {
+        wordsPerScene = "25 a 35 palabras por escena con ritmo ágil";
+        durationSeconds = targetScenes * 16;
+      }
+    } else if (isShortTest) {
+      targetScenes = 3;
+      wordsPerScene = "25 a 30 palabras por escena";
+      durationSeconds = 60;
+    } else {
+      // Por defecto para YouTube Horizontal (16:9): duración mínima de 2 a 3 minutos (120 - 180s)
+      targetScenes = Math.min(8, Math.max(5, Math.round(targetDurationMinutes * 2.5)));
+      wordsPerScene = "55 a 70 palabras de locución fluida, profunda y reflexiva con pausas fonéticas naturales (crucial para alcanzar mínimo 2 minutos de duración)";
+      durationSeconds = Math.max(130, targetScenes * 24);
+    }
 
     // Detección automática del género narrativo
     const t = topic.toLowerCase();
@@ -174,7 +235,7 @@ Instrucciones de Voz y Tono para este género:
 - ${hookInstruction}
 - EXACTAMENTE ${targetScenes} escenas secuenciales (array "scenes").
 - Cada escena debe tener:
-  * "narration": locución fluida de 25 a 35 palabras.
+  * "narration": locución fluida de ${wordsPerScene}.
   * "onScreenText": texto clave de 3 a 6 palabras en mayúsculas (${onScreenExample}).
   * "visualPrompt": descripción fotográfica en inglés optimizada (${visualPromptGuide}).
 
@@ -246,9 +307,10 @@ ${angle ? `Ángulo específico: "${angle}"` : ""}
 
 Reglas obligatorias de TikTok:
 1. Hook demoledor en los primeros 3 segundos (pregunta provocadora o revelación visual).
-2. Ritmo muy ágil: entre 3 y 5 micro-escenas visuales (de 5 a 10 segundos).
+2. Ritmo muy ágil: EXACTAMENTE entre 3 y 4 micro-escenas visuales (de 6 a 10 segundos cada una).
+   REGLA DE CONDENSACIÓN: Si el tema menciona muchas escenas (por ejemplo 10, 20 o 30 escenas), NUNCA intentes meterlas aquí. En TikTok el usuario busca inmediatez; extrae ÚNICAMENTE los 3 o 4 momentos cumbre de mayor gancho emocional o viral.
 3. Texto en pantalla (onScreenText) con palabras clave en mayúsculas para mantener la vista fija.
-4. Locución conversacional, dinámica y persuasiva en español natural.
+4. Locución conversacional, dinámica y persuasiva en español natural (15 a 25 palabras por escena).
 5. Prompt visual fotorrealista para FLUX en inglés (formato 9:16 vertical cinematográfico).
 6. Tags relevantes para TikTok y Shorts (#TechTok, #Productividad, #SilvaniaAI, #IA).
 
@@ -262,7 +324,7 @@ Responde ÚNICAMENTE con un JSON válido con esta estructura:
   "scenes": [
     {
       "sceneNumber": 1,
-      "timestamp": "00:00 - 00:05",
+      "timestamp": "00:00 - 00:08",
       "visualPrompt": "Vertical 9:16 cinematic close-up shot, vivid lighting, dynamic perspective",
       "narration": "Locución rápida del hook",
       "onScreenText": "TEXTO EN PANTALLA"
@@ -282,6 +344,9 @@ Responde ÚNICAMENTE con un JSON válido con esta estructura:
 
       const raw = completion.choices[0].message?.content || "{}";
       const script = JSON.parse(raw) as VideoScript;
+      if (script.scenes && script.scenes.length > 4) {
+        script.scenes = script.scenes.slice(0, 4);
+      }
       return { data: script, llmModel: preferredModel };
     } catch (err: any) {
       console.warn("⚠️ Falló OpenRouter en TikTokScript, usando Groq:", err.message);
@@ -294,6 +359,9 @@ Responde ÚNICAMENTE con un JSON válido con esta estructura:
       const raw = groqCompletion.choices[0].message?.content || "{}";
       const cleanJson = raw.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
       const script = JSON.parse(cleanJson) as VideoScript;
+      if (script.scenes && script.scenes.length > 4) {
+        script.scenes = script.scenes.slice(0, 4);
+      }
       return { data: script, llmModel: "llama-3.3-70b-versatile" };
     }
   },

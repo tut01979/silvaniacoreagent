@@ -1,7 +1,7 @@
 import { Bot, InlineKeyboard, InputFile } from "grammy";
 import fs from "fs";
 import path from "path";
-import { MarketingDraft } from "./types.js";
+import { MarketingDraft, CampaignPackDraft } from "./types.js";
 import { marketingDb } from "./database.js";
 import { config } from "../config/config.js";
 import { socialPublisher } from "./services/socialPublisher.js";
@@ -36,15 +36,18 @@ export const telegramReview = {
     let summaryText = "";
 
     if (draft.format === "social_post" && draft.socialContent) {
+      const platformTag = draft.targetPlatform && draft.targetPlatform !== "generic"
+        ? ` (${draft.targetPlatform.toUpperCase()})`
+        : "";
       summaryText =
-        `🎯 *PROPUESTA DE CONTENIDO (Human-in-the-Loop)*\n\n` +
+        `🎯 *PROPUESTA DE CONTENIDO${platformTag} (Human-in-the-Loop)*\n\n` +
         `📌 *Tema:* ${draft.topic}\n` +
         `📝 *Título:* ${draft.socialContent.title}\n\n` +
         `💬 *Texto:* \n${draft.socialContent.copy}\n\n` +
         `🏷️ *Tags:* ${draft.socialContent.hashtags.join(" ")}` +
         techFooter;
     } else if (draft.videoScript) {
-      const formatLabel = draft.format === "youtube_long" ? "YouTube Largo" : draft.format === "tiktok" ? "TikTok (9:16)" : "YouTube Short";
+      const formatLabel = draft.format === "youtube_long" ? "YouTube Largo (16:9)" : draft.format === "tiktok" ? "TikTok (9:16)" : "YouTube Short";
       const scenesInScript = draft.videoScript.scenes.length;
       const imgBreakdown = formatImageBreakdown(draft);
       const realDurStr = draft.realDurationSeconds
@@ -470,5 +473,46 @@ export const telegramReview = {
     }
 
     return false;
+  },
+
+  /**
+   * Envía el resumen consolidado de una campaña multicanal completa (Human-in-the-Loop)
+   */
+  async sendCampaignPackCard(bot: Bot, pack: CampaignPackDraft): Promise<void> {
+    const ytScenes = pack.youtubeLongDraft?.videoScript?.scenes.length || 0;
+    const ytDur = pack.youtubeLongDraft?.realDurationSeconds
+      ? `${Math.floor(pack.youtubeLongDraft.realDurationSeconds / 60)}:${Math.round(pack.youtubeLongDraft.realDurationSeconds % 60) < 10 ? "0" : ""}${Math.round(pack.youtubeLongDraft.realDurationSeconds % 60)} min`
+      : "~2-3 min";
+
+    const ttScenes = pack.tiktokShortDraft?.videoScript?.scenes.length || 0;
+    const ttDur = pack.tiktokShortDraft?.realDurationSeconds
+      ? `${Math.round(pack.tiktokShortDraft.realDurationSeconds)}s`
+      : "~40s";
+
+    const msg =
+      `📦 *CAMPAÑA OMNICANAL GENERADA CON ÉXITO*\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `📌 *Tema Central:* "${pack.topic}"\n\n` +
+      `🎬 *YouTube Largo (16:9):*\n` +
+      `  • Estado: ${pack.youtubeLongDraft?.videoPath ? "✅ Vídeo MP4 listo" : "Borrador generado"}\n` +
+      `  • Capacidad: ${ytScenes} escenas · ${ytDur} (audio real)\n` +
+      `  • Formato: Admite hasta 30 escenas extendidas sin cortes.\n\n` +
+      `📱 *TikTok / Shorts (9:16):*\n` +
+      `  • Estado: ${pack.tiktokShortDraft?.videoPath ? "✅ Vídeo MP4 listo" : "Borrador generado"}\n` +
+      `  • Formato: ${ttScenes} escenas condensadas · ${ttDur} de alto impacto viral\n\n` +
+      `💼 *LinkedIn Post:*\n` +
+      `  • Estado: ✅ Redactado (storytelling B2B + aprendizajes profesionales)\n\n` +
+      `𝕏 *X / Twitter:*\n` +
+      `  • Estado: ✅ Gancho viral optimizado (< 280 caracteres)\n\n` +
+      `✈️ *Telegram Digest:*\n` +
+      `  • Estado: ✅ Resumen visual con viñetas para el canal\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `💡 _Revisa cada pieza arriba de forma individual. Cada una cuenta con sus controles HITL interactivos de aprobación o regeneración._`;
+
+    try {
+      await bot.api.sendMessage(pack.userId, msg, { parse_mode: "Markdown" });
+    } catch {
+      await bot.api.sendMessage(pack.userId, msg.replace(/[*_`]/g, ""));
+    }
   },
 };

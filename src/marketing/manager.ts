@@ -2,7 +2,7 @@ import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import { Bot } from "grammy";
-import { ContentFormat, MarketingDraft } from "./types.js";
+import { ContentFormat, MarketingDraft, SocialPlatform, CampaignPackDraft } from "./types.js";
 import { marketingDb } from "./database.js";
 import { scriptWriter } from "./services/scriptWriter.js";
 import { imageGenerator } from "./services/imageGenerator.js";
@@ -21,7 +21,8 @@ export const marketingManager = {
     topic: string,
     format: ContentFormat,
     userId: number,
-    bot: Bot
+    bot: Bot,
+    options: { targetPlatform?: SocialPlatform; requestedScenes?: number } = {}
   ): Promise<MarketingDraft> {
     const draftId = crypto.randomUUID();
     const now = new Date().toISOString();
@@ -37,13 +38,16 @@ export const marketingManager = {
       imageUrls: [],
       audioUrls: [],
       targetChannels: ["telegram_channel"],
+      targetPlatform: options.targetPlatform || "generic",
       createdAt: now,
       updatedAt: now,
     };
 
     if (format === "social_post") {
-      // 1. Redacción de Post y Prompt de Imagen (LLM)
-      const scriptRes = await scriptWriter.generateSocialPost(topic);
+      // 1. Redacción de Post y Prompt de Imagen (LLM) adaptado a la red elegida
+      const targetPlatform = options.targetPlatform || "generic";
+      draft.targetPlatform = targetPlatform;
+      const scriptRes = await scriptWriter.generateSocialPost(topic, undefined, targetPlatform);
       draft.socialContent = scriptRes.data;
       draft.llmModel = scriptRes.llmModel;
 
@@ -68,7 +72,7 @@ export const marketingManager = {
     } else if (format === "youtube_long" || format === "youtube_short" || format === "tiktok") {
       const isTikTok = format === "tiktok";
       const isShort = format === "youtube_short" || isTikTok;
-      const minutes = format === "youtube_long" ? 8 : 1;
+      const minutes = format === "youtube_long" ? 2 : 1;
 
       // 1. Guión Estructurado (LLM)
       const scriptRes = isTikTok
@@ -77,9 +81,24 @@ export const marketingManager = {
       draft.videoScript = scriptRes.data;
       draft.llmModel = scriptRes.llmModel;
 
-      // Cap de escenas: min(escenas, 3) si el tema contiene "3 escena" / "corto" / "short" / "prueba"; si no, max 5 en P0
+      // Cap y selección de escenas según la red:
+      // - YouTube (16:9): Capacidad extendida de hasta 30 escenas si se solicitan explícitamente (o 8 por defecto)
+      // - TikTok / Short (9:16): Condensado ágil a 3-4 escenas de alto impacto
       const isShortTest = /3\s*escena|corto|short|prueba|test|60s/i.test(topic);
-      const maxScenes = isShortTest ? 3 : 5;
+      const explicitScenesMatch = topic.match(/(?:(\d+))\s*(?:escenas?|im[aá]genes?|fotos?)/i);
+      const parsedRequested = explicitScenesMatch ? parseInt(explicitScenesMatch[1], 10) : options.requestedScenes;
+
+      let maxScenes = 5;
+      if (isTikTok || isShort) {
+        maxScenes = 4;
+      } else if (parsedRequested && parsedRequested > 0) {
+        maxScenes = Math.min(30, Math.max(1, parsedRequested));
+      } else if (isShortTest) {
+        maxScenes = 3;
+      } else {
+        maxScenes = 8;
+      }
+
       const rawScenes = scriptRes.data.scenes || [];
       const numScenesToRender = Math.min(Math.max(rawScenes.length, 1), maxScenes);
       const scenesToRender = rawScenes.slice(0, numScenesToRender);
@@ -244,7 +263,7 @@ export const marketingManager = {
             {
               width: imgDimensions.width,
               height: imgDimensions.height,
-              timeoutMs: 150000,
+              timeoutMs: Math.max(150000, scenesToRender.length * 15000),
             }
           );
           draft.videoPath = videoRes.videoPath;
@@ -269,6 +288,93 @@ export const marketingManager = {
     await telegramReview.sendReviewCard(bot, draft);
 
     return draft;
+  },
+
+  /**
+   * Genera una campaña omnicanal unificada a partir de un único tema/concepto:
+   * 1. YouTube Largo (16:9): vídeo extendido (soporta hasta 30 escenas si se solicitan, o duración >= 2 min).
+   * 2. TikTok / Shorts (9:16): píldora vertical de alta retención (3-4 microescenas, ~40s).
+   * 3. LinkedIn Post: copy profesional con storytelling y aprendizajes de negocio.
+   * 4. X (Twitter) Post: gancho viral de alto impacto estrictamente < 280 caracteres.
+   * 5. Telegram Post: resumen digest visual con viñetas para lectura en 20 segundos en el canal.
+   */
+  async createCampaignPack(topic: string, userId: number, bot: Bot): Promise<CampaignPackDraft> {
+    const packId = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    console.log(`📦 [MarketingManager] Generando Campaña Omnicanal para "${topic}"...`);
+
+    // Notificar al usuario que la campaña está en progreso
+    await bot.api.sendMessage(
+      userId,
+      `🚀 *Campaña Omnicanal en Marcha...*\n\n` +
+      `Generando ecosistema de contenidos multired para:\n` +
+      `📌 _"${topic}"_\n\n` +
+      `• 🎬 *YouTube Largo (16:9)*: Formato extendido (admite hasta 30 escenas y duración > 2 min)\n` +
+      `• 📱 *TikTok / Shorts (9:16)*: Formato vertical condensado (3-4 escenas, ~40s)\n` +
+      `• 💼 *LinkedIn*: Storytelling B2B y aprendizajes\n` +
+      `• 𝕏 *X / Twitter*: Gancho viral de síntesis (< 280 caracteres)\n` +
+      `• ✈️ *Telegram*: Resumen digest para el canal\n\n` +
+      `_Recibirás cada creativo arriba conforme se finalice..._`,
+      { parse_mode: "Markdown" }
+    ).catch(() => {});
+
+    // 1. YouTube Largo (16:9)
+    let youtubeLongDraft: MarketingDraft | undefined;
+    try {
+      youtubeLongDraft = await this.createAndReviewDraft(topic, "youtube_long", userId, bot);
+    } catch (err: any) {
+      console.warn("⚠️ Falló borrador de YouTube en campaña:", err.message);
+    }
+
+    // 2. TikTok / Short (9:16)
+    let tiktokShortDraft: MarketingDraft | undefined;
+    try {
+      tiktokShortDraft = await this.createAndReviewDraft(topic, "tiktok", userId, bot);
+    } catch (err: any) {
+      console.warn("⚠️ Falló borrador de TikTok en campaña:", err.message);
+    }
+
+    // 3. LinkedIn Post
+    let linkedinPostDraft: MarketingDraft | undefined;
+    try {
+      linkedinPostDraft = await this.createAndReviewDraft(topic, "social_post", userId, bot, { targetPlatform: "linkedin" });
+    } catch (err: any) {
+      console.warn("⚠️ Falló borrador de LinkedIn en campaña:", err.message);
+    }
+
+    // 4. X (Twitter) Post
+    let xPostDraft: MarketingDraft | undefined;
+    try {
+      xPostDraft = await this.createAndReviewDraft(topic, "social_post", userId, bot, { targetPlatform: "x" });
+    } catch (err: any) {
+      console.warn("⚠️ Falló borrador de X en campaña:", err.message);
+    }
+
+    // 5. Telegram Digest Post
+    let telegramPostDraft: MarketingDraft | undefined;
+    try {
+      telegramPostDraft = await this.createAndReviewDraft(topic, "social_post", userId, bot, { targetPlatform: "telegram" });
+    } catch (err: any) {
+      console.warn("⚠️ Falló borrador de Telegram en campaña:", err.message);
+    }
+
+    const campaignPack: CampaignPackDraft = {
+      id: packId,
+      userId,
+      topic,
+      createdAt: now,
+      youtubeLongDraft,
+      tiktokShortDraft,
+      linkedinPostDraft,
+      xPostDraft,
+      telegramPostDraft,
+    };
+
+    // Enviar tarjeta resumen de la campaña omnicanal
+    await telegramReview.sendCampaignPackCard(bot, campaignPack);
+
+    return campaignPack;
   },
 
   /**
