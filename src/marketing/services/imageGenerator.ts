@@ -13,6 +13,7 @@ export interface ImageResult {
   isLocalFallback?: boolean;
   product?: ProductBrand;
   category?: string;
+  sourceAssetPath?: string;
 }
 
 export interface GenerateImageOptions {
@@ -30,6 +31,7 @@ export interface GenerateImageOptions {
   product?: ProductBrand;
   category?: string;
   backgroundImagePath?: string | null;
+  usedImages?: string[];
 }
 
 // Circuit breaker para evitar saturar Pollinations tras recibir errores 402 consecutivos
@@ -83,6 +85,7 @@ export async function generateLocalSceneCard(
       isLocalFallback: !slideRes.hasBackgroundImage,
       product: chosenProduct,
       category,
+      sourceAssetPath: backgroundImagePath || undefined,
     };
   } catch (canvasErr: any) {
     console.warn("⚠️ [ImageGenerator] Canvas slide falló, usando respaldo básico:", canvasErr.message);
@@ -137,6 +140,7 @@ export const imageGenerator = {
       sceneText: options.onScreenText || sceneTitle,
       sceneIndex,
       totalScenes,
+      usedImages: options.usedImages,
     });
 
     const activeProduct = selectedVisual.product;
@@ -207,8 +211,8 @@ export const imageGenerator = {
     let lastError: any = null;
 
     for (let attempt = 1; attempt <= 2; attempt++) {
-      const modelToUse = attempt === 1 ? (options.model || "flux") : "turbo";
-      const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&model=${modelToUse}&seed=${seed}&nologo=true`;
+      const modelParam = options.model ? `&model=${options.model}` : "";
+      const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}${modelParam}&seed=${seed}&nologo=true`;
 
       try {
         const response = await axios.get(imageUrl, {
@@ -251,7 +255,7 @@ export const imageGenerator = {
             break;
           }
         } else {
-          console.warn(`⚠️ [ImageGenerator] Intento ${attempt} (${modelToUse}) falló (${err.message})...`);
+          console.warn(`⚠️ [ImageGenerator] Intento ${attempt} (${options.model || "default"}) falló (${err.message})...`);
         }
 
         if (attempt < 2 && consecutive402Errors < 2) {
@@ -260,9 +264,15 @@ export const imageGenerator = {
       }
     }
 
-    // 6. Respaldo obligatorio en caso de fallo de red
+    // 6. Respaldo obligatorio en caso de fallo de red (usa imagen de catálogo local si existe)
     if (allowFallback) {
-      console.warn(`⚠️ [ImageGenerator] Red no disponible (${lastError?.message}). Activando slide corporativo nativo obligatorio.`);
+      const fallbackBg =
+        selectedVisual.localImagePath && fs.existsSync(selectedVisual.localImagePath)
+          ? selectedVisual.localImagePath
+          : null;
+      console.warn(
+        `⚠️ [ImageGenerator] Red no disponible (${lastError?.message}). Activando diapositiva con respaldo local: ${fallbackBg || "Vectorial"}`
+      );
       return generateLocalSceneCard(
         outputPath,
         width,
@@ -274,7 +284,7 @@ export const imageGenerator = {
         options.subtitle,
         activeProduct,
         activeCategory,
-        null
+        fallbackBg
       );
     }
 

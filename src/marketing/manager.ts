@@ -155,6 +155,7 @@ export const marketingManager = {
       console.log(`🎯 [Marketing Video] Producto y marca identificados: ${targetProduct.toUpperCase()} (Tema: "${topic}")`);
 
       const sceneMediaList: SceneMediaInput[] = [];
+      const usedImages: string[] = [];
       let networkImageCount = 0;
       let localFallbackCount = 0;
       console.log(`🎨 [Marketing Video] Generando ${scenesToRender.length} imágenes para escenas (cap max: ${maxScenes})...`);
@@ -178,8 +179,13 @@ export const marketingManager = {
             subtitle: scene.narration,
             allowFallback: true,
             product: targetProduct,
+            usedImages,
           });
           sceneImgPath = imgRes.filePath;
+          if (imgRes.sourceAssetPath) {
+            usedImages.push(imgRes.sourceAssetPath);
+          }
+          usedImages.push(imgRes.filePath);
           if (imgRes.isLocalFallback || imgRes.provider === "corporate_slide_canvas") {
             localFallbackCount++;
           } else {

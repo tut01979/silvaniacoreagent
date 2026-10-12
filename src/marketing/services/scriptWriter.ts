@@ -122,38 +122,76 @@ Responde ÚNICAMENTE con un JSON válido con esta estructura:
     const targetScenes = isShortTest ? 3 : Math.min(5, Math.max(3, Math.round(targetDurationMinutes * 1.0)));
     const durationSeconds = isShortTest ? 60 : Math.min(120, targetScenes * 20);
 
-    const prompt = `Eres el guionista principal de Silvania Content Studio.
+    // Detección automática del género narrativo
+    const t = topic.toLowerCase();
+    let genreName = "PRODUCTIVIDAD & ECOSISTEMA SILVANIA";
+    let toneInstruction = "Tono ejecutivo, directo, ágil y persuasivo.";
+    let visualPromptGuide = "Cinematic 8k photography, modern architectural lighting, clean minimal aesthetics, no text";
+    let onScreenExample = "TITULARES ACCIONABLES EN MAYÚSCULAS (ej: 'TU AGENDA EN TELEGRAM')";
+    let hookInstruction = "Hook inicial (10 a 15s) de alto impacto que contraste un problema con una solución ágil.";
 
-${ECOSISTEMA_KNOWLEDGE}
+    if (/cuento|f[aá]bula|fantas[ií]a|pixar|disney|m[aá]gic|drag[oó]n|hadas|castillo|princesa|hab[ií]a una vez|infantil.*historia|historia.*niñ/i.test(t)) {
+      genreName = "CUENTO INFANTIL & FANTASÍA (Estilo Pixar 3D)";
+      toneInstruction = "Tono de NARRADOR DE CUENTOS INFANTILES: cálido, mágico, tierno, pausado. Narra con asombro y emoción una hermosa historia con personajes entrañables, un viaje o aventura y un final feliz o enseñanza hermosa. ¡CERO LENGUAJE DE OFICINA, NEGOCIOS O TELEGRAM!";
+      visualPromptGuide = "Pixar 3D animated style, Disney Pixar quality render, warm soft volumetric lighting, whimsical magical atmosphere, cute expressive characters, vibrant rich colors, cinematic composition, 8k, no text";
+      onScreenExample = "Títulos de capítulos del cuento o frases mágicas (ej: 'EL BOSQUE DE LAS ESTRELLAS', 'EL PEQUEÑO DRAGÓN')";
+      hookInstruction = "Comienza con una introducción cautivadora que atrape la imaginación infantil ('Había una vez en...', o 'En un rincón mágico del bosque...').";
+    } else if (/alien|extraterrestre|planeta|universo|cosmos|galaxia|nebulosa|astronom|marte|j[uú]piter|saturno|luna|agujero negro/i.test(t)) {
+      genreName = "COSMOS, UNIVERSO & ASTRONOMÍA";
+      toneInstruction = "Tono ÉPICO, SOBRECOGEDOR Y FASCIANTE de divulgación astronómica. Transmite la inmensidad del espacio, el misterio de mundos lejanos y la búsqueda de vida en el cosmos.";
+      visualPromptGuide = "Cinematic space photography, James Webb telescope view, deep cosmos, glowing nebulae, majestic planetary rings, alien exoplanet horizon, photorealistic 8k, sci-fi grandeur, no text";
+      onScreenExample = "Conceptos del cosmos (ej: 'EL CONFÍN DE LA GALAXIA', 'MUNDOS INEXPLORADOS')";
+      hookInstruction = "Plantea un misterio fascinante sobre la inmensidad del universo o la existencia de otros mundos.";
+    } else if (/biblia|b[ií]blic|cristian|dios|jes[uú]s|cristo|fe\b|evangelio|religi[oó]n|sagrad|vers[ií]culo|mois[eé]s|israel|oraci[oó]n/i.test(t)) {
+      genreName = "RELATOS BÍBLICOS, FE & ESPIRITUALIDAD";
+      toneInstruction = "Tono SOLEMNE, ESPIRITUAL, ESPERANZADOR Y PROFUNDAMENTE RESPETUOSO. Comparte la historia o reflexión bíblica conectando con el corazón, la esperanza y la paz interior.";
+      visualPromptGuide = "Cinematic biblical epic scene, golden celestial ray of light breaking through dramatic clouds over ancient desert landscape, sacred stones, ancient scriptures, Rembrandt lighting, 8k photorealistic, no text";
+      onScreenExample = "Frases de fe e inspiración (ej: 'LA PROMESA ETERNA', 'LA FE QUE MUEVE MONTAÑAS')";
+      hookInstruction = "Inicia con una reflexión profunda sobre la fe y el propósito en la vida.";
+    } else if (/holograma|pantalla.*3d|cu[aá]ntic|matrix|cibern[eé]tic|robot|futuro.*205|futurista|inteligencia artificial.*futuro/i.test(t)) {
+      genreName = "CIENCIA & TECNOLOGÍA DEL FUTURO (Hologramas 3D)";
+      toneInstruction = "Tono VANGUARDISTA, ELECTRIZANTE Y VISIONARIO. Explica innovaciones futuristas, interfaces holográficas y computación avanzada con asombro.";
+      visualPromptGuide = "Futuristic technology, translucent 3D holographic computer interface glowing with cyan and purple light, AI neural network matrix, sleek sci-fi minimalism, cinematic 8k, no text";
+      onScreenExample = "Conceptos de innovación (ej: 'HOLOGRAMAS EN 3D', 'LA NUEVA ERA CUÁNTICA')";
+      hookInstruction = "Sorprende con una visión del futuro que transformará nuestra realidad.";
+    } else if (/tormenta|rayo|rel[aá]mpago|aurora.*boreal|volc[aá]n|oc[eé]ano|monta[ñn]a|clima|paisaje|naturaleza|glaciar/i.test(t)) {
+      genreName = "NATURALEZA, PAISAJES & CLIMAS EXTREMOS";
+      toneInstruction = "Tono DOCUMENTAL DE NATURALEZA (estilo National Geographic / BBC Earth): majestuoso, poético, inmersivo.";
+      visualPromptGuide = "National Geographic cinematic landscape photography, dramatic lightning storm, glowing green aurora borealis reflecting on water, majestic natural beauty, 8k, ultra-detailed, no text";
+      onScreenExample = "Fenómenos de la Tierra (ej: 'EL BAILE DE LAS AURORAS', 'EL PODER DEL OCÉANO')";
+      hookInstruction = "Describe con intensidad la majestuosidad indomable de la naturaleza.";
+    }
 
-Crea el guión completo y estructurado para un video de formato conciso y ágil sobre:
-Tema: "${topic}"
+    const prompt = `Eres el guionista y narrador principal de Silvania Studios.
+Tu género objetivo para esta pieza es: ${genreName}.
 
-Reglas de Locución y Guion (HABLADO PARA EL OÍDO):
-1. Redacta para ser HABLADO en voz alta, no para ser leído. Frases muy cortas y ágiles (8 a 12 palabras máx por oración).
-2. Puntuación fonética natural: usa puntos y seguido frecuentes, puntos suspensivos (...) para crear micropausas de anticipación y respiración, y preguntas retóricas directas.
-3. Hook inicial (10 a 15 segundos) de alto impacto que atrape sin rodeos: contrasta un problema común con una solución directa ("¿Cansado de abrir mil pestañas? Imagina esto...").
-4. Si el guión trata sobre Eva: Destaca su tecnología de privacidad y pronación como innovación en camino (Próximamente).
-5. Si trata sobre CoreAgent: Muestra la productividad de Google Workspace en Telegram.
-6. EXACTAMENTE ${targetScenes} escenas secuenciales (ni más ni menos, exactamente ${targetScenes} objetos en el array "scenes").
-7. Cada escena: locución concisa y hablada (25 a 35 palabras máx por escena) y "onScreenText" muy corto y contundente para la diapositiva en pantalla (máximo 4 a 7 palabras en mayúsculas, ej: "TU AGENDA EN TELEGRAM").
-8. Normalización fonética: Si mencionas la web en la locución, escribe "Silvania punto a-i" en lugar de enlaces crudos.
-9. Título atractivo de alto CTR, descripción optimizada con mención a silvania.ai si aplica, y tags relevantes.
+Tema Solicitado: "${topic}"
+
+Instrucciones de Voz y Tono para este género:
+- ${toneInstruction}
+- Redacta para ser HABLADO en voz alta por el oído humano, no leído.
+- Frases cortas y ágiles (8 a 14 palabras máx por oración) con pausas fonéticas naturales (puntos y seguido frecuentes, puntos suspensivos...).
+- ${hookInstruction}
+- EXACTAMENTE ${targetScenes} escenas secuenciales (array "scenes").
+- Cada escena debe tener:
+  * "narration": locución fluida de 25 a 35 palabras.
+  * "onScreenText": texto clave de 3 a 6 palabras en mayúsculas (${onScreenExample}).
+  * "visualPrompt": descripción fotográfica en inglés optimizada (${visualPromptGuide}).
 
 Responde ÚNICAMENTE con un JSON:
 {
   "title": "Título del video",
-  "hook": "Texto del gancho inicial",
-  "description": "Descripción para YouTube",
+  "hook": "Texto del gancho o inicio",
+  "description": "Descripción optimizada para YouTube",
   "tags": ["tag1", "tag2"],
   "totalEstimatedDurationSeconds": ${durationSeconds},
   "scenes": [
     {
       "sceneNumber": 1,
       "timestamp": "00:00 - 00:20",
-      "visualPrompt": "Cinematic visual description in English",
-      "narration": "Texto de la locución concisa",
-      "onScreenText": "Texto clave en pantalla"
+      "visualPrompt": "${visualPromptGuide}",
+      "narration": "Texto de la locución",
+      "onScreenText": "TEXTO EN PANTALLA"
     }
   ]
 }`;
