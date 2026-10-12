@@ -89,7 +89,7 @@ export const visualAssetSelector = {
 
     // 4. Cristianismo, la Biblia, fe y espiritualidad
     if (
-      /biblia|b[ií]blic|cristian|dios|jes[uú]s|cristo|fe\b|evangelio|religi[oó]n|sagrad|vers[ií]culo|mois[eé]s|israel|oraci[oó]n|espiritual|salmo/i.test(
+      /biblia|b[ií]blic|cristian|dios|jes[uú]s|cristo|fe\b|evangelio|religi[oó]n|sagrad|vers[ií]culo|mois[eé]s|israel|oraci[oó]n|espiritual|salmo|natividad|bel[eé]n|pesebre|resurrecci[oó]n|tumba vac[ií]a|calvario|g[oó]lgota|cruz|crucifixi[oó]n|aposento alto|[uú]ltima cena|getseman[ií]|bautismo/i.test(
         t
       )
     ) {
@@ -361,10 +361,20 @@ export const visualAssetSelector = {
         matchedImages = allUniverseImages.filter(p => /energy/i.test(p));
       }
     } else if (product === "faith_bible") {
-      if (/rayo|luz|cielo|celestial|fe\b|gracia/i.test(combinedText)) {
+      if (/natividad|bel[eé]n|pesebre|mar[ií]a|nacimiento/i.test(textToMatch)) {
+        matchedImages = allUniverseImages.filter(p => /nativity/i.test(p));
+      } else if (/tumba|resurrecci[oó]n|piedra|sepulcro/i.test(textToMatch)) {
+        matchedImages = allUniverseImages.filter(p => /empty_tomb/i.test(p));
+      } else if (/galilea|barca|pescador|lago|mar\b/i.test(textToMatch)) {
+        matchedImages = allUniverseImages.filter(p => /galilee/i.test(p));
+      } else if (/[uú]ltima cena|pan|vino|aposento|cena\b/i.test(textToMatch)) {
+        matchedImages = allUniverseImages.filter(p => /last_supper/i.test(p));
+      } else if (/cruz|crucifixi[oó]n|g[oó]lgota|calvario/i.test(textToMatch)) {
+        matchedImages = allUniverseImages.filter(p => /crucifixion/i.test(p));
+      } else if (/rayo|luz|cielo|celestial|fe\b|gracia/i.test(textToMatch)) {
         matchedImages = allUniverseImages.filter(p => /sunrays|celestial/i.test(p));
-      } else if (/monte|desierto|tierra santa|israel|sagrad/i.test(combinedText)) {
-        matchedImages = allUniverseImages.filter(p => /mountain|holy/i.test(p));
+      } else if (/monte|desierto|tierra santa|israel|sagrad/i.test(textToMatch)) {
+        matchedImages = allUniverseImages.filter(p => /mountain|holy|sanctuary/i.test(p));
       }
     } else if (product === "nature_climates") {
       if (/tormenta|rayo|rel[aá]mpago/i.test(combinedText)) {
