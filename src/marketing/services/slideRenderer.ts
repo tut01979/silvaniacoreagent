@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
-import { createCanvas, GlobalFonts } from "@napi-rs/canvas";
+import { createCanvas, loadImage, GlobalFonts } from "@napi-rs/canvas";
+import { ProductBrand, visualAssetSelector } from "./visualAssetSelector.js";
 
 // 1. Registro obligatorio de fuentes tipográficas del repositorio (garantiza texto nítido en Railway Linux y Windows)
 const boldFontPath = path.resolve(process.cwd(), "src/marketing/assets/fonts/Silvania-Bold.ttf");
@@ -32,6 +33,9 @@ export interface RenderSlideOptions {
   width?: number;
   height?: number;
   outputPath?: string;
+  backgroundImagePath?: string | null;
+  product?: ProductBrand;
+  category?: string;
 }
 
 export interface SlideRenderResult {
@@ -39,67 +43,57 @@ export interface SlideRenderResult {
   width: number;
   height: number;
   provider: "corporate_slide_canvas";
+  hasBackgroundImage?: boolean;
+  product: ProductBrand;
 }
 
-type SceneCategory = "CALENDAR" | "SHEETS" | "GMAIL" | "TELEGRAM" | "COREAGENT";
-
-interface ThemePreset {
+interface ThemeConfig {
   bg1: string;
   bg2: string;
   accent: string;
   pillBg: string;
   tag: string;
+  brandTitle: string;
+  brandWebsite: string;
+  bullet1: string;
+  bullet2: string;
 }
 
-const THEME_PRESETS: Record<SceneCategory, ThemePreset> = {
-  CALENDAR: {
-    bg1: "#070E1B",
-    bg2: "#1E3A8A",
+const BRAND_THEMES: Record<ProductBrand, ThemeConfig> = {
+  eva: {
+    bg1: "#021A16",
+    bg2: "#0A463E",
+    accent: "#2DD4BF",
+    pillBg: "rgba(45, 212, 191, 0.20)",
+    tag: "TERAPIA DEL HABLA Y VOZ",
+    brandTitle: "Eva · Logopedia Clínica",
+    brandWebsite: "eva.silvania.ai · Privacidad Local 100%",
+    bullet1: "✓ 100% Privacidad local en navegador",
+    bullet2: "✓ Sin grabaciones en servidores de menores",
+  },
+  marketing: {
+    bg1: "#120822",
+    bg2: "#3B1466",
+    accent: "#C084FC",
+    pillBg: "rgba(192, 132, 252, 0.20)",
+    tag: "MARKETING STUDIO & GROWTH",
+    brandTitle: "Silvania Marketing Studio",
+    brandWebsite: "marketing.silvania.ai · Human-in-the-Loop",
+    bullet1: "✓ Producción audiovisual y guiones IA",
+    bullet2: "✓ Supervisión Human-in-the-Loop",
+  },
+  coreagent: {
+    bg1: "#060F1E",
+    bg2: "#13315C",
     accent: "#38BDF8",
-    pillBg: "rgba(56, 189, 248, 0.18)",
-    tag: "GOOGLE CALENDAR",
-  },
-  SHEETS: {
-    bg1: "#061A14",
-    bg2: "#064E3B",
-    accent: "#34D399",
-    pillBg: "rgba(52, 211, 153, 0.18)",
-    tag: "GOOGLE SHEETS",
-  },
-  GMAIL: {
-    bg1: "#1A0B0E",
-    bg2: "#7F1D1D",
-    accent: "#F87171",
-    pillBg: "rgba(248, 113, 113, 0.18)",
-    tag: "GMAIL ASISTIDO",
-  },
-  TELEGRAM: {
-    bg1: "#05131E",
-    bg2: "#0369A1",
-    accent: "#38BDF8",
-    pillBg: "rgba(56, 189, 248, 0.18)",
-    tag: "TELEGRAM CHAT",
-  },
-  COREAGENT: {
-    bg1: "#0B0F19",
-    bg2: "#312E81",
-    accent: "#818CF8",
-    pillBg: "rgba(129, 140, 248, 0.18)",
-    tag: "PRODUCTIVIDAD IA",
+    pillBg: "rgba(56, 189, 248, 0.20)",
+    tag: "PRODUCTIVIDAD EJECUTIVA",
+    brandTitle: "Silvania CoreAgent",
+    brandWebsite: "silvania.ai/coreagent · Telegram & Google Workspace",
+    bullet1: "✓ Asistente ejecutivo en Telegram",
+    bullet2: "✓ Conectado a Google Workspace",
   },
 };
-
-function detectCategory(text: string, sceneIndex: number): SceneCategory {
-  const t = text.toLowerCase();
-  if (/calendar|agenda|reuni[oó]n|cita|evento|fecha/i.test(t)) return "CALENDAR";
-  if (/sheet|hoja|gasto|excel|tabla|dato|contabilidad|c[aá]lculo/i.test(t)) return "SHEETS";
-  if (/gmail|correo|email|inbox|redacta/i.test(t)) return "GMAIL";
-  if (/telegram|chat|mensaje|asistente/i.test(t)) return "TELEGRAM";
-  
-  // Por defecto según el índice de escena para variedad visual
-  const fallbackOrder: SceneCategory[] = ["TELEGRAM", "CALENDAR", "SHEETS", "GMAIL", "COREAGENT"];
-  return fallbackOrder[(Math.max(1, sceneIndex) - 1) % fallbackOrder.length];
-}
 
 function roundRect(ctx: any, x: number, y: number, w: number, h: number, radius: number) {
   ctx.beginPath();
@@ -137,210 +131,187 @@ function wrapText(ctx: any, text: string, maxWidth: number): string[] {
 }
 
 /**
- * Dibuja un mockup visual auténtico en el lateral derecho de la diapositiva
+ * Dibuja un mockup visual estricto para cada agente cuando NO hay foto real de fondo
  */
-function drawCategoryMockup(ctx: any, category: SceneCategory, x: number, y: number, w: number, h: number, preset: ThemePreset) {
-  // Contenedor del mockup
-  ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+function drawProductSpecificMockup(
+  ctx: any,
+  product: ProductBrand,
+  category: string,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  theme: ThemeConfig
+) {
+  ctx.fillStyle = "rgba(10, 15, 26, 0.85)";
   roundRect(ctx, x, y, w, h, 20);
   ctx.fill();
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
   ctx.lineWidth = 1.5;
   roundRect(ctx, x, y, w, h, 20);
   ctx.stroke();
 
-  if (category === "CALENDAR") {
-    // Cabecera Google Calendar
-    ctx.fillStyle = "#1E40AF";
+  if (product === "eva") {
+    // -------------------------------------------------------------
+    // Mockup de EVA: Terapia del Habla infantil (CERO TELEGRAM, CERO GOOGLE)
+    // -------------------------------------------------------------
+    ctx.fillStyle = "#0F766E";
     roundRect(ctx, x, y, w, 55, 20);
     ctx.fill();
     ctx.fillStyle = "#FFFFFF";
     ctx.font = "bold 17px SilvaniaBold, sans-serif";
     ctx.textBaseline = "middle";
-    ctx.fillText("📅 Google Calendar · Agenda", x + 25, y + 28);
+    ctx.fillText("🗣️ Eva · Entrenamiento Articulatorio", x + 25, y + 28);
 
-    // Evento destacado 1
-    ctx.fillStyle = "rgba(59, 130, 246, 0.25)";
-    roundRect(ctx, x + 25, y + 80, w - 50, 75, 12);
+    // Contenedor de onda vocal
+    ctx.fillStyle = "rgba(45, 212, 191, 0.12)";
+    roundRect(ctx, x + 25, y + 75, w - 50, 130, 14);
     ctx.fill();
-    ctx.strokeStyle = "#3B82F6";
-    ctx.lineWidth = 1.5;
-    roundRect(ctx, x + 25, y + 80, w - 50, 75, 12);
+    ctx.strokeStyle = "rgba(45, 212, 191, 0.35)";
     ctx.stroke();
-    ctx.fillStyle = "#60A5FA";
-    ctx.font = "bold 15px SilvaniaBold, sans-serif";
-    ctx.textBaseline = "top";
-    ctx.fillText("10:00 - 11:00 AM · Reunión con Cliente", x + 40, y + 92);
-    ctx.fillStyle = "#E2E8F0";
-    ctx.font = "14px SilvaniaRegular, sans-serif";
-    ctx.fillText("Creada por Silvania CoreAgent vía Telegram", x + 40, y + 120);
 
-    // Evento 2
-    ctx.fillStyle = "rgba(148, 163, 184, 0.12)";
-    roundRect(ctx, x + 25, y + 175, w - 50, 65, 12);
-    ctx.fill();
-    ctx.fillStyle = "#94A3B8";
+    ctx.fillStyle = "#A7F3D0";
     ctx.font = "bold 14px SilvaniaBold, sans-serif";
-    ctx.fillText("14:30 PM · Revisión de Presupuestos", x + 40, y + 190);
-    ctx.font = "13px SilvaniaRegular, sans-serif";
-    ctx.fillText("Sincronización instantánea en tu cuenta", x + 40, y + 215);
+    ctx.textBaseline = "top";
+    ctx.fillText("Análisis Acústico de Fonemas en Tiempo Real", x + 40, y + 90);
 
-    // Botón status
-    ctx.fillStyle = "#10B981";
-    roundRect(ctx, x + 25, y + 265, 160, 36, 18);
-    ctx.fill();
-    ctx.fillStyle = "#FFFFFF";
-    ctx.font = "bold 13px SilvaniaBold, sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.fillText("✓ SINCRONIZADO", x + 45, y + 283);
+    // Onda sinusoidal
+    ctx.strokeStyle = "#2DD4BF";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    for (let ox = 0; ox < w - 90; ox += 4) {
+      const oy = Math.sin(ox * 0.05) * 26 * Math.cos(ox * 0.02);
+      if (ox === 0) ctx.moveTo(x + 45 + ox, y + 145 + oy);
+      else ctx.lineTo(x + 45 + ox, y + 145 + oy);
+    }
+    ctx.stroke();
 
-  } else if (category === "SHEETS") {
-    // Cabecera Google Sheets
-    ctx.fillStyle = "#065F46";
-    roundRect(ctx, x, y, w, 55, 20);
-    ctx.fill();
-    ctx.fillStyle = "#FFFFFF";
-    ctx.font = "bold 17px SilvaniaBold, sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.fillText("📊 Google Sheets · Finanzas", x + 25, y + 28);
-
-    // Filas de datos
-    const rows = [
-      { col1: "Transporte", col2: "50.00 €", tag: "Registrado" },
-      { col1: "Publicidad", col2: "120.00 €", tag: "Confirmado" },
-      { col1: "Software", col2: "35.00 €", tag: "Automático" },
+    // Hitos y recompensas
+    const milestones = [
+      { text: "Fonema /r/ articulado con precisión", tag: "Excelente" },
+      { text: "Control de respiración y soplo", tag: "Superado" },
+      { text: "Privacidad: Audio efímero en navegador", tag: "100% Seguro" },
     ];
 
-    ctx.textBaseline = "top";
-    for (let r = 0; r < rows.length; r++) {
-      const ry = y + 75 + r * 68;
-      ctx.fillStyle = "rgba(16, 185, 129, 0.12)";
-      roundRect(ctx, x + 25, ry, w - 50, 56, 10);
+    for (let r = 0; r < milestones.length; r++) {
+      const my = y + 220 + r * 58;
+      ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+      roundRect(ctx, x + 25, my, w - 50, 48, 10);
       ctx.fill();
-      ctx.strokeStyle = "rgba(16, 185, 129, 0.25)";
-      ctx.stroke();
-
       ctx.fillStyle = "#FFFFFF";
-      ctx.font = "bold 15px SilvaniaBold, sans-serif";
-      ctx.fillText(rows[r].col1, x + 40, ry + 12);
-      ctx.fillStyle = "#34D399";
-      ctx.fillText(rows[r].col2, x + 180, ry + 12);
-
-      ctx.fillStyle = "#A7F3D0";
+      ctx.font = "bold 13px SilvaniaBold, sans-serif";
+      ctx.fillText(milestones[r].text, x + 40, my + 10);
+      ctx.fillStyle = "#2DD4BF";
       ctx.font = "12px SilvaniaRegular, sans-serif";
-      ctx.fillText(`✓ ${rows[r].tag}`, x + 40, ry + 34);
+      ctx.fillText(`✓ ${milestones[r].tag}`, x + 40, my + 28);
     }
 
-  } else if (category === "GMAIL") {
-    // Cabecera Gmail
-    ctx.fillStyle = "#991B1B";
+  } else if (product === "marketing") {
+    // -------------------------------------------------------------
+    // Mockup de MARKETING STUDIO: Edición de vídeo, métricas y HITL
+    // -------------------------------------------------------------
+    ctx.fillStyle = "#6B21A8";
     roundRect(ctx, x, y, w, 55, 20);
     ctx.fill();
     ctx.fillStyle = "#FFFFFF";
     ctx.font = "bold 17px SilvaniaBold, sans-serif";
     ctx.textBaseline = "middle";
-    ctx.fillText("✉️ Gmail Asistido · Borrador", x + 25, y + 28);
+    ctx.fillText("🎬 Marketing Studio · Timeline & Métricas", x + 25, y + 28);
 
-    // Contenido del email
-    ctx.fillStyle = "rgba(239, 68, 68, 0.12)";
-    roundRect(ctx, x + 25, y + 80, w - 50, 160, 12);
+    // Contenedor de pistas de montaje
+    ctx.fillStyle = "rgba(192, 132, 252, 0.12)";
+    roundRect(ctx, x + 25, y + 75, w - 50, 130, 14);
     ctx.fill();
-    ctx.strokeStyle = "rgba(239, 68, 68, 0.3)";
+    ctx.strokeStyle = "rgba(192, 132, 252, 0.35)";
     ctx.stroke();
 
+    ctx.fillStyle = "#E9D5FF";
+    ctx.font = "bold 14px SilvaniaBold, sans-serif";
     ctx.textBaseline = "top";
-    ctx.fillStyle = "#FCA5A5";
-    ctx.font = "bold 14px SilvaniaBold, sans-serif";
-    ctx.fillText("Para: cliente@empresa.com", x + 40, y + 95);
-    ctx.fillStyle = "#FFFFFF";
-    ctx.font = "bold 16px SilvaniaBold, sans-serif";
-    ctx.fillText("Asunto: Propuesta y Factura Silvania", x + 40, y + 125);
-    ctx.fillStyle = "#CBD5E1";
-    ctx.font = "14px SilvaniaRegular, sans-serif";
-    ctx.fillText("Borrador redactado por IA listo en Gmail.", x + 40, y + 160);
-    ctx.fillText("Pendiente de confirmación del usuario.", x + 40, y + 185);
+    ctx.fillText("Pistas de Ensamblado Audiovisual Sincronizado", x + 40, y + 90);
 
-    // Botón Enviar
-    ctx.fillStyle = "#DC2626";
-    roundRect(ctx, x + 25, y + 260, 180, 40, 20);
-    ctx.fill();
-    ctx.fillStyle = "#FFFFFF";
-    ctx.font = "bold 14px SilvaniaBold, sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.fillText("🚀 Enviar con 1 Clic", x + 45, y + 280);
+    const tracks = ["Audio Master (Voz Neural)", "Video 16:9 (Paced Cut)", "Overlay Cinematográfico"];
+    for (let t = 0; t < tracks.length; t++) {
+      const ty = y + 115 + t * 26;
+      ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
+      ctx.fillRect(x + 40, ty, w - 80, 20);
+      ctx.fillStyle = "#D8B4FE";
+      ctx.font = "11px SilvaniaRegular, sans-serif";
+      ctx.fillText(tracks[t], x + 50, ty + 4);
+    }
 
-  } else if (category === "TELEGRAM") {
-    // Cabecera Telegram
+    // Métricas y HITL
+    const stats = [
+      { col1: "Retención estimada:", col2: "86% en primeros 30s" },
+      { col1: "Sindicación:", col2: "YouTube & Shorts 9:16" },
+      { col1: "Human-in-the-Loop:", col2: "Borrador pendiente de OK" },
+    ];
+
+    for (let s = 0; s < stats.length; s++) {
+      const sy = y + 220 + s * 58;
+      ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+      roundRect(ctx, x + 25, sy, w - 50, 48, 10);
+      ctx.fill();
+      ctx.fillStyle = "#F3E8FF";
+      ctx.font = "bold 13px SilvaniaBold, sans-serif";
+      ctx.fillText(stats[s].col1, x + 40, sy + 10);
+      ctx.fillStyle = "#C084FC";
+      ctx.font = "12px SilvaniaRegular, sans-serif";
+      ctx.fillText(stats[s].col2, x + 40, sy + 28);
+    }
+
+  } else {
+    // -------------------------------------------------------------
+    // Mockup de COREAGENT: Google Workspace & Telegram Ejecutivo
+    // -------------------------------------------------------------
     ctx.fillStyle = "#0284C7";
     roundRect(ctx, x, y, w, 55, 20);
     ctx.fill();
     ctx.fillStyle = "#FFFFFF";
     ctx.font = "bold 17px SilvaniaBold, sans-serif";
     ctx.textBaseline = "middle";
-    ctx.fillText("✈️ Telegram · @Silvania_Core_Agent", x + 25, y + 28);
-
-    // Burbuja usuario
-    ctx.fillStyle = "#0369A1";
-    roundRect(ctx, x + 90, y + 80, w - 115, 60, 12);
-    ctx.fill();
-    ctx.fillStyle = "#FFFFFF";
-    ctx.font = "14px SilvaniaRegular, sans-serif";
-    ctx.textBaseline = "top";
-    ctx.fillText("Crea reunión mañana a las 10am con Juan", x + 105, y + 92);
-    ctx.fillStyle = "#7DD3FC";
-    ctx.font = "11px SilvaniaRegular, sans-serif";
-    ctx.fillText("10:42 AM ✓✓", x + w - 75, y + 120);
-
-    // Burbuja bot
-    ctx.fillStyle = "#1E293B";
-    roundRect(ctx, x + 25, y + 160, w - 70, 95, 12);
-    ctx.fill();
-    ctx.strokeStyle = "rgba(56, 189, 248, 0.4)";
-    ctx.stroke();
-
-    ctx.fillStyle = "#34D399";
-    ctx.font = "bold 14px SilvaniaBold, sans-serif";
-    ctx.fillText("✅ Cita agendada en Google Calendar", x + 40, y + 175);
-    ctx.fillStyle = "#E2E8F0";
-    ctx.font = "13px SilvaniaRegular, sans-serif";
-    ctx.fillText("Mañana · 10:00 - 11:00 AM", x + 40, y + 200);
-    ctx.fillStyle = "#94A3B8";
-    ctx.fillText("Enlace Meet generado automáticamente", x + 40, y + 225);
-
-  } else {
-    // Hub CoreAgent
-    ctx.fillStyle = "#4338CA";
-    roundRect(ctx, x, y, w, 55, 20);
-    ctx.fill();
-    ctx.fillStyle = "#FFFFFF";
-    ctx.font = "bold 17px SilvaniaBold, sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.fillText("⚡ Silvania CoreAgent Hub", x + 25, y + 28);
+    ctx.fillText("⚡ CoreAgent · Integraciones Google & Telegram", x + 25, y + 28);
 
     const integrations = [
-      "✓ Google Calendar (Citas y Agenda)",
-      "✓ Google Sheets (Registro de Gastos)",
-      "✓ Gmail (Redacción Asistida)",
-      "✓ Telegram (Interacción por Chat)",
+      { name: "Google Calendar", desc: "Citas y agenda en lenguaje natural", stat: "Sincronizado" },
+      { name: "Google Sheets", desc: "Finanzas, gastos y balances", stat: "Al segundo" },
+      { name: "Gmail Asistido", desc: "Borradores con confirmación previa", stat: "Seguro" },
+      { name: "Telegram Chat", desc: "Notas de voz y comandos directos", stat: "Activo" },
     ];
 
     ctx.textBaseline = "top";
     for (let idx = 0; idx < integrations.length; idx++) {
-      const iy = y + 80 + idx * 52;
-      ctx.fillStyle = "rgba(129, 140, 248, 0.12)";
-      roundRect(ctx, x + 25, iy, w - 50, 42, 10);
+      const iy = y + 75 + idx * 72;
+      ctx.fillStyle = "rgba(56, 189, 248, 0.10)";
+      roundRect(ctx, x + 25, iy, w - 50, 60, 12);
       ctx.fill();
-      ctx.fillStyle = "#E0E7FF";
-      ctx.font = "bold 14px SilvaniaBold, sans-serif";
-      ctx.fillText(integrations[idx], x + 40, iy + 13);
+      ctx.strokeStyle = "rgba(56, 189, 248, 0.25)";
+      ctx.stroke();
+
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "bold 15px SilvaniaBold, sans-serif";
+      ctx.fillText(integrations[idx].name, x + 40, iy + 10);
+      ctx.fillStyle = "#38BDF8";
+      ctx.fillText(`✓ ${integrations[idx].stat}`, x + w - 140, iy + 10);
+
+      ctx.fillStyle = "#94A3B8";
+      ctx.font = "12px SilvaniaRegular, sans-serif";
+      ctx.fillText(integrations[idx].desc, x + 40, iy + 34);
     }
   }
 }
 
 export const slideRenderer = {
   /**
-   * Genera una diapositiva corporativa premium y nítida (1280x720) usando Canvas en Node.js.
-   * Totalmente determinista, 0€ de coste, <40ms de CPU y sin dependencias externas.
+   * Genera una diapositiva cinematográfica de alta definición (1280x720).
+   * 
+   * Si se proporciona una foto real de fondo (de la suite de 300 imágenes o IA):
+   *   -> Dibuja la foto completa en 16:9 con encuadre nítido
+   *   -> Aplica degradado inferior cinematográfico (estilo Apple TV / Netflix documental)
+   *   -> Pinta la franja inferior con tipografía clara y la identidad de marca ESTRICTAMENTE SEPARADA.
+   * 
+   * Si no hay foto de fondo:
+   *   -> Genera la composición vectorial garantizando que Eva NUNCA muestre Telegram ni Google.
    */
   async renderSceneSlide(options: RenderSlideOptions): Promise<SlideRenderResult> {
     ensureFontsRegistered();
@@ -350,144 +321,248 @@ export const slideRenderer = {
     const sceneIndex = Math.max(1, options.sceneIndex);
     const totalScenes = options.totalScenes || 3;
 
+    // Detección estricta de producto
+    const product: ProductBrand =
+      options.product ||
+      visualAssetSelector.detectProduct(`${options.topic || ""} ${options.title} ${options.onScreenText || ""}`);
+
+    const theme = BRAND_THEMES[product];
+    const category = options.category || visualAssetSelector.detectCategory(product, `${options.title} ${options.onScreenText || ""}`, sceneIndex);
+
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext("2d");
 
-    // Detección semántica de la categoría del slide
-    const contextText = `${options.title} ${options.onScreenText || ""} ${options.subtitle || ""}`;
-    const category = detectCategory(contextText, sceneIndex);
-    const preset = THEME_PRESETS[category];
+    let hasBackgroundImage = false;
 
-    // 1. Fondo degradado de alta gama (Dark Mode SaaS)
-    const gradient = ctx.createLinearGradient(0, 0, width, height);
-    gradient.addColorStop(0, preset.bg1);
-    gradient.addColorStop(1, preset.bg2);
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, width, height);
+    // 1. ¿Existe imagen real de fondo (suite de 300 o IA)?
+    if (options.backgroundImagePath && fs.existsSync(options.backgroundImagePath)) {
+      try {
+        const bgImg = await loadImage(options.backgroundImagePath);
+        
+        // Dibujado con recorte inteligente centrado (cover)
+        const imgAspect = bgImg.width / bgImg.height;
+        const canvasAspect = width / height;
+        let sx = 0, sy = 0, sw = bgImg.width, sh = bgImg.height;
 
-    // 2. Resplandor ambiental suave en el centro/superior
-    const ambientGlow = ctx.createRadialGradient(width / 3, height / 3, 50, width / 3, height / 3, 500);
-    ambientGlow.addColorStop(0, preset.accent + "28"); // 16% opacidad
-    ambientGlow.addColorStop(1, "transparent");
-    ctx.fillStyle = ambientGlow;
-    ctx.fillRect(0, 0, width, height);
+        if (imgAspect > canvasAspect) {
+          sw = bgImg.height * canvasAspect;
+          sx = (bgImg.width - sw) / 2;
+        } else {
+          sh = bgImg.width / canvasAspect;
+          sy = (bgImg.height - sh) / 2;
+        }
 
-    // 3. Tarjeta central contenedora (Glassmorphism sutil)
-    const cardX = 80;
-    const cardY = 60;
-    const cardW = width - 160;
-    const cardH = height - 120;
-    const cardRadius = 24;
-
-    ctx.shadowColor = "rgba(0, 0, 0, 0.50)";
-    ctx.shadowBlur = 35;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 15;
-
-    ctx.fillStyle = "rgba(15, 23, 42, 0.78)";
-    roundRect(ctx, cardX, cardY, cardW, cardH, cardRadius);
-    ctx.fill();
-
-    ctx.shadowColor = "transparent";
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
-    ctx.lineWidth = 1.5;
-    roundRect(ctx, cardX, cardY, cardW, cardH, cardRadius);
-    ctx.stroke();
-
-    // 4. Pill / Badge superior con número de escena y categoría
-    const pillText = `ESCENA ${sceneIndex} DE ${totalScenes}  ·  ${preset.tag}`;
-    ctx.font = "bold 15px SilvaniaBold, sans-serif";
-    const pillMetrics = ctx.measureText(pillText);
-    const pillW = pillMetrics.width + 36;
-    const pillH = 34;
-    const pillX = cardX + 45;
-    const pillY = cardY + 40;
-
-    ctx.fillStyle = preset.pillBg;
-    roundRect(ctx, pillX, pillY, pillW, pillH, 17);
-    ctx.fill();
-
-    ctx.strokeStyle = preset.accent + "66";
-    ctx.lineWidth = 1;
-    roundRect(ctx, pillX, pillY, pillW, pillH, 17);
-    ctx.stroke();
-
-    ctx.fillStyle = preset.accent;
-    ctx.textBaseline = "middle";
-    ctx.fillText(pillText, pillX + 18, pillY + pillH / 2);
-
-    // 5. Contenido izquierdo (Texto principal) vs Contenido derecho (Mockup visual)
-    const leftW = 560; // Ancho reservado para texto a la izquierda
-
-    // Título de la escena
-    const titleText = (options.onScreenText || options.title).trim();
-    ctx.font = "bold 42px SilvaniaBold, sans-serif";
-    ctx.fillStyle = "#FFFFFF";
-    ctx.textBaseline = "top";
-
-    const titleLines = wrapText(ctx, titleText, leftW).slice(0, 3);
-    const titleLineHeight = 52;
-    const titleStartY = cardY + 100;
-
-    for (let i = 0; i < titleLines.length; i++) {
-      ctx.fillText(titleLines[i], cardX + 45, titleStartY + i * titleLineHeight);
-    }
-
-    // Subtítulo explicativo / Locución resumida
-    const subtitleText = options.subtitle || options.title;
-    const subStartY = titleStartY + titleLines.length * titleLineHeight + 20;
-
-    if (subtitleText && subtitleText.toLowerCase() !== titleText.toLowerCase()) {
-      ctx.font = "20px SilvaniaRegular, sans-serif";
-      ctx.fillStyle = "#94A3B8"; // Slate-400
-
-      const subLines = wrapText(ctx, subtitleText.trim(), leftW).slice(0, 3);
-      const subLineHeight = 30;
-
-      for (let i = 0; i < subLines.length; i++) {
-        ctx.fillText(subLines[i], cardX + 45, subStartY + i * subLineHeight);
+        ctx.drawImage(bgImg, sx, sy, sw, sh, 0, 0, width, height);
+        hasBackgroundImage = true;
+      } catch (loadErr: any) {
+        console.warn("⚠️ [SlideRenderer] Error cargando imagen de fondo, usando respaldo vectorial:", loadErr.message);
       }
     }
 
-    // Bullets de valor adicionales
-    const bulletY = subStartY + 100;
-    if (bulletY < cardY + cardH - 80) {
+    if (hasBackgroundImage) {
+      // =========================================================================
+      // MODO CINEMATOGRÁFICO CON FOTO REAL DE FONDO (Apple Keynote / Netflix)
+      // La foto domina la pantalla; la franja inferior ofrece lectura nítida
+      // =========================================================================
+
+      // A. Viñeteado suave en esquinas
+      const vignette = ctx.createRadialGradient(width / 2, height / 2, width * 0.35, width / 2, height / 2, width * 0.72);
+      vignette.addColorStop(0, "transparent");
+      vignette.addColorStop(1, "rgba(0, 0, 0, 0.45)");
+      ctx.fillStyle = vignette;
+      ctx.fillRect(0, 0, width, height);
+
+      // B. Degradado cinematográfico en el tercio inferior (de transparente a oscuro profundo)
+      const lowerGrad = ctx.createLinearGradient(0, height * 0.38, 0, height);
+      lowerGrad.addColorStop(0, "transparent");
+      lowerGrad.addColorStop(0.25, "rgba(8, 12, 22, 0.40)");
+      lowerGrad.addColorStop(0.65, "rgba(8, 12, 22, 0.88)");
+      lowerGrad.addColorStop(1, "rgba(6, 9, 17, 0.96)");
+      ctx.fillStyle = lowerGrad;
+      ctx.fillRect(0, height * 0.38, width, height * 0.62);
+
+      // C. Pill de producto y categoría
+      const pillY = height - 215;
+      const pillH = 34;
+      const pillText = `ESCENA ${sceneIndex} DE ${totalScenes}  ·  ${theme.tag}`;
       ctx.font = "bold 15px SilvaniaBold, sans-serif";
-      ctx.fillStyle = preset.accent;
-      ctx.fillText("✓ 100% Integrado en Telegram", cardX + 45, bulletY);
-      ctx.fillText("✓ Sin salir de tu chat habitual", cardX + 45, bulletY + 28);
+      const pillMetrics = ctx.measureText(pillText);
+      const pillW = pillMetrics.width + 36;
+      const pillX = 70;
+
+      ctx.fillStyle = theme.pillBg;
+      roundRect(ctx, pillX, pillY, pillW, pillH, 17);
+      ctx.fill();
+      ctx.strokeStyle = theme.accent + "88";
+      ctx.lineWidth = 1;
+      roundRect(ctx, pillX, pillY, pillW, pillH, 17);
+      ctx.stroke();
+
+      ctx.fillStyle = theme.accent;
+      ctx.textBaseline = "middle";
+      ctx.fillText(pillText, pillX + 18, pillY + pillH / 2);
+
+      // D. Texto principal en pantalla (On-Screen Headline)
+      const headlineText = (options.onScreenText || options.title).trim();
+      ctx.font = "bold 44px SilvaniaBold, sans-serif";
+      ctx.fillStyle = "#FFFFFF";
+      ctx.textBaseline = "top";
+
+      // Sombra sutil para máxima legibilidad
+      ctx.shadowColor = "rgba(0, 0, 0, 0.90)";
+      ctx.shadowBlur = 12;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 4;
+
+      const headlineLines = wrapText(ctx, headlineText, width - 140).slice(0, 2);
+      const headlineY = height - 165;
+      for (let i = 0; i < headlineLines.length; i++) {
+        ctx.fillText(headlineLines[i], 70, headlineY + i * 48);
+      }
+
+      ctx.shadowColor = "transparent";
+
+      // E. Subtítulo o locución resumida
+      const subText = options.subtitle || "";
+      if (subText && subText.toLowerCase() !== headlineText.toLowerCase()) {
+        ctx.font = "20px SilvaniaRegular, sans-serif";
+        ctx.fillStyle = "#CBD5E1";
+        const subLines = wrapText(ctx, subText, width - 260).slice(0, 1);
+        if (subLines.length > 0) {
+          ctx.fillText(subLines[0], 70, height - 60);
+        }
+      }
+
+      // F. Firma de marca y web en esquina inferior derecha
+      ctx.font = "bold 16px SilvaniaBold, sans-serif";
+      ctx.fillStyle = theme.accent;
+      ctx.textBaseline = "bottom";
+      const brandMetrics = ctx.measureText(theme.brandWebsite);
+      ctx.fillText(theme.brandWebsite, width - 70 - brandMetrics.width, height - 38);
+
+    } else {
+      // =========================================================================
+      // MODO VECTORIAL DE RESPALDO (Sin foto pero con AISLAMIENTO ESTRICTO DE MARCA)
+      // =========================================================================
+
+      // 1. Degradado base con paleta exclusiva del producto
+      const grad = ctx.createLinearGradient(0, 0, width, height);
+      grad.addColorStop(0, theme.bg1);
+      grad.addColorStop(1, theme.bg2);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, width, height);
+
+      // 2. Resplandor ambiental de acento
+      const ambientGlow = ctx.createRadialGradient(width / 3, height / 3, 50, width / 3, height / 3, 500);
+      ambientGlow.addColorStop(0, theme.accent + "26");
+      ambientGlow.addColorStop(1, "transparent");
+      ctx.fillStyle = ambientGlow;
+      ctx.fillRect(0, 0, width, height);
+
+      // 3. Tarjeta central glassmorphic
+      const cardX = 80;
+      const cardY = 60;
+      const cardW = width - 160;
+      const cardH = height - 120;
+
+      ctx.shadowColor = "rgba(0, 0, 0, 0.50)";
+      ctx.shadowBlur = 35;
+      ctx.fillStyle = "rgba(10, 15, 26, 0.82)";
+      roundRect(ctx, cardX, cardY, cardW, cardH, 24);
+      ctx.fill();
+
+      ctx.shadowColor = "transparent";
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
+      ctx.lineWidth = 1.5;
+      roundRect(ctx, cardX, cardY, cardW, cardH, 24);
+      ctx.stroke();
+
+      // 4. Pill superior
+      const pillText = `ESCENA ${sceneIndex} DE ${totalScenes}  ·  ${theme.tag}`;
+      ctx.font = "bold 15px SilvaniaBold, sans-serif";
+      const pillMetrics = ctx.measureText(pillText);
+      const pillW = pillMetrics.width + 36;
+      const pillH = 34;
+      const pillX = cardX + 45;
+      const pillY = cardY + 40;
+
+      ctx.fillStyle = theme.pillBg;
+      roundRect(ctx, pillX, pillY, pillW, pillH, 17);
+      ctx.fill();
+      ctx.strokeStyle = theme.accent + "66";
+      ctx.lineWidth = 1;
+      roundRect(ctx, pillX, pillY, pillW, pillH, 17);
+      ctx.stroke();
+
+      ctx.fillStyle = theme.accent;
+      ctx.textBaseline = "middle";
+      ctx.fillText(pillText, pillX + 18, pillY + pillH / 2);
+
+      // 5. Contenido izquierdo (Texto)
+      const leftW = 560;
+      const titleText = (options.onScreenText || options.title).trim();
+      ctx.font = "bold 40px SilvaniaBold, sans-serif";
+      ctx.fillStyle = "#FFFFFF";
+      ctx.textBaseline = "top";
+
+      const titleLines = wrapText(ctx, titleText, leftW).slice(0, 3);
+      const titleLineHeight = 50;
+      const titleStartY = cardY + 100;
+      for (let i = 0; i < titleLines.length; i++) {
+        ctx.fillText(titleLines[i], cardX + 45, titleStartY + i * titleLineHeight);
+      }
+
+      // Subtítulo
+      const subtitleText = options.subtitle || options.title;
+      const subStartY = titleStartY + titleLines.length * titleLineHeight + 20;
+      if (subtitleText && subtitleText.toLowerCase() !== titleText.toLowerCase()) {
+        ctx.font = "19px SilvaniaRegular, sans-serif";
+        ctx.fillStyle = "#94A3B8";
+        const subLines = wrapText(ctx, subtitleText.trim(), leftW).slice(0, 3);
+        for (let i = 0; i < subLines.length; i++) {
+          ctx.fillText(subLines[i], cardX + 45, subStartY + i * 28);
+        }
+      }
+
+      // Bullets específicos del producto (Garantiza que Eva NUNCA mencione Telegram)
+      const bulletY = subStartY + 100;
+      if (bulletY < cardY + cardH - 80) {
+        ctx.font = "bold 15px SilvaniaBold, sans-serif";
+        ctx.fillStyle = theme.accent;
+        ctx.fillText(theme.bullet1, cardX + 45, bulletY);
+        ctx.fillText(theme.bullet2, cardX + 45, bulletY + 28);
+      }
+
+      // 6. Mockup específico del agente a la derecha
+      const mockX = cardX + leftW + 80;
+      const mockY = cardY + 80;
+      const mockW = cardW - leftW - 120;
+      const mockH = cardH - 150;
+      drawProductSpecificMockup(ctx, product, category, mockX, mockY, mockW, mockH, theme);
+
+      // 7. Pie corporativo
+      const footerY = cardY + cardH - 50;
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cardX + 45, footerY - 15);
+      ctx.lineTo(cardX + cardW - 45, footerY - 15);
+      ctx.stroke();
+
+      ctx.font = "bold 18px SilvaniaBold, sans-serif";
+      ctx.fillStyle = "#F8FAFC";
+      ctx.textBaseline = "middle";
+      ctx.fillText(theme.brandTitle, cardX + 45, footerY);
+
+      ctx.font = "16px SilvaniaBold, sans-serif";
+      ctx.fillStyle = theme.accent;
+      const siteMetrics = ctx.measureText(theme.brandWebsite);
+      ctx.fillText(theme.brandWebsite, cardX + cardW - 45 - siteMetrics.width, footerY);
     }
 
-    // 6. Mockup visual a la derecha
-    const mockX = cardX + leftW + 80;
-    const mockY = cardY + 80;
-    const mockW = cardW - leftW - 120;
-    const mockH = cardH - 150;
-    drawCategoryMockup(ctx, category, mockX, mockY, mockW, mockH, preset);
-
-    // 7. Pie corporativo de la tarjeta
-    const footerY = cardY + cardH - 50;
-
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(cardX + 45, footerY - 15);
-    ctx.lineTo(cardX + cardW - 45, footerY - 15);
-    ctx.stroke();
-
-    ctx.font = "bold 18px SilvaniaBold, sans-serif";
-    ctx.fillStyle = "#F8FAFC";
-    ctx.textBaseline = "middle";
-    ctx.fillText("Silvania CoreAgent", cardX + 45, footerY);
-
-    ctx.font = "16px SilvaniaBold, sans-serif";
-    ctx.fillStyle = preset.accent;
-    const siteText = "silvania.ai";
-    const siteMetrics = ctx.measureText(siteText);
-    ctx.fillText(siteText, cardX + cardW - 45 - siteMetrics.width, footerY);
-
-    // 8. Exportar a JPEG de alta fidelidad
-    const outputPath = options.outputPath || path.join(process.cwd(), "temp", `mkt_slide_${Date.now()}_${sceneIndex}.jpg`);
+    // 8. Exportar a JPEG
+    const outputPath =
+      options.outputPath || path.join(process.cwd(), "temp", `mkt_slide_${Date.now()}_${sceneIndex}.jpg`);
     const outputDir = path.dirname(outputPath);
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
@@ -496,13 +571,17 @@ export const slideRenderer = {
     const buffer = canvas.toBuffer("image/jpeg", 92);
     fs.writeFileSync(outputPath, buffer);
 
-    console.log(`🎨 [SlideRenderer] Slide corporativo generado: Escena ${sceneIndex}/${totalScenes} [${category}] -> ${outputPath} (${buffer.length} bytes)`);
+    console.log(
+      `🎨 [SlideRenderer] Slide generado: Escena ${sceneIndex}/${totalScenes} [${product.toUpperCase()}/${category}] (foto: ${hasBackgroundImage ? "SÍ" : "NO"}) -> ${outputPath}`
+    );
 
     return {
       filePath: outputPath,
       width,
       height,
       provider: "corporate_slide_canvas",
+      hasBackgroundImage,
+      product,
     };
   },
 };

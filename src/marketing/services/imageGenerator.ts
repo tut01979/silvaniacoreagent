@@ -5,11 +5,14 @@ import { execSync } from "child_process";
 import { config } from "../../config/config.js";
 import { getFfmpegBinary } from "./videoAssembler.js";
 import { slideRenderer } from "./slideRenderer.js";
+import { ProductBrand, visualAssetSelector } from "./visualAssetSelector.js";
 
 export interface ImageResult {
   filePath: string;
   provider: "pollinations_flux" | "pollinations_turbo" | "corporate_slide_canvas" | "local_ffmpeg_card";
   isLocalFallback?: boolean;
+  product?: ProductBrand;
+  category?: string;
 }
 
 export interface GenerateImageOptions {
@@ -24,6 +27,9 @@ export interface GenerateImageOptions {
   subtitle?: string;
   allowFallback?: boolean;
   preferCorporateSlides?: boolean;
+  product?: ProductBrand;
+  category?: string;
+  backgroundImagePath?: string | null;
 }
 
 // Circuit breaker para evitar saturar Pollinations tras recibir errores 402 consecutivos
@@ -40,8 +46,8 @@ export function is402CircuitBreakerActive(): boolean {
 }
 
 /**
- * Genera una tarjeta de escena corporativa premium con Canvas.
- * NUNCA devuelve 402, siempre produce un archivo en disco de 1280x720 de alta definición en milisegundos.
+ * Genera una diapositiva cinematográfica corporativa premium con Canvas.
+ * Si se pasa una imagen de fondo (de la suite de 300 o generada por IA), la dibuja en 16:9 con franja inferior.
  */
 export async function generateLocalSceneCard(
   outputPath: string,
@@ -51,8 +57,12 @@ export async function generateLocalSceneCard(
   sceneTitle: string = "Silvania Scene",
   onScreenText?: string,
   totalScenes: number = 3,
-  subtitle?: string
+  subtitle?: string,
+  product?: ProductBrand,
+  category?: string,
+  backgroundImagePath?: string | null
 ): Promise<ImageResult> {
+  const chosenProduct = product || visualAssetSelector.detectProduct(`${sceneTitle} ${onScreenText || ""}`);
   try {
     const slideRes = await slideRenderer.renderSceneSlide({
       sceneIndex,
@@ -63,11 +73,16 @@ export async function generateLocalSceneCard(
       width,
       height,
       outputPath,
+      product: chosenProduct,
+      category,
+      backgroundImagePath,
     });
     return {
       filePath: slideRes.filePath,
       provider: "corporate_slide_canvas",
-      isLocalFallback: true,
+      isLocalFallback: !slideRes.hasBackgroundImage,
+      product: chosenProduct,
+      category,
     };
   } catch (canvasErr: any) {
     console.warn("⚠️ [ImageGenerator] Canvas slide falló, usando respaldo básico:", canvasErr.message);
@@ -79,15 +94,21 @@ export async function generateLocalSceneCard(
       filePath: outputPath,
       provider: "local_ffmpeg_card",
       isLocalFallback: true,
+      product: chosenProduct,
+      category,
     };
   }
 }
 
 export const imageGenerator = {
   /**
-   * Genera una imagen optimizada para visualización en móvil y vídeo.
-   * Por defecto: Motor de slides corporativos fiables si se especifica preferCorporateSlides.
-   * Cadena de providers: slides/flux -> turbo -> fallback corporativo obligatorio.
+   * Genera una imagen cinematográfica optimizada para vídeo comercial.
+   * Cadena de resolución inteligente:
+   * 1. Consulta la suite visual de 300 imágenes locales organizadas por producto (CoreAgent / Eva / Marketing).
+   * 2. Si hay imagen en la biblioteca, la utiliza como fondo cinematográfico + franja de texto de alta definición.
+   * 3. Si no hay imagen local y la red está disponible, solicita a IA con el prompt del catálogo comercial.
+   * 4. Si la IA responde, la compone cinematográficamente con franja de texto.
+   * 5. En caso de fallo de red (ej. HTTP 402), genera la diapositiva vectorial con aislamiento estricto de marca.
    */
   async generateImage(
     prompt: string,
@@ -109,28 +130,82 @@ export const imageGenerator = {
     const fileName = `mkt_img_${Date.now()}_${seed}.jpg`;
     const outputPath = path.join(tempDir, fileName);
 
-    // Si se prefiere el motor corporativo (Sprint 1 por defecto para vídeos fiables)
+    // 1. Detección estricta de agente y selección de activo visual
+    const selectedVisual = visualAssetSelector.selectAssetForScene({
+      product: options.product,
+      topic: prompt,
+      sceneText: options.onScreenText || sceneTitle,
+      sceneIndex,
+      totalScenes,
+    });
+
+    const activeProduct = selectedVisual.product;
+    const activeCategory = selectedVisual.category;
+
+    // 2. ¿Existe ya una imagen fotográfica en la suite local de 300?
+    const libraryImagePath = options.backgroundImagePath || selectedVisual.localImagePath;
+    if (libraryImagePath && fs.existsSync(libraryImagePath)) {
+      console.log(
+        `📸 [ImageGenerator] Usando imagen fotográfica de la suite comercial: [${activeProduct.toUpperCase()}/${activeCategory}] -> ${libraryImagePath}`
+      );
+      return generateLocalSceneCard(
+        outputPath,
+        width,
+        height,
+        sceneIndex,
+        sceneTitle,
+        options.onScreenText,
+        totalScenes,
+        options.subtitle,
+        activeProduct,
+        activeCategory,
+        libraryImagePath
+      );
+    }
+
+    // 3. Si se fuerza explícitamente modo solo diapositiva sin intentar red
     if (options.preferCorporateSlides) {
-      console.log(`🎨 [ImageGenerator] Generando slide corporativo nativo: Escena ${sceneIndex}/${totalScenes}...`);
-      return generateLocalSceneCard(outputPath, width, height, sceneIndex, sceneTitle, options.onScreenText, totalScenes, options.subtitle);
+      console.log(`🎨 [ImageGenerator] Generando slide corporativo vectorial: Escena ${sceneIndex}/${totalScenes}...`);
+      return generateLocalSceneCard(
+        outputPath,
+        width,
+        height,
+        sceneIndex,
+        sceneTitle,
+        options.onScreenText,
+        totalScenes,
+        options.subtitle,
+        activeProduct,
+        activeCategory,
+        null
+      );
     }
 
-    // Si el circuit breaker de 402 está activo, pasar directamente al motor corporativo
+    // 4. Si el circuit breaker de 402 está activo, pasar al motor nativo garantizando aislamiento de marca
     if (is402CircuitBreakerActive()) {
-      console.log(`⚠️ [ImageGenerator] Circuit breaker activo (2x HTTP 402 previos). Omitiendo Pollinations y usando slide corporativo directo.`);
-      return generateLocalSceneCard(outputPath, width, height, sceneIndex, sceneTitle, options.onScreenText, totalScenes, options.subtitle);
+      console.log(`⚠️ [ImageGenerator] Circuit breaker activo (HTTP 402 previo). Omitiendo Pollinations y usando slide nativo.`);
+      return generateLocalSceneCard(
+        outputPath,
+        width,
+        height,
+        sceneIndex,
+        sceneTitle,
+        options.onScreenText,
+        totalScenes,
+        options.subtitle,
+        activeProduct,
+        activeCategory,
+        null
+      );
     }
 
-    // Ajuste del prompt maestro de marca corporativa para Silvania AI
-    const brandPrompt = `Executive SaaS productivity illustration for Silvania AI, minimal Google Workspace and Telegram business environment, modern dark blue aesthetic, cinematic lighting, 8k resolution, no text`;
-    const mobileOptimizedPrompt = `${brandPrompt}, ${prompt.trim()}`;
-    const encodedPrompt = encodeURIComponent(mobileOptimizedPrompt);
-
-    console.log(`🎨 ImageGenerator: Solicitando imagen ("${prompt.slice(0, 45)}...")...`);
+    // 5. Generación por IA usando el prompt del catálogo comercial de 300
+    const rawAiPrompt = selectedVisual.catalogPrompt || prompt;
+    const encodedPrompt = encodeURIComponent(rawAiPrompt);
+    console.log(`🎨 [ImageGenerator] Solicitando imagen por IA (${activeProduct}/${activeCategory}): "${rawAiPrompt.slice(0, 50)}..."`);
 
     let lastError: any = null;
 
-    // Intentamos con reintento (intento 1: flux o modelo preferido, intento 2: turbo)
     for (let attempt = 1; attempt <= 2; attempt++) {
       const modelToUse = attempt === 1 ? (options.model || "flux") : "turbo";
       const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&model=${modelToUse}&seed=${seed}&nologo=true`;
@@ -145,15 +220,25 @@ export const imageGenerator = {
         });
 
         if (response.data && response.data.byteLength > 1000) {
-          fs.writeFileSync(outputPath, Buffer.from(response.data));
-          const provider = modelToUse === "turbo" ? "pollinations_turbo" : "pollinations_flux";
-          console.log(`✅ ImageGenerator: Imagen de red guardada (${provider}) en ${outputPath} (${response.data.byteLength} bytes)`);
+          const rawAiPath = path.join(tempDir, `raw_ai_${Date.now()}_${seed}.jpg`);
+          fs.writeFileSync(rawAiPath, Buffer.from(response.data));
           consecutive402Errors = 0;
-          return {
-            filePath: outputPath,
-            provider,
-            isLocalFallback: false,
-          };
+
+          // ¡CLAVE! Componer la imagen generada por IA en la diapositiva con franja cinematográfica
+          console.log(`✅ [ImageGenerator] Imagen de IA recibida. Componiendo diapositiva cinematográfica...`);
+          return generateLocalSceneCard(
+            outputPath,
+            width,
+            height,
+            sceneIndex,
+            sceneTitle,
+            options.onScreenText,
+            totalScenes,
+            options.subtitle,
+            activeProduct,
+            activeCategory,
+            rawAiPath
+          );
         }
       } catch (err: any) {
         lastError = err;
@@ -161,7 +246,7 @@ export const imageGenerator = {
         if (statusCode === 402) {
           consecutive402Errors++;
           last402Timestamp = Date.now();
-          console.warn(`⛔ [ImageGenerator] HTTP 402 Payment Required en Pollinations (${modelToUse}). Contador 402 = ${consecutive402Errors}`);
+          console.warn(`⛔ [ImageGenerator] HTTP 402 Payment Required en Pollinations. Contador = ${consecutive402Errors}`);
           if (consecutive402Errors >= 2) {
             break;
           }
@@ -175,10 +260,22 @@ export const imageGenerator = {
       }
     }
 
-    // Si falló la red y el fallback está permitido, generar slide corporativo premium
+    // 6. Respaldo obligatorio en caso de fallo de red
     if (allowFallback) {
       console.warn(`⚠️ [ImageGenerator] Red no disponible (${lastError?.message}). Activando slide corporativo nativo obligatorio.`);
-      return generateLocalSceneCard(outputPath, width, height, sceneIndex, sceneTitle, options.onScreenText, totalScenes);
+      return generateLocalSceneCard(
+        outputPath,
+        width,
+        height,
+        sceneIndex,
+        sceneTitle,
+        options.onScreenText,
+        totalScenes,
+        options.subtitle,
+        activeProduct,
+        activeCategory,
+        null
+      );
     }
 
     throw new Error(`Fallo en la generación de imagen tras reintentos: ${lastError?.message || "Error desconocido"}`);

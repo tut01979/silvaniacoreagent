@@ -208,8 +208,8 @@ export const voiceStudio = {
 
     for (let i = 0; i < scenes.length; i++) {
       const scene = scenes[i];
-      let sceneSpokenText = scene.narration.trim();
-      if (i === 0 && hookText && hookText.trim().length > 0) {
+      let sceneSpokenText = (scene.narration || (scene as any).text || "").trim();
+      if (i === 0 && typeof hookText === "string" && hookText.trim().length > 0) {
         sceneSpokenText = `${hookText.trim()}... ${sceneSpokenText}`;
       }
       const normalized = normalizeSpokenText(sceneSpokenText);

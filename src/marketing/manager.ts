@@ -10,6 +10,7 @@ import { voiceStudio } from "./services/voiceStudio.js";
 import { videoAssembler, SceneMediaInput, getAudioDuration, getFfmpegBinary } from "./services/videoAssembler.js";
 import { telegramReview } from "./telegramReview.js";
 import { config } from "../config/config.js";
+import { visualAssetSelector } from "./services/visualAssetSelector.js";
 
 export const marketingManager = {
   /**
@@ -150,6 +151,9 @@ export const marketingManager = {
       }
 
       // 4. Generación de imágenes por escena (1 por escena, N = min(escenas, maxScenes))
+      const targetProduct = visualAssetSelector.detectProduct(topic);
+      console.log(`🎯 [Marketing Video] Producto y marca identificados: ${targetProduct.toUpperCase()} (Tema: "${topic}")`);
+
       const sceneMediaList: SceneMediaInput[] = [];
       let networkImageCount = 0;
       let localFallbackCount = 0;
@@ -173,7 +177,7 @@ export const marketingManager = {
             onScreenText: scene.onScreenText,
             subtitle: scene.narration,
             allowFallback: true,
-            preferCorporateSlides: true, // Motor de slides corporativos por defecto (fiable y elegante)
+            product: targetProduct,
           });
           sceneImgPath = imgRes.filePath;
           if (imgRes.isLocalFallback || imgRes.provider === "corporate_slide_canvas") {
@@ -204,7 +208,7 @@ export const marketingManager = {
           const fallbackPath = path.join(tempDir, `mkt_fallback_${Date.now()}_${i + 1}.jpg`);
           const scene = scenesToRender[i];
           const sceneTitle = scene.onScreenText || `Escena ${i + 1}`;
-          await generateLocalSceneCard(fallbackPath, imgDimensions.width, imgDimensions.height, i + 1, sceneTitle, scene.onScreenText, scenesToRender.length, scene.narration);
+          await generateLocalSceneCard(fallbackPath, imgDimensions.width, imgDimensions.height, i + 1, sceneTitle, scene.onScreenText, scenesToRender.length, scene.narration, targetProduct);
           sceneMediaList.push({
             sceneNumber: scene.sceneNumber || i + 1,
             narrationText: scene.narration || "",
