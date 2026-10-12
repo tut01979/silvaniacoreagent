@@ -252,11 +252,14 @@ export const telegramReview = {
     const data: string = ctx.callbackQuery?.data || "";
     if (!data.startsWith("mkt_")) return false;
 
+    // 1. Responder de inmediato al callback query para evitar timeout en Telegram (400: query is too old)
+    await ctx.answerCallbackQuery().catch(() => {});
+
     // Solo administradores autorizados pueden interactuar con marketing
     const userId = ctx.from?.id;
     const adminIds = config.marketing?.adminIds || [1572946817];
     if (!userId || !adminIds.includes(userId)) {
-      await ctx.answerCallbackQuery({ text: "⛔ No tienes permisos para gestionar marketing." });
+      await ctx.answerCallbackQuery({ text: "⛔ No tienes permisos para gestionar marketing." }).catch(() => {});
       return true;
     }
 
@@ -266,13 +269,13 @@ export const telegramReview = {
 
     const draft = marketingDb.getDraft(draftId);
     if (!draft) {
-      await ctx.answerCallbackQuery({ text: "⚠️ Borrador no encontrado o expirado." });
+      await ctx.answerCallbackQuery({ text: "⚠️ Borrador no encontrado o expirado." }).catch(() => {});
       return true;
     }
 
     // Acción: Generar y mostrar el pack adaptado a cada red social
     if (action === "pack") {
-      await ctx.answerCallbackQuery({ text: "📦 Generando Pack Multirredes..." });
+      await ctx.answerCallbackQuery({ text: "📦 Generando Pack Multirredes..." }).catch(() => {});
       const pack = socialPublisher.generateSocialPack(draft);
 
       const msg = 
@@ -387,8 +390,8 @@ export const telegramReview = {
 
           publishReport.unshift(`📢 *Canal Telegram:* Publicado con éxito${postLinkNote}`);
 
-          await ctx.answerCallbackQuery({ text: "🚀 ¡Aprobado y publicado!" });
-          await ctx.editMessageReplyMarkup({ reply_markup: undefined });
+          await ctx.answerCallbackQuery({ text: "🚀 ¡Aprobado y publicado!" }).catch(() => {});
+          await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
 
           const reportText = 
             `✅ *¡Borrador #${draftId.slice(0, 8)} APROBADO!*\n\n` +
@@ -403,7 +406,7 @@ export const telegramReview = {
           draft.status = "approved_saved";
           draft.updatedAt = new Date().toISOString();
           marketingDb.saveDraft(draft);
-          await ctx.answerCallbackQuery({ text: "⚠️ Error al enviar al canal. Guardado en SQLite." });
+          await ctx.answerCallbackQuery({ text: "⚠️ Error al enviar al canal. Guardado en SQLite." }).catch(() => {});
           await ctx.reply(`⚠️ Aprobado y guardado en SQLite, pero falló el envío al canal (${publishErr.message}).`);
           return true;
         }
@@ -413,8 +416,8 @@ export const telegramReview = {
         draft.status = "approved_saved";
         draft.updatedAt = new Date().toISOString();
         marketingDb.saveDraft(draft);
-        await ctx.answerCallbackQuery({ text: "✅ Aprobado y guardado." });
-        await ctx.editMessageReplyMarkup({ reply_markup: undefined });
+        await ctx.answerCallbackQuery({ text: "✅ Aprobado y guardado." }).catch(() => {});
+        await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
 
         publishReport.push(`💾 *SQLite Local:* Guardado`);
 
@@ -433,7 +436,7 @@ export const telegramReview = {
 
     if (action === "reg") {
       marketingDb.updateStatus(draftId, "regenerating");
-      await ctx.answerCallbackQuery({ text: "🔄 Regenerando borrador con nuevo ángulo..." });
+      await ctx.answerCallbackQuery({ text: "🔄 Regenerando borrador con nuevo ángulo..." }).catch(() => {});
       await ctx.reply(`🔄 *Regenerando nueva propuesta para:* "${draft.topic}"...`, { parse_mode: "Markdown" });
       try {
         const { marketingManager } = await import("./manager.js");
@@ -446,8 +449,8 @@ export const telegramReview = {
 
     if (action === "rej") {
       marketingDb.updateStatus(draftId, "rejected");
-      await ctx.answerCallbackQuery({ text: "❌ Descartado." });
-      await ctx.editMessageReplyMarkup({ reply_markup: undefined });
+      await ctx.answerCallbackQuery({ text: "❌ Descartado." }).catch(() => {});
+      await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
       await ctx.reply(`❌ Borrador #${draftId.slice(0, 8)} descartado.`);
       return true;
     }
@@ -461,7 +464,7 @@ export const telegramReview = {
           scriptMsg += `🖼️ Visual: \`${scene.visualPrompt}\`\n\n`;
         }
         await ctx.reply(scriptMsg.slice(0, 4000), { parse_mode: "Markdown" });
-        await ctx.answerCallbackQuery();
+        await ctx.answerCallbackQuery().catch(() => {});
       }
       return true;
     }
