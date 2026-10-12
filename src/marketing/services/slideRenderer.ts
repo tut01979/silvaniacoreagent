@@ -372,73 +372,73 @@ export const slideRenderer = {
       ctx.fillStyle = vignette;
       ctx.fillRect(0, 0, width, height);
 
-      // B. Degradado cinematográfico en el tercio inferior (de transparente a oscuro profundo)
-      const lowerGrad = ctx.createLinearGradient(0, height * 0.38, 0, height);
+      // B. Degradado cinematográfico discreto en el tercio inferior (el 65% superior queda 100% libre para ver a las personas)
+      const lowerGrad = ctx.createLinearGradient(0, height * 0.58, 0, height);
       lowerGrad.addColorStop(0, "transparent");
-      lowerGrad.addColorStop(0.25, "rgba(8, 12, 22, 0.40)");
-      lowerGrad.addColorStop(0.65, "rgba(8, 12, 22, 0.88)");
-      lowerGrad.addColorStop(1, "rgba(6, 9, 17, 0.96)");
+      lowerGrad.addColorStop(0.35, "rgba(8, 12, 22, 0.45)");
+      lowerGrad.addColorStop(0.75, "rgba(8, 12, 22, 0.85)");
+      lowerGrad.addColorStop(1, "rgba(6, 9, 17, 0.92)");
       ctx.fillStyle = lowerGrad;
-      ctx.fillRect(0, height * 0.38, width, height * 0.62);
+      ctx.fillRect(0, height * 0.58, width, height * 0.42);
 
-      // C. Pill de producto y categoría
-      const pillY = height - 215;
-      const pillH = 34;
+      // C. Pill de producto y categoría en tercio inferior
+      const pillY = height - 165;
+      const pillH = 30;
       const pillText = `ESCENA ${sceneIndex} DE ${totalScenes}  ·  ${theme.tag}`;
-      ctx.font = "bold 15px SilvaniaBold, sans-serif";
+      ctx.font = "bold 13px SilvaniaBold, sans-serif";
       const pillMetrics = ctx.measureText(pillText);
-      const pillW = pillMetrics.width + 36;
+      const pillW = pillMetrics.width + 32;
       const pillX = 70;
 
       ctx.fillStyle = theme.pillBg;
-      roundRect(ctx, pillX, pillY, pillW, pillH, 17);
+      roundRect(ctx, pillX, pillY, pillW, pillH, 15);
       ctx.fill();
-      ctx.strokeStyle = theme.accent + "88";
+      ctx.strokeStyle = theme.accent + "99";
       ctx.lineWidth = 1;
-      roundRect(ctx, pillX, pillY, pillW, pillH, 17);
+      roundRect(ctx, pillX, pillY, pillW, pillH, 15);
       ctx.stroke();
 
       ctx.fillStyle = theme.accent;
       ctx.textBaseline = "middle";
-      ctx.fillText(pillText, pillX + 18, pillY + pillH / 2);
+      ctx.fillText(pillText, pillX + 16, pillY + pillH / 2);
 
       // D. Texto principal en pantalla (On-Screen Headline)
       const headlineText = (options.onScreenText || options.title).trim();
-      ctx.font = "bold 44px SilvaniaBold, sans-serif";
+      ctx.font = "bold 38px SilvaniaBold, sans-serif";
       ctx.fillStyle = "#FFFFFF";
       ctx.textBaseline = "top";
 
-      // Sombra sutil para máxima legibilidad
-      ctx.shadowColor = "rgba(0, 0, 0, 0.90)";
-      ctx.shadowBlur = 12;
+      // Sombra sutil para máxima legibilidad sobre cualquier fondo fotográfico
+      ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
+      ctx.shadowBlur = 14;
       ctx.shadowOffsetX = 0;
       ctx.shadowOffsetY = 4;
 
       const headlineLines = wrapText(ctx, headlineText, width - 140).slice(0, 2);
-      const headlineY = height - 165;
+      const headlineY = height - 125;
       for (let i = 0; i < headlineLines.length; i++) {
-        ctx.fillText(headlineLines[i], 70, headlineY + i * 48);
+        ctx.fillText(headlineLines[i], 70, headlineY + i * 42);
       }
 
       ctx.shadowColor = "transparent";
 
       // E. Subtítulo o locución resumida
       const subText = options.subtitle || "";
-      if (subText && subText.toLowerCase() !== headlineText.toLowerCase()) {
-        ctx.font = "20px SilvaniaRegular, sans-serif";
+      if (subText && subText.toLowerCase() !== headlineText.toLowerCase() && headlineLines.length === 1) {
+        ctx.font = "18px SilvaniaRegular, sans-serif";
         ctx.fillStyle = "#CBD5E1";
-        const subLines = wrapText(ctx, subText, width - 260).slice(0, 1);
+        const subLines = wrapText(ctx, subText, width - 360).slice(0, 1);
         if (subLines.length > 0) {
-          ctx.fillText(subLines[0], 70, height - 60);
+          ctx.fillText(subLines[0], 70, height - 45);
         }
       }
 
       // F. Firma de marca y web en esquina inferior derecha
-      ctx.font = "bold 16px SilvaniaBold, sans-serif";
+      ctx.font = "bold 15px SilvaniaBold, sans-serif";
       ctx.fillStyle = theme.accent;
       ctx.textBaseline = "bottom";
       const brandMetrics = ctx.measureText(theme.brandWebsite);
-      ctx.fillText(theme.brandWebsite, width - 70 - brandMetrics.width, height - 38);
+      ctx.fillText(theme.brandWebsite, width - 70 - brandMetrics.width, height - 25);
 
     } else {
       // =========================================================================
