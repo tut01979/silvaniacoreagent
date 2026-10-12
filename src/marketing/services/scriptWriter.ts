@@ -129,13 +129,16 @@ ${ECOSISTEMA_KNOWLEDGE}
 Crea el guión completo y estructurado para un video de formato conciso y ágil sobre:
 Tema: "${topic}"
 
-Reglas:
-1. Hook inicial (10 a 20 segundos) que atrape la atención sin rodeos.
-2. Si el guión trata sobre Eva: Destaca su tecnología de privacidad y pronación como innovación en camino (Próximamente).
-3. Si trata sobre CoreAgent: Muestra la productividad de Google Workspace en Telegram.
-4. EXACTAMENTE ${targetScenes} escenas secuenciales (ni más ni menos, exactamente ${targetScenes} objetos en el array "scenes").
-5. Cada escena con timestamp, locución concisa en español natural (30-40 palabras máx por escena) y prompt visual en inglés.
-6. Título con alto CTR, descripción optimizada con mención a silvania.ai si aplica, y tags relevantes.
+Reglas de Locución y Guion (HABLADO PARA EL OÍDO):
+1. Redacta para ser HABLADO en voz alta, no para ser leído. Frases muy cortas y ágiles (8 a 12 palabras máx por oración).
+2. Puntuación fonética natural: usa puntos y seguido frecuentes, puntos suspensivos (...) para crear micropausas de anticipación y respiración, y preguntas retóricas directas.
+3. Hook inicial (10 a 15 segundos) de alto impacto que atrape sin rodeos: contrasta un problema común con una solución directa ("¿Cansado de abrir mil pestañas? Imagina esto...").
+4. Si el guión trata sobre Eva: Destaca su tecnología de privacidad y pronación como innovación en camino (Próximamente).
+5. Si trata sobre CoreAgent: Muestra la productividad de Google Workspace en Telegram.
+6. EXACTAMENTE ${targetScenes} escenas secuenciales (ni más ni menos, exactamente ${targetScenes} objetos en el array "scenes").
+7. Cada escena: locución concisa y hablada (25 a 35 palabras máx por escena) y "onScreenText" muy corto y contundente para la diapositiva en pantalla (máximo 4 a 7 palabras en mayúsculas, ej: "TU AGENDA EN TELEGRAM").
+8. Normalización fonética: Si mencionas la web en la locución, escribe "Silvania punto a-i" en lugar de enlaces crudos.
+9. Título atractivo de alto CTR, descripción optimizada con mención a silvania.ai si aplica, y tags relevantes.
 
 Responde ÚNICAMENTE con un JSON:
 {

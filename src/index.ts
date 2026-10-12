@@ -2295,7 +2295,7 @@ bot.command("marketing", async (ctx) => {
       const scenesInScript = lastDraft.videoScript?.scenes.length || lastDraft.sceneImageCount || 0;
       const net = lastDraft.networkImageCount ?? (lastDraft.distinctImageCount || 0);
       const loc = lastDraft.localFallbackImageCount ?? 0;
-      const imgBreakdown = net > 0 && loc > 0 ? `${net} red, ${loc} slides locales` : net > 0 ? `${net} red` : loc > 0 ? `${loc} slides locales` : `${lastDraft.distinctImageCount || 0} imágenes`;
+      const imgBreakdown = net > 0 && loc > 0 ? `${net} red, ${loc} slides corporativos` : net > 0 ? `${net} red` : loc > 0 ? `${loc} slides corporativos` : `${lastDraft.distinctImageCount || 0} imágenes`;
       const videoStatusStr = lastDraft.videoPath
         ? `Listo (${realDurStr ? `MP4 ${realDurStr} · ` : ""}${scenesInScript} escenas [${imgBreakdown}])`
         : (lastDraft.videoError ? `Error: ${lastDraft.videoError}` : "N/A");
@@ -2344,7 +2344,7 @@ bot.command("marketing", async (ctx) => {
       const scenesInScript = draft.videoScript?.scenes.length || draft.sceneImageCount || 1;
       const net = draft.networkImageCount ?? (draft.distinctImageCount || 0);
       const loc = draft.localFallbackImageCount ?? 0;
-      const imgBreakdown = net > 0 && loc > 0 ? `${net} red, ${loc} slides locales` : net > 0 ? `${net} red` : loc > 0 ? `${loc} slides locales` : `${draft.distinctImageCount || 0} imágenes`;
+      const imgBreakdown = net > 0 && loc > 0 ? `${net} red, ${loc} slides corporativos` : net > 0 ? `${net} red` : loc > 0 ? `${loc} slides corporativos` : `${draft.distinctImageCount || 0} imágenes`;
       await ctx.reply(`🎬 *Vídeo MP4 generado:* MP4 ${realDurStr} (audio real) · ${scenesInScript} escenas (${imgBreakdown}).\nRevisa el resultado interactivo arriba con los controles HITL de aprobación.`, { parse_mode: "Markdown" });
     }
   } catch (err: any) {

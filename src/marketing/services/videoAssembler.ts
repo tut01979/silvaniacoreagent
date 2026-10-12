@@ -148,7 +148,10 @@ export const videoAssembler = {
       const scene = scenes[i];
       let sceneDur: number;
 
-      if (i === scenes.length - 1) {
+      if (scene.durationSeconds && scene.durationSeconds > 0 && i < scenes.length - 1) {
+        sceneDur = scene.durationSeconds;
+        elapsed += sceneDur;
+      } else if (i === scenes.length - 1) {
         // La última escena absorbe el tiempo restante para coincidir exactamente con el audio real
         sceneDur = Math.max(1.0, parseFloat((totalAudioDuration - elapsed).toFixed(2)));
       } else {

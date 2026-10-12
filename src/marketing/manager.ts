@@ -117,22 +117,35 @@ export const marketingManager = {
       }
       const fullNarrationText = narrationBlocks.join("\n\n").trim();
       let realAudioDuration = 0;
+      let sceneDurations: number[] = [];
 
-      if (fullNarrationText.length > 0) {
-        console.log(`🎙️ [Marketing Video] Sintetizando locución completa: Hook + ${scenesToRender.length} escenas (${fullNarrationText.length} caracteres narrados) para "${scriptRes.data.title}"...`);
+      if (scenesToRender.length > 0) {
+        console.log(`🎙️ [Marketing Video] Sintetizando locución estructurada con pausas y tempo dinámico: Hook + ${scenesToRender.length} escenas para "${scriptRes.data.title}"...`);
         try {
-          const voiceRes = await voiceStudio.generateNarration(fullNarrationText, userId);
-          draft.audioUrls.push(voiceRes.audioPath);
-          draft.voiceProvider = voiceRes.provider;
-
-          // Medir y loggear duración real del audio sintetizado con ffprobe / ffmpeg
-          const ffmpegBin = getFfmpegBinary();
-          realAudioDuration = await getAudioDuration(voiceRes.audioPath, ffmpegBin);
+          const pacedRes = await voiceStudio.generatePacedNarration(
+            scenesToRender.map((s, idx) => ({ sceneNumber: s.sceneNumber || idx + 1, narration: s.narration || "" })),
+            scriptRes.data.hook,
+            userId,
+            { pauseSeconds: 0.35, tempo: 1.06 }
+          );
+          draft.audioUrls.push(pacedRes.audioPath);
+          draft.voiceProvider = pacedRes.provider;
+          realAudioDuration = pacedRes.totalDurationSeconds;
           draft.realDurationSeconds = realAudioDuration;
-          console.log(`🎙️ [Marketing Video] Audio sintetizado: duración real = ${realAudioDuration.toFixed(1)}s (ffprobe), caracteres narrados = ${fullNarrationText.length}, ruta = ${voiceRes.audioPath}`);
+          sceneDurations = pacedRes.sceneDurations;
+          console.log(`🎙️ [Marketing Video] Audio sintetizado: duración real = ${realAudioDuration.toFixed(1)}s (ffprobe), pausas = 350ms, tempo = x1.06, ruta = ${pacedRes.audioPath}`);
         } catch (err: any) {
-          console.warn("⚠️ Falló locución completa de vídeo:", err.message);
-          draft.videoError = "Error al sintetizar el audio: " + err.message;
+          console.warn("⚠️ Falló locución estructurada, usando modo directo:", err.message);
+          try {
+            const voiceRes = await voiceStudio.generateNarration(fullNarrationText, userId);
+            draft.audioUrls.push(voiceRes.audioPath);
+            draft.voiceProvider = voiceRes.provider;
+            const ffmpegBin = getFfmpegBinary();
+            realAudioDuration = await getAudioDuration(voiceRes.audioPath, ffmpegBin);
+            draft.realDurationSeconds = realAudioDuration;
+          } catch (voiceErr: any) {
+            draft.videoError = "Error al sintetizar el audio: " + voiceErr.message;
+          }
         }
       }
 
@@ -155,11 +168,15 @@ export const marketingManager = {
             ...imgDimensions,
             seed: Math.floor(Math.random() * 1000000) + (i + 1) * 333,
             sceneIndex: i + 1,
-            sceneTitle,
+            totalScenes: scenesToRender.length,
+            sceneTitle: scene.onScreenText || `Escena ${i + 1}`,
+            onScreenText: scene.onScreenText,
+            subtitle: scene.narration,
             allowFallback: true,
+            preferCorporateSlides: true, // Motor de slides corporativos por defecto (fiable y elegante)
           });
           sceneImgPath = imgRes.filePath;
-          if (imgRes.isLocalFallback) {
+          if (imgRes.isLocalFallback || imgRes.provider === "corporate_slide_canvas") {
             localFallbackCount++;
           } else {
             networkImageCount++;
@@ -173,8 +190,9 @@ export const marketingManager = {
             sceneNumber: scene.sceneNumber || i + 1,
             narrationText: scene.narration || "",
             imagePath: sceneImgPath,
+            durationSeconds: sceneDurations[i],
           });
-          console.log(`🖼️ [Marketing Video] Escena ${i + 1}/${scenesToRender.length}: OK -> ${sceneImgPath}`);
+          console.log(`🖼️ [Marketing Video] Escena ${i + 1}/${scenesToRender.length}: OK -> ${sceneImgPath} (${sceneDurations[i] ? `${sceneDurations[i]}s` : "auto"})`);
         }
       }
 
@@ -185,12 +203,13 @@ export const marketingManager = {
         for (let i = sceneMediaList.length; i < scenesToRender.length; i++) {
           const fallbackPath = path.join(tempDir, `mkt_fallback_${Date.now()}_${i + 1}.jpg`);
           const scene = scenesToRender[i];
-          const sceneTitle = (scene.onScreenText || scene.visualPrompt || `Escena ${i + 1}`).slice(0, 60);
-          generateLocalSceneCard(fallbackPath, imgDimensions.width, imgDimensions.height, i + 1, sceneTitle);
+          const sceneTitle = scene.onScreenText || `Escena ${i + 1}`;
+          await generateLocalSceneCard(fallbackPath, imgDimensions.width, imgDimensions.height, i + 1, sceneTitle, scene.onScreenText, scenesToRender.length, scene.narration);
           sceneMediaList.push({
             sceneNumber: scene.sceneNumber || i + 1,
             narrationText: scene.narration || "",
             imagePath: fallbackPath,
+            durationSeconds: sceneDurations[i],
           });
           localFallbackCount++;
         }

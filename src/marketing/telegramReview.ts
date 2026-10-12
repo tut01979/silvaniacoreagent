@@ -9,9 +9,9 @@ import { socialPublisher } from "./services/socialPublisher.js";
 function formatImageBreakdown(draft: MarketingDraft): string {
   const net = draft.networkImageCount ?? (draft.distinctImageCount || 0);
   const loc = draft.localFallbackImageCount ?? 0;
-  if (net > 0 && loc > 0) return `${net} red, ${loc} slides locales`;
+  if (net > 0 && loc > 0) return `${net} red, ${loc} slides corporativos`;
   if (net > 0 && loc === 0) return `${net} imágenes red`;
-  if (loc > 0 && net === 0) return `${loc} slides locales`;
+  if (loc > 0 && net === 0) return `${loc} slides corporativos`;
   return `${draft.distinctImageCount || draft.sceneImageCount || 1} imágenes`;
 }
 

@@ -69,5 +69,37 @@
 - **Test de Verificación**:
   - `npx tsx scratch/test_mock_402_assembler.ts`: Verificado con simulación de 402 forzado. Generó 3 imágenes locales con colores y textos distintos, y ensambló un MP4 de 6s con hashes MD5 diferentes en los segundos 1s, 3s y 5s (`197d...`, `4ab7...`, `221b...`).
 
+## 10. Sprint 1: SlideRenderer Corporativo (@napi-rs/canvas) & Google TTS Primario
+- **Problema de Producción**:
+  - En Railway (Linux container con static FFmpeg), FFmpeg arrojó `No such filter: 'drawtext'`, forzando el fallback de emergencia a color plano y produciendo un vídeo con tres fondos lisos (azul, morado, verde).
+  - Edge-TTS arrojaba `403 Forbidden` en Railway en cada intento, mientras que Google TTS sintetizaba el audio en 0.8s a 0€ de coste.
+- **Solución Implementada**:
+  - **Librería gráfica nativa**: `@napi-rs/canvas` (Rust + Skia precompilado en N-API, cero dependencias de sistema C++ como Cairo/Pango).
+  - **Nuevo Módulo [slideRenderer.ts](file:///c:/Users/eduar/silvaniacoreagent/src/marketing/services/slideRenderer.ts)**:
+    - Generación nativa en memoria (1280x720 JPEG a 90% calidad).
+    - Tarjeta estilo *glassmorphism* con esquinas redondeadas, sombra profunda y borde sutil.
+    - Insignia superior con número de escena y temática corporativa (`ESCENA X DE N · WORKSPACE / PRODUCTIVIDAD...`).
+    - Título multilínea con ajuste automático (*word-wrap*), subtítulo en pantalla y pie corporativo `Silvania CoreAgent · silvania.ai`.
+    - Generación ultrarrápida: ~30 ms por diapositiva.
+  - **Google TTS Primario**: En [voiceStudio.ts](file:///c:/Users/eduar/silvaniacoreagent/src/marketing/services/voiceStudio.ts), Google TTS pasa a ser el proveedor primario gratuito, eliminando retardos y logs 403.
+  - **Git Upstream**: Rama `master` configurada para rastreo directo de `origin/master`.
+
+## 11. Sprint 2: Narrador Premium (Pausas Naturales, Tempo Ágil & Sincronización 1:1)
+- **Problema**:
+  - La voz de Google Translate por defecto sonaba monótona y leía párrafos largos sin respirar entre escenas, generando un ritmo poco profesional.
+- **Solución Implementada**:
+  - **Copywriting para el Oído en [scriptWriter.ts](file:///c:/Users/eduar/silvaniacoreagent/src/marketing/services/scriptWriter.ts)**:
+    - Regla de 8 a 12 palabras por oración para ritmo ágil de presentador.
+    - Puntos suspensivos (`...`) y puntos y seguido frecuentes para inducir pausas fonéticas en el sintetizador.
+    - Normalización fonética (`Silvania punto a-i`).
+  - **Locución Estructurada por Escenas en [voiceStudio.ts](file:///c:/Users/eduar/silvaniacoreagent/src/marketing/services/voiceStudio.ts)**:
+    - Función `generatePacedNarration`: sintetiza cada escena de forma individual.
+    - Inserta micro-silencios de **350ms** entre escenas generados con FFmpeg (`anullsrc`), dando la sensación natural de respiración y permitiendo al espectador asimilar la nueva diapositiva.
+    - Filtro de tempo dinámico **`atempo=1.06`**: acelera un 6% el habla sin alterar el tono (*pitch*), pasando de tono robótico a locutor dinámico de podcast tecnológico.
+  - **Sincronización Matemática 1:1 en [manager.ts](file:///c:/Users/eduar/silvaniacoreagent/src/marketing/manager.ts) y [videoAssembler.ts](file:///c:/Users/eduar/silvaniacoreagent/src/marketing/services/videoAssembler.ts)**:
+    - Cada diapositiva visual se mantiene en pantalla exactamente la duración calculada de su fragmento de voz más la pausa (`durationSeconds: sceneDurations[i]`), garantizando cambio de imagen exacto con la voz.
+- **Test de Verificación**:
+  - `scratch/test_sprint2_voice.ts`: Verificado con 3 escenas. Audio maestro de 26.16s concatenado con silencios de 350ms y tempo x1.06. MP4 de 394 KB ensamblado y fotogramas extraídos con hashes MD5 diferentes.
+
 
 

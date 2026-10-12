@@ -14,6 +14,7 @@
   "license": "ISC",
   "dependencies": {
     "@aws-sdk/client-polly": "^3.1028.0",
+    "@napi-rs/canvas": "^1.0.11",
     "axios": "^1.7.7",
     "better-sqlite3": "^11.8.0",
     "cheerio": "^1.0.0",
@@ -40,6 +41,9 @@
     "@types/express": "^5.0.6",
     "@types/node": "^22.7.5",
     "onnxruntime-web": "^1.29.0"
+  },
+  "optionalDependencies": {
+    "@napi-rs/canvas-linux-x64-gnu": "1.0.11"
   },
   "engines": {
     "node": "20.x"
