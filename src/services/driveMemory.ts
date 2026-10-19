@@ -3,7 +3,7 @@ import { runGog } from "../tools/gogWrapper.js";
 import { configManager } from "./configManager.js";
 import { skillLoader } from "./skillLoader.js";
 import { criticalLogService } from "./criticalLog.js";
-import { folderCacheService, isNotFoundError } from "./folderCache.js";
+import { folderCacheService, isNotFoundError, isZombieFolder } from "./folderCache.js";
 import fs from "fs";
 import path from "path";
 
@@ -25,6 +25,10 @@ export const driveMemoryService = {
     remoteName: string,
     folderId: string
   ): Promise<string> {
+    if (isZombieFolder(folderId)) {
+      console.warn(`⚠️ [Drive Memory] Intento de uploadOrReplace para ${remoteName} en ID zombi '${folderId}'. Rechazado.`);
+      throw new Error(`File not found: ${folderId} (zombie folder)`);
+    }
     try {
       const searchRes = await runGog(
         `drive search "name = '${remoteName}' and '${folderId}' in parents and trashed = false" --raw-query --json`,

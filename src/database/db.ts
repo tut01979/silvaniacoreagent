@@ -324,6 +324,15 @@ export const dbService = {
     }
   },
 
+  deleteDriveFoldersStartingWith: async (userId: number, prefix: string): Promise<void> => {
+    try {
+      const stmt = db.prepare("DELETE FROM drive_folders WHERE userId = ? AND (path = ? OR path LIKE ?)");
+      stmt.run(userId, prefix, `${prefix}/%`);
+    } catch (e: any) {
+      console.warn("⚠️ Error eliminando carpetas por prefijo en DB:", e.message);
+    }
+  },
+
   getMuteVoice: async (userId: number): Promise<boolean> => {
     try {
       const stmt = db.prepare("SELECT muteVoice FROM user_settings WHERE userId = ?");

@@ -1,6 +1,6 @@
 import { runGog } from "./gogWrapper.js";
 import { formatFolderLink } from "../services/linkFormatter.js";
-import { folderCacheService, isNotFoundError } from "../services/folderCache.js";
+import { folderCacheService, isNotFoundError, isZombieFolder } from "../services/folderCache.js";
 import { userContextStore } from "../services/context.js";
 
 const SEP = "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
@@ -74,6 +74,9 @@ export const sheetsCreate = async (title: string, userId?: number) => {
     let moveInfo = "";
     try {
       let silvaniaFolderId = await folderCacheService.getOrCreateFolderPath(uId, "silvania");
+      if (isZombieFolder(silvaniaFolderId)) {
+        silvaniaFolderId = await folderCacheService.rebootstrapSilvania(uId, silvaniaFolderId);
+      }
       if (silvaniaFolderId && silvaniaFolderId !== "root") {
         try {
           await runGog(`drive move ${id} --parent=${silvaniaFolderId}`, uId);
@@ -81,9 +84,7 @@ export const sheetsCreate = async (title: string, userId?: number) => {
           moveInfo = `\n📂 **Ubicación:** Guardada en la carpeta canónica \`silvania/\``;
         } catch (firstMoveErr: any) {
           if (isNotFoundError(firstMoveErr)) {
-            console.warn(`⚠️ [Sheets] Parent silvania/ (${silvaniaFolderId}) dio 404 notFound al mover hoja. Invalidando y reintentando UNA vez...`);
-            await folderCacheService.invalidatePath(uId, "silvania");
-            silvaniaFolderId = await folderCacheService.getOrCreateFolderPath(uId, "silvania");
+            silvaniaFolderId = await folderCacheService.rebootstrapSilvania(uId, silvaniaFolderId);
             if (silvaniaFolderId && silvaniaFolderId !== "root") {
               try {
                 await runGog(`drive move ${id} --parent=${silvaniaFolderId}`, uId);

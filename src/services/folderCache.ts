@@ -5,6 +5,12 @@ import { dbService } from "../database/db.js";
 // Key: "userId:pathParts.join('/')", Value: folderId
 const folderIdCache = new Map<string, string>();
 
+// Conjunto de folder IDs que devolvieron 404 notFound en el proceso actual.
+// ESTRICTAMENTE PROHIBIDO volver a usar estos IDs como parent en búsquedas, uploads o moves.
+const zombieFolderIds = new Set<string>();
+// Prohibir explícitamente el parent obsoleto que causaba errores en prod
+zombieFolderIds.add("1LhOczaiyDMb69NI1I4FDiTLSsTijaU2H");
+
 /**
  * Detecta si un error devuelto por la API de Google Drive corresponde a un 404 notFound
  */
@@ -17,7 +23,76 @@ export function isNotFoundError(err: any): boolean {
          lower.includes("file not found");
 }
 
+export function isZombieFolder(folderId?: string | null): boolean {
+  if (!folderId) return false;
+  return zombieFolderIds.has(folderId);
+}
+
+export function registerZombieFolder(folderId?: string | null): void {
+  if (folderId && folderId !== "root") {
+    zombieFolderIds.add(folderId);
+  }
+}
+
 export const folderCacheService = {
+  /**
+   * Re-bootstrap limpio de silvania/ desde root tras un 404 notFound.
+   * Invalida y elimina el folderId zombi y todos los paths del usuario que lo usen.
+   * Busca silvania en root excluyendo IDs zombis; si no existe, crea una nueva con drive mkdir.
+   * Emite el log requerido: "Purgado parent config zombi; silvania -> <nuevoId>".
+   */
+  async rebootstrapSilvania(userId: number, failedFolderId?: string): Promise<string> {
+    if (failedFolderId && failedFolderId !== "root") {
+      zombieFolderIds.add(failedFolderId);
+      await this.invalidateFolderId(userId, failedFolderId);
+    }
+
+    // Invalida 'silvania' y todos los subpaths del usuario
+    await this.invalidatePath(userId, "silvania");
+    await dbService.deleteDriveFoldersStartingWith(userId, "silvania");
+
+    // Buscar en Drive carpetas llamadas 'silvania' excluyendo IDs zombis
+    let newSilvaniaId = "";
+    try {
+      const searchRes = await runGog(
+        `drive search "name = 'silvania' and mimeType = 'application/vnd.google-apps.folder' and trashed = false" --raw-query --json`,
+        userId
+      );
+      const parsed = JSON.parse(searchRes);
+      const files: any[] = parsed.files || (Array.isArray(parsed) ? parsed : []);
+      // Filtrar estrictamente cualquier folder que esté en zombieFolderIds
+      const validFolders = files.filter(f => f.id && !zombieFolderIds.has(f.id));
+
+      if (validFolders.length > 0) {
+        newSilvaniaId = validFolders[0].id;
+      }
+    } catch (sErr: any) {
+      console.warn("⚠️ [Folder Cache] Error buscando silvania durante re-bootstrap:", sErr.message);
+    }
+
+    if (!newSilvaniaId) {
+      // Crear nueva carpeta canónica silvania en root
+      try {
+        const createRes = await runGog(`drive mkdir "silvania" --json`, userId);
+        const cParsed = JSON.parse(createRes);
+        const folder = cParsed.folder || cParsed.file || cParsed;
+        newSilvaniaId = folder?.id || "";
+      } catch (cErr: any) {
+        console.error("❌ [Folder Cache] Error creando carpeta silvania durante re-bootstrap:", cErr.message);
+      }
+    }
+
+    if (newSilvaniaId && !zombieFolderIds.has(newSilvaniaId)) {
+      const cacheKey = `${userId}:silvania`;
+      folderIdCache.set(cacheKey, newSilvaniaId);
+      await dbService.saveDriveFolder(userId, "silvania", newSilvaniaId);
+      console.log(`Purgado parent config zombi; silvania -> ${newSilvaniaId}`);
+      return newSilvaniaId;
+    }
+
+    throw new Error("No se pudo re-bootstrapear una carpeta silvania válida en Drive.");
+  },
+
   /**
    * Invalida una ruta específica de la caché en memoria y de la base de datos (drive_folders).
    */
@@ -37,6 +112,7 @@ export const folderCacheService = {
    */
   async invalidateFolderId(userId: number, folderId: string): Promise<void> {
     if (!folderId || folderId === "root") return;
+    zombieFolderIds.add(folderId);
     for (const [key, val] of folderIdCache.entries()) {
       if (val === folderId && key.startsWith(`${userId}:`)) {
         folderIdCache.delete(key);
@@ -59,13 +135,21 @@ export const folderCacheService = {
     const fullPathStr = pathParts.join("/");
     const fullCacheKey = `${userId}:${fullPathStr}`;
     if (folderIdCache.has(fullCacheKey)) {
-      return folderIdCache.get(fullCacheKey)!;
+      const cached = folderIdCache.get(fullCacheKey)!;
+      if (!zombieFolderIds.has(cached)) {
+        return cached;
+      }
+      folderIdCache.delete(fullCacheKey);
     }
     try {
       const persistedFull = await dbService.getDriveFolder(userId, fullPathStr);
       if (persistedFull) {
-        folderIdCache.set(fullCacheKey, persistedFull);
-        return persistedFull;
+        if (!zombieFolderIds.has(persistedFull)) {
+          folderIdCache.set(fullCacheKey, persistedFull);
+          return persistedFull;
+        }
+        await dbService.deleteDriveFolder(userId, fullPathStr);
+        await dbService.deleteDriveFolderById(userId, persistedFull);
       }
     } catch {}
 
@@ -79,8 +163,12 @@ export const folderCacheService = {
 
       // 1. Comprobar caché en memoria
       if (folderIdCache.has(cacheKey)) {
-        parentId = folderIdCache.get(cacheKey)!;
-        continue;
+        const cached = folderIdCache.get(cacheKey)!;
+        if (!zombieFolderIds.has(cached)) {
+          parentId = cached;
+          continue;
+        }
+        folderIdCache.delete(cacheKey);
       }
 
       // 2. Comprobar persistencia en base de datos (DB drive_folders)
@@ -88,9 +176,13 @@ export const folderCacheService = {
       try {
         persistedId = await dbService.getDriveFolder(userId, pathStr);
         if (persistedId) {
-          folderIdCache.set(cacheKey, persistedId);
-          parentId = persistedId;
-          continue;
+          if (!zombieFolderIds.has(persistedId)) {
+            folderIdCache.set(cacheKey, persistedId);
+            parentId = persistedId;
+            continue;
+          }
+          await dbService.deleteDriveFolder(userId, pathStr);
+          await dbService.deleteDriveFolderById(userId, persistedId);
         }
       } catch {}
 
@@ -144,8 +236,8 @@ export const folderCacheService = {
           }
         }
 
-        // Filtrar coincidencias exactas de nombre
-        const exactMatches = searchFiles.filter((f: any) => f.name === part);
+        // Filtrar coincidencias exactas de nombre que NO sean IDs zombis
+        const exactMatches = searchFiles.filter((f: any) => f.name === part && f.id && !zombieFolderIds.has(f.id));
 
         if (exactMatches.length > 1) {
           // Detectadas múltiples carpetas duplicadas: seleccionar canónica determinista
@@ -171,14 +263,15 @@ export const folderCacheService = {
           parentId = exactMatches[0].id;
           folderIdCache.set(cacheKey, parentId);
           await dbService.saveDriveFolder(userId, pathStr, parentId);
-        } else if (searchFiles.length > 0) {
-          parentId = searchFiles[0].id;
+        } else if (exactMatches.length === 0 && searchFiles.some((f: any) => f.id && !zombieFolderIds.has(f.id))) {
+          const validNonExact = searchFiles.filter((f: any) => f.id && !zombieFolderIds.has(f.id));
+          parentId = validNonExact[0].id;
           folderIdCache.set(cacheKey, parentId);
           await dbService.saveDriveFolder(userId, pathStr, parentId);
         } else {
           // REGLA OBLIGATORIA 1: SIEMPRE consultar getDriveFolder(userId, path) antes de drive mkdir
           const checkBeforeMkdir = await dbService.getDriveFolder(userId, pathStr);
-          if (checkBeforeMkdir) {
+          if (checkBeforeMkdir && !zombieFolderIds.has(checkBeforeMkdir)) {
             parentId = checkBeforeMkdir;
             folderIdCache.set(cacheKey, parentId);
             continue;
