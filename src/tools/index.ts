@@ -16,7 +16,7 @@ import { youtubeGetTranscript, youtubeSearch } from "./youtube.js";
 import { memoryManager } from "../services/memoryManager.js";
 import { generateDriveLink } from "../services/linkGenerator.js";
 import { driveMemoryService } from "../services/driveMemory.js";
-import { getAuthUrl } from "../services/authHelper.js";
+import { getAuthUrl, isBetaUser } from "../services/authHelper.js";
 import { analyzeDocument } from "./documentAnalyzer.js";
 import fs from "fs";
 import path from "path";
@@ -503,6 +503,18 @@ export const tools = {
 export type ToolName = keyof typeof tools;
 
 export async function executeTool(name: string, args: any, userId?: number): Promise<string> {
+  // 0. Restricción de scopes por tier (producción vs beta)
+  const betaOnlyTools = ["gmail_list", "gmail_search", "gmail_thread", "google_workspace"];
+  if (betaOnlyTools.includes(name)) {
+    const userIsBeta = isBetaUser(userId);
+    if (!userIsBeta) {
+      if (name.startsWith("gmail_")) {
+        return "❌ Esta función no está disponible en tu plan/tier actual: En el tier de producción Silvania cuenta con permisos mínimos de seguridad (solo envío: gmail.send). La lectura y búsqueda de correos requiere el tier Beta. Puedes consultar tu correo directamente en Gmail: https://mail.google.com/mail/u/0/#inbox";
+      }
+      return "❌ Esta función no está disponible en tu plan/tier actual: La herramienta de consola gog avanzada requiere permisos del tier Beta.";
+    }
+  }
+
   // 1. Restricción de seguridad de execute_command a nivel de administrador
   if (name === "execute_command") {
     const adminId = config.telegram.allowedUsers[0] || 1572946817;

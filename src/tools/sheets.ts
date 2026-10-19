@@ -1,6 +1,6 @@
 import { runGog } from "./gogWrapper.js";
 import { formatFolderLink } from "../services/linkFormatter.js";
-import { folderCacheService } from "../services/folderCache.js";
+import { folderCacheService, isNotFoundError } from "../services/folderCache.js";
 import { userContextStore } from "../services/context.js";
 
 const SEP = "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
@@ -73,15 +73,38 @@ export const sheetsCreate = async (title: string, userId?: number) => {
 
     let moveInfo = "";
     try {
-      const silvaniaFolderId = await folderCacheService.getOrCreateFolderPath(uId, "silvania");
+      let silvaniaFolderId = await folderCacheService.getOrCreateFolderPath(uId, "silvania");
       if (silvaniaFolderId && silvaniaFolderId !== "root") {
-        await runGog(`drive move ${id} --parent=${silvaniaFolderId}`, uId);
-        console.log(`📂 [Sheets] Hoja '${cleanTitle}' (${id}) movida a carpeta canónica silvania/ (${silvaniaFolderId})`);
-        moveInfo = `\n📂 **Ubicación:** Guardada en la carpeta canónica \`silvania/\``;
+        try {
+          await runGog(`drive move ${id} --parent=${silvaniaFolderId}`, uId);
+          console.log(`📂 [Sheets] Hoja '${cleanTitle}' (${id}) movida a carpeta canónica silvania/ (${silvaniaFolderId})`);
+          moveInfo = `\n📂 **Ubicación:** Guardada en la carpeta canónica \`silvania/\``;
+        } catch (firstMoveErr: any) {
+          if (isNotFoundError(firstMoveErr)) {
+            console.warn(`⚠️ [Sheets] Parent silvania/ (${silvaniaFolderId}) dio 404 notFound al mover hoja. Invalidando y reintentando UNA vez...`);
+            await folderCacheService.invalidatePath(uId, "silvania");
+            silvaniaFolderId = await folderCacheService.getOrCreateFolderPath(uId, "silvania");
+            if (silvaniaFolderId && silvaniaFolderId !== "root") {
+              try {
+                await runGog(`drive move ${id} --parent=${silvaniaFolderId}`, uId);
+                console.log(`📂 [Sheets] Reintento de movimiento exitoso a nueva carpeta silvania/ (${silvaniaFolderId})`);
+                moveInfo = `\n📂 **Ubicación:** Guardada en la carpeta canónica \`silvania/\``;
+              } catch (secondMoveErr: any) {
+                console.warn(`⚠️ [Sheets] Reintento de movimiento a silvania/ falló:`, secondMoveErr?.message || secondMoveErr);
+                moveInfo = `\n⚠️ *Aviso: La hoja fue creada en la raíz de Google Drive pero no se pudo mover a la carpeta silvania/ (${secondMoveErr?.message || "error al mover"}).*`;
+              }
+            } else {
+              moveInfo = `\n⚠️ *Aviso: La hoja fue creada en la raíz de Google Drive pero no se pudo resolver la carpeta silvania/.*`;
+            }
+          } else {
+            console.warn(`⚠️ [Sheets] Falló el movimiento de la hoja '${id}' a silvania/:`, firstMoveErr?.message || firstMoveErr);
+            moveInfo = `\n⚠️ *Aviso: La hoja fue creada en la raíz de Google Drive pero no se pudo mover a la carpeta silvania/ (${firstMoveErr?.message || "error al mover"}).*`;
+          }
+        }
       }
     } catch (moveErr: any) {
-      console.warn(`⚠️ [Sheets] Falló el movimiento de la hoja '${id}' a silvania/:`, moveErr?.message || moveErr);
-      moveInfo = `\n⚠️ *Aviso: La hoja fue creada pero no se pudo mover a la carpeta silvania/ (${moveErr?.message || "error al mover"}).*`;
+      console.warn(`⚠️ [Sheets] Falló la resolución de silvania/ para mover la hoja:`, moveErr?.message || moveErr);
+      moveInfo = `\n⚠️ *Aviso: La hoja fue creada en la raíz de Google Drive pero no se pudo mover a la carpeta silvania/.*`;
     }
     
     return `✅ **HOJA DE CÁLCULO CREADA**\n${SEP}\n\n` +
@@ -268,8 +291,8 @@ export const sheetsCreateInvoice = async (opts: { title: string; number?: string
     }
 
     let moveNote = "\n📂 **Ubicación:** Guardada en la carpeta canónica `silvania/`";
-    if (createRes.includes("Aviso: La hoja fue creada pero no se pudo mover")) {
-      moveNote = "\n⚠️ *Aviso: La factura fue creada pero no se pudo mover a la carpeta silvania/.*";
+    if (createRes.includes("no se pudo mover")) {
+      moveNote = "\n⚠️ *Aviso: La factura fue creada en la raíz de Google Drive pero no se pudo mover a la carpeta silvania/.*";
     }
 
     const editLink = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;

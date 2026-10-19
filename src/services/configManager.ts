@@ -1,7 +1,7 @@
 import { dbService } from "../database/db.js";
 import { runGog } from "../tools/gogWrapper.js";
 import { criticalLogService } from "./criticalLog.js";
-import { folderCacheService } from "./folderCache.js";
+import { folderCacheService, isNotFoundError } from "./folderCache.js";
 import { driveMemoryService } from "./driveMemory.js";
 import fs from "fs";
 import path from "path";
@@ -88,13 +88,33 @@ export const configManager = {
     }
 
     try {
-      const silvaniaFolderId = await this.getOrCreateFolderPath(userId, ["silvania"]);
+      let silvaniaFolderId = await this.getOrCreateFolderPath(userId, ["silvania"]);
       const fileName = "config.json";
       
-      const searchRes = await runGog(
-        `drive search "name = '${fileName}' and '${silvaniaFolderId}' in parents and trashed = false" --raw-query --json`,
-        userId
-      );
+      let searchRes = "";
+      try {
+        searchRes = await runGog(
+          `drive search "name = '${fileName}' and '${silvaniaFolderId}' in parents and trashed = false" --raw-query --json`,
+          userId
+        );
+      } catch (firstSearchErr: any) {
+        if (isNotFoundError(firstSearchErr)) {
+          console.warn(`⚠️ [Config Manager] Parent silvania/ (${silvaniaFolderId}) dio 404 notFound al buscar config.json. Invalidando y reintentando UNA vez...`);
+          await folderCacheService.invalidatePath(userId, ["silvania"]);
+          silvaniaFolderId = await this.getOrCreateFolderPath(userId, ["silvania"]);
+          try {
+            searchRes = await runGog(
+              `drive search "name = '${fileName}' and '${silvaniaFolderId}' in parents and trashed = false" --raw-query --json`,
+              userId
+            );
+          } catch (secondSearchErr: any) {
+            console.warn(`⚠️ [Config Manager] Reintento de búsqueda de config.json falló:`, secondSearchErr.message);
+            return await getLocalFallback();
+          }
+        } else {
+          throw firstSearchErr;
+        }
+      }
       const parsed = JSON.parse(searchRes);
       const files = parsed.files || (Array.isArray(parsed) ? parsed : []);
       
@@ -220,7 +240,7 @@ export const configManager = {
     const localConfigPath = path.join(userFolder, "config.json");
 
     try {
-      const silvaniaFolderId = await this.getOrCreateFolderPath(userId, ["silvania"]);
+      let silvaniaFolderId = await this.getOrCreateFolderPath(userId, ["silvania"]);
       const fileName = "config.json";
       
       const tempName = `config_${userId}.json`;
@@ -238,8 +258,25 @@ export const configManager = {
       }
       fs.writeFileSync(localConfigPath, configStr, "utf8");
       
-      // Subir o reemplazar configuración
-      const uploadRes = await driveMemoryService.uploadOrReplace(userId, tempPath, fileName, silvaniaFolderId);
+      // Subir o reemplazar configuración con recovery 404 de 1 solo reintento
+      let uploadRes = "";
+      try {
+        uploadRes = await driveMemoryService.uploadOrReplace(userId, tempPath, fileName, silvaniaFolderId);
+      } catch (firstUploadErr: any) {
+        if (isNotFoundError(firstUploadErr)) {
+          console.warn(`⚠️ [Config Manager] Parent silvania/ (${silvaniaFolderId}) dio 404 notFound al subir config.json. Invalidando y reintentando UNA vez...`);
+          await folderCacheService.invalidatePath(userId, ["silvania"]);
+          silvaniaFolderId = await this.getOrCreateFolderPath(userId, ["silvania"]);
+          try {
+            uploadRes = await driveMemoryService.uploadOrReplace(userId, tempPath, fileName, silvaniaFolderId);
+          } catch (retryUploadErr: any) {
+            console.warn(`⚠️ [Config Manager] Reintento de subida de config.json falló:`, retryUploadErr.message);
+            // Degradar a caché local SIN bucle de uploads
+          }
+        } else {
+          throw firstUploadErr;
+        }
+      }
       try { fs.unlinkSync(tempPath); } catch {}
 
       if (uploadRes) {

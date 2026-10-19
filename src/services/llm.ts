@@ -2,6 +2,7 @@ import Groq from "groq-sdk";
 import OpenAI from "openai";
 import fs from "fs";
 import { config } from "../config/config.js";
+import { isBetaUser } from "./authHelper.js";
 
 const groq = new Groq({ apiKey: config.llm.groqKey });
 const openRouter = new OpenAI({
@@ -105,6 +106,7 @@ export const llmService = {
     const targetModel = model || "google/gemini-2.5-flash";
     const adminId = config.telegram.allowedUsers[0] || 1572946817;
     const isAdmin = userId === adminId;
+    const userIsBeta = isBetaUser(userId);
     const tools: any[] = [
       {
         type: "function",
@@ -175,63 +177,7 @@ export const llmService = {
         }
       },
 
-  {
-    type: "function",
-    function: {
-      name: "google_workspace",
-      description: "Ejecuta comandos directos del CLI 'gog' para Google Workspace (drive, gmail, calendar, sheets).",
-      parameters: {
-        type: "object",
-        properties: {
-          command: { type: "string", description: "Comando gog (ej: 'drive ls', 'gmail list')" }
-        },
-        required: ["command"]
-      }
-    }
-  },
-  // ─── GMAIL ───
-      {
-        type: "function",
-        function: {
-          name: "gmail_list",
-          description: "Lista los correos más recientes en la bandeja de entrada.",
-          parameters: {
-            type: "object",
-            properties: {
-              max_results: { type: "number", description: "Máximo correos a mostrar (default 10)" }
-            }
-          }
-        }
-      },
-      {
-        type: "function",
-        function: {
-          name: "gmail_search",
-          description: "Busca correos en Gmail usando filtros (ej: 'from:google', 'subject:factura').",
-          parameters: {
-            type: "object",
-            properties: {
-              query: { type: "string", description: "Consulta de búsqueda de Gmail" },
-              max_results: { type: "number", description: "Máximo correos a mostrar" }
-            },
-            required: ["query"]
-          }
-        }
-      },
-      {
-        type: "function",
-        function: {
-          name: "gmail_thread",
-          description: "Obtiene el contenido completo de un hilo o correo de Gmail por su ID.",
-          parameters: {
-            type: "object",
-            properties: {
-              thread_id: { type: "string", description: "ID del hilo/mensaje" }
-            },
-            required: ["thread_id"]
-          }
-        }
-      },
+      // ─── GMAIL (PROD SCOPES: SEND ONLY) ───
       {
         type: "function",
         function: {
@@ -724,6 +670,67 @@ export const llmService = {
       }
 
     ];
+
+    if (userIsBeta) {
+      tools.push(
+        {
+          type: "function",
+          function: {
+            name: "google_workspace",
+            description: "Ejecuta comandos directos del CLI 'gog' para Google Workspace (drive, gmail, calendar, sheets).",
+            parameters: {
+              type: "object",
+              properties: {
+                command: { type: "string", description: "Comando gog (ej: 'drive ls', 'gmail list')" }
+              },
+              required: ["command"]
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
+            name: "gmail_list",
+            description: "Lista los correos más recientes en la bandeja de entrada (solo tier Beta).",
+            parameters: {
+              type: "object",
+              properties: {
+                max_results: { type: "number", description: "Máximo correos a mostrar (default 10)" }
+              }
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
+            name: "gmail_search",
+            description: "Busca correos en Gmail usando filtros (ej: 'from:google', 'subject:factura') (solo tier Beta).",
+            parameters: {
+              type: "object",
+              properties: {
+                query: { type: "string", description: "Consulta de búsqueda de Gmail" },
+                max_results: { type: "number", description: "Máximo correos a mostrar" }
+              },
+              required: ["query"]
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
+            name: "gmail_thread",
+            description: "Obtiene el contenido completo de un hilo o correo de Gmail por su ID (solo tier Beta).",
+            parameters: {
+              type: "object",
+              properties: {
+                thread_id: { type: "string", description: "ID del hilo/mensaje" }
+              },
+              required: ["thread_id"]
+            }
+          }
+        }
+      );
+    }
 
     if (isAdmin) {
       tools.push({

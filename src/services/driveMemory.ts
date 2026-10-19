@@ -3,7 +3,7 @@ import { runGog } from "../tools/gogWrapper.js";
 import { configManager } from "./configManager.js";
 import { skillLoader } from "./skillLoader.js";
 import { criticalLogService } from "./criticalLog.js";
-import { folderCacheService } from "./folderCache.js";
+import { folderCacheService, isNotFoundError } from "./folderCache.js";
 import fs from "fs";
 import path from "path";
 
@@ -55,7 +55,12 @@ export const driveMemoryService = {
       }
     } catch (err: any) {
       console.error(`❌ [Drive Memory] Falló uploadOrReplace para ${remoteName}:`, err.message);
-      // Fallback a subida normal
+      if (isNotFoundError(err)) {
+        console.warn(`⚠️ [Drive Memory] Parent '${folderId}' no existe en Drive (404 notFound). Invalidando folderId...`);
+        await folderCacheService.invalidateFolderId(userId, folderId);
+        throw err;
+      }
+      // Fallback a subida normal solo si NO es error 404
       try {
         const fallbackRes = await runGog(`drive upload "${localPath}" --parent=${folderId} --name="${remoteName}" --json`, userId);
         const p = JSON.parse(fallbackRes);
@@ -303,10 +308,23 @@ export const driveMemoryService = {
       fs.writeFileSync(tempPath, JSON.stringify(todayMessages, null, 2));
 
       // Resolver ruta de carpeta YYYY/MM en Drive
-      const folderId = await this.getOrCreateFolderPath(["silvania", "historial", YYYY, MM], userId);
+      let folderId = await this.getOrCreateFolderPath(["silvania", "historial", YYYY, MM], userId);
       const fileName = `dia_${DD}.json`;
-      // Subir o reemplazar el archivo de hoy para evitar duplicados
-      const fileId = await this.uploadOrReplace(userId, tempPath, fileName, folderId);
+      let fileId = "";
+      try {
+        fileId = await this.uploadOrReplace(userId, tempPath, fileName, folderId);
+      } catch (uploadErr: any) {
+        if (isNotFoundError(uploadErr)) {
+          console.warn(`⚠️ [Drive Memory] 404 notFound al subir historial diario. Invalidando path y reintentando UNA vez...`);
+          await folderCacheService.invalidatePath(userId, ["silvania", "historial", YYYY, MM]);
+          folderId = await this.getOrCreateFolderPath(["silvania", "historial", YYYY, MM], userId);
+          try {
+            fileId = await this.uploadOrReplace(userId, tempPath, fileName, folderId);
+          } catch (retryErr: any) {
+            console.warn(`⚠️ [Drive Memory] Reintento de subida de historial diario falló:`, retryErr.message);
+          }
+        }
+      }
       if (fileId) {
         console.log(`✅ [Drive Memory] Historial diario para ${YYYY}-${MM}-${DD} guardado en Drive.`);
       } else {

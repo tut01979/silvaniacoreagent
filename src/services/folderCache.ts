@@ -5,7 +5,47 @@ import { dbService } from "../database/db.js";
 // Key: "userId:pathParts.join('/')", Value: folderId
 const folderIdCache = new Map<string, string>();
 
+/**
+ * Detecta si un error devuelto por la API de Google Drive corresponde a un 404 notFound
+ */
+export function isNotFoundError(err: any): boolean {
+  const msg = typeof err === "string" ? err : (err?.message || "");
+  const lower = msg.toLowerCase();
+  return lower.includes("notfound") ||
+         lower.includes("not found") ||
+         lower.includes("404") ||
+         lower.includes("file not found");
+}
+
 export const folderCacheService = {
+  /**
+   * Invalida una ruta específica de la caché en memoria y de la base de datos (drive_folders).
+   */
+  async invalidatePath(userId: number, pathInput: string[] | string): Promise<void> {
+    const pathParts = Array.isArray(pathInput)
+      ? pathInput
+      : String(pathInput).split(/[/\\]/).filter(p => p.trim().length > 0);
+    const fullPathStr = pathParts.join("/");
+    const cacheKey = `${userId}:${fullPathStr}`;
+    folderIdCache.delete(cacheKey);
+    await dbService.deleteDriveFolder(userId, fullPathStr);
+    console.log(`🧹 [Folder Cache] Ruta invalidada de DB y memoria: '${fullPathStr}' (userId=${userId})`);
+  },
+
+  /**
+   * Invalida cualquier entrada en memoria y DB asociada a un folderId específico (útil tras 404 notFound).
+   */
+  async invalidateFolderId(userId: number, folderId: string): Promise<void> {
+    if (!folderId || folderId === "root") return;
+    for (const [key, val] of folderIdCache.entries()) {
+      if (val === folderId && key.startsWith(`${userId}:`)) {
+        folderIdCache.delete(key);
+      }
+    }
+    await dbService.deleteDriveFolderById(userId, folderId);
+    console.log(`🧹 [Folder Cache] Folder ID invalidado de DB y memoria: '${folderId}' (userId=${userId})`);
+  },
+
   /**
    * Resuelve una ruta de carpetas anidadas en Google Drive para un usuario,
    * utilizando caché en memoria y persistencia en DB para operar óptimamente con drive.file.
@@ -66,6 +106,11 @@ export const folderCacheService = {
           searchFiles = parsed.files || (Array.isArray(parsed) ? parsed : []);
         } catch (searchErr: any) {
           console.warn(`⚠️ [Folder Cache] Búsqueda de carpeta '${part}' en parent '${parentId}' falló: ${searchErr.message}.`);
+          if (isNotFoundError(searchErr) && parentId !== "root") {
+            console.warn(`⚠️ [Folder Cache] Parent '${parentId}' dio 404 notFound en Drive. Invalidando parent y continuando desde root...`);
+            await this.invalidateFolderId(userId, parentId);
+            parentId = "root";
+          }
           if (
             searchErr.message?.includes("Tu sesión de Google expiró") ||
             searchErr.message?.includes("invalid_grant") ||
@@ -142,7 +187,19 @@ export const folderCacheService = {
           // Solo crear si no existe ID en DB y no se encuentra ninguna carpeta usable creada por la app
           let cmd = `drive mkdir "${part}" --json`;
           if (parentId !== "root") cmd += ` --parent=${parentId}`;
-          const createRes = await runGog(cmd, userId);
+          let createRes: string;
+          try {
+            createRes = await runGog(cmd, userId);
+          } catch (mkdirErr: any) {
+            if (isNotFoundError(mkdirErr) && parentId !== "root") {
+              console.warn(`⚠️ [Folder Cache] Mkdir falló con 404 en parent '${parentId}'. Invalidando y creando en root...`);
+              await this.invalidateFolderId(userId, parentId);
+              parentId = "root";
+              createRes = await runGog(`drive mkdir "${part}" --json`, userId);
+            } else {
+              throw mkdirErr;
+            }
+          }
           const cParsed = JSON.parse(createRes);
           const folder = cParsed.folder || cParsed.file || cParsed;
           const newFolderId = folder?.id;

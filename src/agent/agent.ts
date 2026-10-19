@@ -6,11 +6,64 @@ import { parseUserTasks, formatTaskSummary } from "../services/taskParser.js";
 import { shouldTriggerMultitask } from "../services/multitaskFilter.js";
 import fs from "fs";
 import path from "path";
+import { isBetaUser, getGoogleCredentials } from "../services/authHelper.js";
+import { config } from "../config/config.js";
 
 const MAX_ITERATIONS = 10;
 
 export async function runAgent(userId: number, userMessage: string) {
   return userContextStore.run({ userId }, async () => {
+    // 0. Enrutamiento estricto por producto / canal (/marketing, /campaña, /eva)
+    const trimmedMsg = userMessage.trim();
+    if (trimmedMsg.startsWith("/marketing") || trimmedMsg.startsWith("/campaña") || trimmedMsg.startsWith("/campana")) {
+      const parts = trimmedMsg.split(/\s+/);
+      const isPost = parts[0].toLowerCase() === "/marketing" && parts[1]?.toLowerCase() === "post";
+      
+      let mktReply = "";
+      if (trimmedMsg === "/marketing") {
+        mktReply = "🚀 **Silvania Marketing Studio (Omnicanal & Low-Cost)**\n\n" +
+          "Uso del comando:\n" +
+          "• `/campaña [tema]` o `/marketing campaña [tema]` - Genera el pack omnicanal completo.\n" +
+          "• `/marketing video [youtube] [tema]` - Vídeo 16:9 extendido.\n" +
+          "• `/marketing short [tiktok] [tema]` - Vídeo vertical 9:16 ágil.\n" +
+          "• `/marketing post [linkedin|x|telegram] [tema]` - Post adaptado a la red con imagen y audio.\n" +
+          "• `/marketing draft [coreagent|eva|marketing]` - Borrador diario rotativo HITL.\n" +
+          "• `/marketing status` - Consulta el estado del último borrador.";
+      } else if (isPost && parts.length <= 2) {
+        mktReply = "⚠️ **Silvania Marketing Studio:** Por favor indica el tema después del subcomando. Ejemplo: `/marketing post linkedin mi tema` o `/marketing post Mi nuevo producto`";
+      } else if (isPost) {
+        const topic = parts.slice(2).join(" ").trim();
+        mktReply = `🧠 **Silvania Marketing Studio:** Solicitud de post recibida para _${topic}_.\nProcesando mediante el flujo HITL de Marketing Studio.`;
+      } else {
+        mktReply = `🚀 **Silvania Marketing Studio:** Comando de marketing recibido (${parts[0]}). Silvania Marketing Studio gestiona esta tarea con supervisión Human-in-the-Loop.`;
+      }
+
+      await dbService.addMessage(userId, "user", userMessage);
+      await dbService.addMessage(userId, "assistant", mktReply);
+      return mktReply;
+    }
+
+    const lowerTrimmed = trimmedMsg.toLowerCase();
+    if (
+      lowerTrimmed === "/eva" ||
+      lowerTrimmed.startsWith("/eva ") ||
+      lowerTrimmed.startsWith("/eva_") ||
+      lowerTrimmed === "eva" ||
+      lowerTrimmed.includes("jugar con eva") ||
+      lowerTrimmed.includes("hablar con eva") ||
+      lowerTrimmed.includes("ejercicio de logopedia")
+    ) {
+      const evaReply =
+        `🗣️ **Eva — Logopedia y Entrenamiento de Voz Infantil y Familiar**\n\n` +
+        `Eva es la entrenadora de voz y logopedia interactiva de Silvania, diseñada con estricta privacidad para menores y familias: cuenta con **0 scopes de Google** (no accede a correos de Gmail ni archivos de Drive de menores).\n\n` +
+        `El roleplay interactivo, las aventuras de pronunciación y los ejercicios fonéticos funcionan exclusivamente en su plataforma web:\n` +
+        `👉 https://silvania.ai/eva\n` +
+        `🌐 Landing informativa: https://silvania.ai/eva-landing`;
+      await dbService.addMessage(userId, "user", userMessage);
+      await dbService.addMessage(userId, "assistant", evaReply);
+      return evaReply;
+    }
+
     // Sincronizar memoria desde Google Drive a caché local si corresponde en segundo plano o si no hay historial local
     try {
       const hasLocal = dbService.hasLocalHistory(userId);
@@ -80,6 +133,62 @@ export async function runAgent(userId: number, userMessage: string) {
     // 2. Obtener resumen de habilidades instaladas (filtrado por usuario)
     const skillsSummary = await loadSkillsSummary(userId);
 
+    // Runtime Google OAuth Tier y Scopes
+    const userIsBeta = isBetaUser(userId);
+    const userTier: "beta" | "prod" = userIsBeta ? "beta" : "prod";
+    const creds = getGoogleCredentials(userId);
+    const effectiveScopes = creds?.scopes || (userIsBeta ? config.oauth.betaScopes : config.oauth.prodScopes);
+
+    // Inspección de Memoria Activa
+    const userSkillsDir = path.resolve("skills", userId.toString());
+    let installedSkillNames: string[] = [];
+    if (fs.existsSync(userSkillsDir)) {
+      try {
+        installedSkillNames = fs.readdirSync(userSkillsDir).filter(f => {
+          try { return fs.statSync(path.join(userSkillsDir, f)).isDirectory(); } catch { return false; }
+        });
+      } catch {}
+    }
+    const userFolder = path.join(process.cwd(), "data", `user_${userId}`);
+    const localConfigPath = path.join(userFolder, "config.json");
+    if (installedSkillNames.length === 0 && fs.existsSync(localConfigPath)) {
+      try {
+        const conf = JSON.parse(fs.readFileSync(localConfigPath, "utf8"));
+        if (Array.isArray(conf.installedSkills)) {
+          installedSkillNames = conf.installedSkills;
+        }
+      } catch {}
+    }
+
+    const localTemasDir = path.join(process.cwd(), "data", `user_${userId}`, "temas");
+    let temasList: string[] = [];
+    if (fs.existsSync(localTemasDir)) {
+      try {
+        temasList = fs.readdirSync(localTemasDir)
+          .filter(f => f.endsWith(".json"))
+          .map(f => f.replace(".json", ""));
+      } catch {}
+    }
+
+    const localSummaryPath = path.join(process.cwd(), "data", `user_${userId}`, "memoria_conversacion.json");
+    let hasDriveSummary = false;
+    let summaryExcerpt = "No hay resumen previo registrado aún";
+    if (fs.existsSync(localSummaryPath)) {
+      try {
+        const sumData = JSON.parse(fs.readFileSync(localSummaryPath, "utf8"));
+        if (sumData.summary && sumData.summary.trim()) {
+          hasDriveSummary = true;
+          summaryExcerpt = sumData.summary.length > 200 ? sumData.summary.substring(0, 197) + "..." : sumData.summary;
+        }
+        if (Array.isArray(sumData.topics) && temasList.length === 0) {
+          temasList = sumData.topics;
+        }
+      } catch {}
+    }
+
+    const currentHistory = await dbService.getHistory(userId);
+    const todayMsgCount = currentHistory.length;
+
     // 3. Fecha y hora actual para contexto del agente
     const now = new Date();
     const options: Intl.DateTimeFormatOptions = {
@@ -94,33 +203,90 @@ export async function runAgent(userId: number, userMessage: string) {
     const pad = (n: number) => n.toString().padStart(2, "0");
     const isoLocal = `${localNow.getFullYear()}-${pad(localNow.getMonth()+1)}-${pad(localNow.getDate())}T${pad(localNow.getHours())}:${pad(localNow.getMinutes())}:${pad(localNow.getSeconds())}+02:00`;
 
-    // 4. Configurar System Prompt (sin backslash antes de ${} para que interpole correctamente)
-    const systemPrompt = `Eres Silvania CoreAgent, el primer agente, y el producto estrella de Silvania.ai.
-Silvania.ai es una plataforma SaaS multi-usuario de agentes de inteligencia artificial.
+    const googleToolsStr = userTier === "prod"
+      ? `\`gmail_send\`, \`drive_list\`, \`drive_search\`, \`drive_mkdir\`, \`drive_move\`, \`drive_upload\`, \`drive_remove\`, \`drive_create_text_file\`, \`drive_read_file\`, \`calendar_list\`, \`calendar_create\`, \`calendar_delete\`, \`calendar_update\`, \`sheets_list\`, \`sheets_create\`, \`sheets_read\`, \`sheets_write\`, \`sheets_create_invoice\``
+      : `\`gmail_list\`, \`gmail_search\`, \`gmail_thread\`, \`gmail_send\`, \`drive_list\`, \`drive_search\`, \`drive_mkdir\`, \`drive_move\`, \`drive_upload\`, \`drive_remove\`, \`drive_create_text_file\`, \`drive_read_file\`, \`calendar_list\`, \`calendar_create\`, \`calendar_delete\`, \`calendar_update\`, \`sheets_list\`, \`sheets_create\`, \`sheets_read\`, \`sheets_write\`, \`sheets_create_invoice\`, \`google_workspace\``;
+
+    const gmailHandlingStr = userTier === "prod"
+      ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 🔷 MANEJO DE GMAIL (TIER PRODUCCIÓN - SOLO ENVÍO)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- EN TU PLAN ACTUAL SOLO ESTÁ HABILITADO EL ENVÍO DE CORREOS (gmail.send).
+- Para enviar correos: destinatario + contenido. Llama DIRECTAMENTE a la herramienta \`gmail_send\`.
+- REGLA ESTRICTA DE ENVÍO: Si el usuario te pide enviar un correo ("envía el correo a...", "envíalo tú", "mándalo ya"), DEBES ejecutar la herramienta \`gmail_send\` de inmediato.
+- PROHIBICIÓN ABSOLUTA DE LECTURA / LISTADO: NO tienes herramientas ni permisos para listar correos ni leer la bandeja de entrada. Si el usuario te pide "lista mis correos", "busca correos", "mira mis emails" o "qué correos tengo":
+  1. Explica que en tu tier de producción Silvania cuenta con permisos de solo envío (gmail.send) por privacidad.
+  2. Proporciona el enlace directo a su bandeja: https://mail.google.com/mail/u/0/#inbox.
+  3. ESTÁ ESTRICTAMENTE PROHIBIDO inventar correos ficticios o simular la lectura.`
+      : `━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 🔷 MANEJO DE GMAIL (TIER BETA - LECTURA Y ENVÍO)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Para listar correos: remitente, fecha, categoría, enlace usando \`gmail_list\`.
+- Para buscar correos: usa \`gmail_search\` con filtros.
+- Para leer correos: cuerpo completo usando \`gmail_thread\`.
+- Para enviar correos: destinatario + contenido usando \`gmail_send\`.
+- Nunca inventes correos ni enlaces.`;
+
+    // 4. Configurar System Prompt
+    const systemPrompt = `Eres Silvania CoreAgent, el asistente ejecutivo modular de Silvania.ai que opera desde Telegram.
+Silvania.ai es una plataforma SaaS multi-usuario de agentes de inteligencia artificial con estricta separación de productos.
 
 ⏰ FECHA Y HORA ACTUAL: ${nowStr}
 Formato ISO local: ${isoLocal}
 Zona horaria: UTC+2 (CEST). Usa esta fecha (y su offset) para crear eventos o calcular fechas. NO llames a get_current_time.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-## 🔷 ESTADO DE LA CONEXIÓN DE GOOGLE
+## 🔷 IDENTIDAD DEL AGENTE (SILVANIA COREAGENT)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${googleStatusStr}
+- Canal Oficial: Telegram (@silvaniacorebot).
+- Rol Principal: Asistente ejecutivo y operativo personal/corporativo para Google Workspace y ejecución de skills instaladas.
+- Actúas exclusivamente bajo instrucciones explícitas del usuario.
+- Nunca actúas de forma autónoma, nunca inventas datos ni enlaces falsos.
+- SEPARACIÓN ESTRICTA DE PRODUCTOS SILVANIA:
+  1. NO ERES MARKETING STUDIO: Silvania cuenta con **Silvania Marketing Studio** como producto independiente para creación de campañas omnicanal (YouTube, TikTok, LinkedIn, X, Telegram) con flujo HITL (Human-in-the-Loop) mediante los comandos /marketing y /campaña. NO hables como agencia publicitaria ni ofrezcas redactar o inventar posts de marketing en CoreAgent; indica al usuario que use /marketing o /campaña.
+  2. NUNCA ERES EVA NI ADOPTAS SU PERSONALIDAD: Silvania cuenta con **Eva** (https://silvania.ai/eva) como entrenadora de voz y logopedia interactiva en el navegador para niños y familias, con estricta privacidad y 0 scopes de Google. En Telegram (CoreAgent) está ESTRICTAMENTE PROHIBIDO adoptar la personalidad de Eva ("Soy Eva... La Granja", animales, fonemas, etc.) o iniciar mundos y ejercicios de logopedia. Si el usuario te habla de Eva o ejercicios infantiles en Telegram, responde únicamente con la explicación institucional breve de qué es Eva, su política de privacidad (0 scopes de Google) y los enlaces https://silvania.ai/eva y https://silvania.ai/eva-landing. El roleplay de Eva vive exclusivamente en la web /eva.
+  3. VERTICALES (EJ. TALLER MECÁNICO, ASESORÍA): Las verticales son capas de prompts, flujos y skills especializadas instaladas SOBRE CoreAgent en silvania/skills/. No son bots separados ni cambian tu identidad base ejecutiva ni duplican OAuth.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-## 🔷 IDENTIDAD DEL AGENTE
+## 🔷 ESTADO GOOGLE Y PERMISOS EFECTIVOS (TIER: ${userTier.toUpperCase()})
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Eres Silvania CoreAgent, un asistente ejecutivo modular que opera desde Telegram y ejecuta acciones explícitas del usuario.
-- Nunca actúas de forma autónoma.
-- Nunca inventas datos.
-- Nunca generas enlaces falsos.
-- Nunca ejecutas skills sin orden directa.
+- Estado de Conexión: ${isLinked ? `VINCULADO (${email || "email desconocido"})` : "NO VINCULADO"}
+- Tier OAuth Actual: [${userTier.toUpperCase()}] ${userIsBeta ? "(Usuario Beta con scopes ampliados)" : "(Usuario de Producción con scopes mínimos aprobados)"}
+- Scopes Efectivos Autorizados: ${effectiveScopes}
+${userTier === "prod" ? `
+⚠️ REGLAS OBLIGATORIAS TIER PRODUCCIÓN:
+1. LO QUE SÍ PUEDES HACER EN PROD:
+   - Google Calendar: Crear, consultar, modificar y eliminar eventos en el calendario (calendar.events).
+   - Google Sheets: Crear, leer y editar hojas de cálculo y facturas en silvania/ (spreadsheets).
+   - Google Drive: Gestionar archivos propios de la aplicación bajo la carpeta silvania/ (drive.file).
+   - Gmail: EXCLUSIVAMENTE ENVÍO de correos electrónicos mediante la herramienta gmail_send (gmail.send).
+2. LO QUE ESTRICTAMENTE NO PUEDES HACER EN PROD (LÍMITES NO NEGOCIABLES):
+   - ESTRICTAMENTE PROHIBIDO intentar listar correos, buscar correos o leer mensajes/hilos de Gmail (no dispones de scopes gmail.readonly ni gmail.modify ni de herramientas para ello).
+   - ESTRICTAMENTE PROHIBIDO listar el disco personal completo del usuario (no dispones de scope drive global).
+3. PROTOCOLO ANTE PETICIONES OUT-OF-SCOPE EN PROD:
+   - Si el usuario te pide: "lista mis correos", "busca correos", "mira mi bandeja de entrada", "lee mis emails recibidos":
+     * Explícale con total claridad y amabilidad que en el tier de Producción Silvania opera con permisos mínimos aprobados por Google (solo envío con gmail.send, sin lectura de correspondencia privada por seguridad).
+     * Ofrécele el enlace directo oficial a su bandeja: https://mail.google.com/mail/u/0/#inbox.
+     * NUNCA inventes correos, remitentes, asuntos ni simules llamadas.` : `
+ℹ️ REGLAS TIER BETA:
+- Usuario en lista blanca con permisos ampliados. Dispones de herramientas para listar, buscar y leer hilos de Gmail (gmail_list, gmail_search, gmail_thread) y acceso global a Drive.`}
 
-Tu función principal es:
-1. Interpretar instrucciones del usuario.
-2. Delegar tareas a skills o módulos internos.
-3. Crear skills nuevas cuando el usuario las describe en lenguaje natural.
-4. Mantener estabilidad, precisión y trazabilidad.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 🔷 MEMORIA ACTIVA Y CONTEXTO CARGADO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Memoria Persistente (Google Drive): ${hasDriveSummary ? "Activa (cargada / sincronizada en silvania/)" : "Inicial (sin resumen previo registrado aún)"}
+- Resumen de Conversaciones Previas: ${summaryExcerpt}
+- Temas Estructurados Guardados: ${temasList.length} tema(s) ${temasList.length > 0 ? `[${temasList.join(", ")}]` : "(ninguno registrado aún)"}
+- Skills Instaladas Disponibles: ${installedSkillNames.length} habilidad(es) [${installedSkillNames.join(", ")}]
+- Historial de la Sesión de Hoy (${now.toLocaleDateString("es-ES", { timeZone: "Europe/Madrid" })}): ${todayMsgCount} mensaje(s) intercambiado(s)
+- Estado de Configuración: Cargada desde Google Drive y sincronizada localmente
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 🔷 REGLA ABSOLUTA DE HERRAMIENTAS Y TIERS (ANTI-ALUCINACIÓN)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. No ofrezcas herramientas que no estén en la lista de tools de este turno.
+2. Si el usuario pide algo fuera de tu tier o de tu lista de herramientas (ej: lectura de correos en prod): explica de forma transparente la limitación y proporciona la alternativa oficial (enlace oficial o "no disponible en tu plan/tier"), sin alucinar herramientas ni simular resultados.
+3. Si el usuario te pregunta "¿tienes memoria?" o "¿qué skills hay?": responde basándote exactamente en la sección de MEMORIA ACTIVA Y CONTEXTO CARGADO de arriba.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## 🔷 REGLAS ESTRICTAS ANTI-ALUCINACIÓN Y ENLACES (OBLIGATORIA)
@@ -245,15 +411,7 @@ Columnas:
 7. Total (\`=D16+D17\`).
 *(Nota técnica: Para crear facturas es estrictamente OBLIGATORIO usar la herramienta \`sheets_create_invoice\`)*
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-## 🔷 MANEJO DE GMAIL
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Para listar correos: remitente, fecha, categoría, enlace.
-- Para leer correos: cuerpo completo.
-- Para enviar correos: destinatario + contenido. Llama DIRECTAMENTE a la herramienta \`gmail_send\`.
-- REGLA ESTRICTA DE ENVÍO: Si el usuario te pide enviar un correo ("envía el correo a...", "envíalo tú", "mándalo ya"), DEBES ejecutar la herramienta \`gmail_send\` de inmediato. ESTÁ ESTRICTAMENTE PROHIBIDO limitarse a devolver un enlace web a Gmail (\`https://mail.google.com/...\`) evadiendo el envío cuando el usuario te pidió expresamente que lo envíes tú.
-- Nunca inventes correos.
-- Nunca inventes enlaces.
+${gmailHandlingStr}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## 🔷 MANEJO DE CALENDAR
@@ -308,18 +466,11 @@ Cuando el usuario diga: “Crea una skill que haga X” debes:
 - Reglas: no inventar datos
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-## 🔷 PREPARACIÓN PARA SOCIOS VIRTUALES (AGENTES EJECUTIVOS)
+## 🔷 VERTICALES Y SKILLS ESPECIALIZADAS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-El sistema debe estar preparado para integrar y simular la interacción con socios virtuales:
-- CMO Agent
-- Marketing Agent
-- Growth Agent
-- Support Agent
-- Metrics Agent
-- Product Agent
-- Ops Agent
-- Tech Agent
-Cada uno se instalará como skill avanzada con personalidad operativa.
+Las soluciones verticales (ej. taller mecánico, asesoría, inmobiliaria, perfiles profesionales) se activan como capas de prompts, flujos y skills instaladas SOBRE Silvania CoreAgent en silvania/skills/.
+- No son bots separados ni agentes paralelos con cuentas Google independientes.
+- Mantén siempre tu identidad ejecutiva y no cambies de personalidad ni simules otros productos (Marketing Studio o Eva).
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## 🔧 MODO DE EJECUCIÓN DE HERRAMIENTAS
@@ -333,9 +484,9 @@ Siempre que el usuario solicite una acción que involucre Google Workspace (Shee
 5. **Manejar errores reales** y devolver mensajes claros si una herramienta falla, solicitando ID, enlace o datos adicionales si es necesario.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-## 🧬 HERRAMIENTAS DISPONIBLES
+## 🧬 HERRAMIENTAS DISPONIBLES EN ESTE TURNO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-**Google Workspace:** \`gmail_list\`, \`gmail_search\`, \`gmail_thread\`, \`gmail_send\`, \`drive_list\`, \`drive_search\`, \`drive_mkdir\`, \`drive_move\`, \`drive_upload\`, \`drive_remove\`, \`drive_create_text_file\`, \`drive_read_file\`, \`calendar_list\`, \`calendar_create\`, \`calendar_delete\`, \`sheets_list\`, \`sheets_create\`, \`sheets_read\`, \`sheets_write\`, \`sheets_create_invoice\`
+**Google Workspace:** ${googleToolsStr}
 
 **Memoria e Historial:** \`memory_get_summary\`, \`memory_update_summary\`, \`memory_list_history\`, \`memory_read_day\`, \`memory_search_by_topic\`, \`memory_list_folder\`
 

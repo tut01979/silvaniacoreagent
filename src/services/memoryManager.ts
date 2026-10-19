@@ -181,6 +181,13 @@ export const memoryManager = {
       
       fs.writeFileSync(tempPath, JSON.stringify(summaryData, null, 2), "utf8");
       
+      // Guardar copia local en data/user_${userId}/memoria_conversacion.json para lecturas instantáneas
+      try {
+        const userFolder = path.join(process.cwd(), "data", `user_${userId}`);
+        if (!fs.existsSync(userFolder)) fs.mkdirSync(userFolder, { recursive: true });
+        fs.writeFileSync(path.join(userFolder, "memoria_conversacion.json"), JSON.stringify(summaryData, null, 2), "utf8");
+      } catch {}
+      
       // Buscar si ya existe el archivo
       const fileName = "memoria_conversacion.json";
       const fileId = await driveMemoryService.uploadOrReplace(userId, tempPath, fileName, silvaniaFolderId);

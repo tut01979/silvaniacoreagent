@@ -1223,6 +1223,11 @@ Si el alumno es niño (edad <= 7) o tiene dificultad alta:
 - Si la transcripción del usuario es muy corta, incomprensible, ruidosa (ej. "ah", "sí", murmullos inconexos o palabras que no se entienden en absoluto), responde exactamente o muy parecido a:
   "Me pareció oír que intentas decir algo, por favor habla un poco más fuerte para que te escuche bien. ¡Vamos!"
 
+🔷 PRIVACIDAD ESTRICTA Y LÍMITES DE PRODUCTO (0 SCOPES GOOGLE):
+- Eres exclusivamente Eva, entrenadora de voz y logopeda para familias y niños.
+- NO tienes ni prometas acceso a Google Workspace, Gmail, Calendar ni Google Drive.
+- La sesión se ejecuta de forma local y privada en navegador; nunca prometas gestionar emails o archivos de oficina ni de menores.
+
 🔷 REGLAS DE FORMATO:
 - Sé paciente, empática y lúdica.
 - MANTÉN LAS RESPUESTAS CORTAS (1 a 3 frases máximo) para baja latencia conversacional. No uses markdown tosco ni caracteres raros.`;
@@ -2218,6 +2223,18 @@ bot.command(["auth", "login"], async (ctx) => {
   );
 });
 
+// Comando /eva para derivar a la web de Eva con explicación de 0 scopes y privacidad
+bot.command("eva", async (ctx) => {
+  await ctx.reply(
+    `🗣️ **Eva — Logopedia y Entrenamiento de Voz Infantil y Familiar**\n\n` +
+    `Eva es la entrenadora de voz y logopedia interactiva de Silvania, diseñada con estricta privacidad para menores y familias: cuenta con **0 scopes de Google** (no accede a correos de Gmail ni archivos de Drive de menores).\n\n` +
+    `El roleplay interactivo, las aventuras de voz y los ejercicios de pronunciación viven exclusivamente en su plataforma web:\n` +
+    `👉 https://silvania.ai/eva\n` +
+    `🌐 Landing informativa: https://silvania.ai/eva-landing`,
+    { parse_mode: "Markdown" }
+  );
+});
+
 // --- SILVANIA MARKETING STUDIO (HUMAN-IN-THE-LOOP) ---
 bot.on("callback_query:data", async (ctx, next) => {
   const data = ctx.callbackQuery?.data || "";
@@ -2448,14 +2465,9 @@ bot.on("message:text", async (ctx) => {
     if (!hasLocal) {
       const history = await dbService.getHistory(userId);
       if (history.length === 0 && !text.startsWith("/")) {
-        const welcome = `¡Hola! Soy Silvania, tu agente ejecutivo elite premium.\n` +
-          `No soy solo un chat bot puedo hacer o ejecutar tareas reales en el mundo real ¿Cómo te llamas?\n\n` +
-          `Ademas tambien puedo adaptarme a diferentes perfiles. Estos son algunos roles predeterminados:\n` +
-          `• Ejecutivo (por defecto)\n` +
-          `• Marketing\n` +
-          `• Soporte Técnico\n` +
-          `• Investigador / Analista\n\n` +
-          `Dime cuál prefieres o descríbeme cómo quieres que sea (puedo personalizarlo al 100% según tus necesidades).`;
+        const welcome = `¡Hola! Soy Silvania CoreAgent, tu asistente ejecutivo integrado con Google Workspace.\n` +
+          `Puedo ayudarte a gestionar tu agenda de Calendar, hojas de cálculo en Sheets, tus archivos en Drive y coordinar tareas ejecutivas con herramientas reales.\n\n` +
+          `¿En qué te puedo ayudar hoy?`;
 
         await dbService.addMessage(userId, "user", text);
         await dbService.addMessage(userId, "assistant", welcome);

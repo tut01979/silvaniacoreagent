@@ -306,6 +306,24 @@ export const dbService = {
     } catch {}
   },
 
+  deleteDriveFolder: async (userId: number, pathStr: string): Promise<void> => {
+    try {
+      const stmt = db.prepare("DELETE FROM drive_folders WHERE userId = ? AND path = ?");
+      stmt.run(userId, pathStr);
+    } catch (e: any) {
+      console.warn("⚠️ Error eliminando carpeta de Drive en DB:", e.message);
+    }
+  },
+
+  deleteDriveFolderById: async (userId: number, folderId: string): Promise<void> => {
+    try {
+      const stmt = db.prepare("DELETE FROM drive_folders WHERE userId = ? AND folderId = ?");
+      stmt.run(userId, folderId);
+    } catch (e: any) {
+      console.warn("⚠️ Error eliminando carpeta de Drive por ID en DB:", e.message);
+    }
+  },
+
   getMuteVoice: async (userId: number): Promise<boolean> => {
     try {
       const stmt = db.prepare("SELECT muteVoice FROM user_settings WHERE userId = ?");
