@@ -95,16 +95,20 @@ export async function runAgent(userId: number, userMessage: string) {
     // Intercepción de ruteo rápido para enlaces directos de Google si ya está vinculado
     if (isLinked) {
       const cleanMsg = userMessage.toLowerCase().trim();
-      if (!/\b(auth|vincular|conectar|cambiar)\b/i.test(cleanMsg)) {
+      const hasEmailOrUrl = /@|https?:\/\//i.test(cleanMsg);
+      const hasActionVerb = /\b(envia|envía|enviame|envíame|enviar|envies|envíes|manda|mandame|mándame|mandar|mandes|redacta|redactar|escribe|escribir|lee|leelo|léelo|leer|explica|explicame|explícame|explicar|resume|resumir|adjunta|adjuntar|busca|buscar|encuentra|crea|crear|borra|eliminar|mueve|mover|lista|listar|sube|subir|descarga|descargar|factura|transcripcion|transcripción|analiza|analizar|revisa|revisar|mira|mirar|abrir y|abre y)\b/i.test(cleanMsg);
+
+      if (!hasEmailOrUrl && !hasActionVerb && !/\b(auth|vincular|conectar|cambiar)\b/i.test(cleanMsg)) {
         const hasDrive = /\b(drive|disco)\b/i.test(cleanMsg);
         const hasCalendar = /\b(calendar|calendario|agenda|reunion|reuniones)\b/i.test(cleanMsg);
         const hasGmail = /\b(gmail|correo|mail|inbox|bandeja)\b/i.test(cleanMsg);
         const hasSheets = /\b(sheets|hojas|excel|spreadsheets)\b/i.test(cleanMsg);
         
-        const isAskingForLink = /\b(enlace|link|url|acceso|abre|abrir|ir|entrar|acceder|dirección|direccion|dame|pasa|pasame|pásame|muestra|muéstrame|muestrame|ver|dónde|donde|cómo|como)\b/i.test(cleanMsg) || cleanMsg.length <= 15;
-        const hasComplexAction = /\b(busca|buscar|encuentra|crea|crear|borra|eliminar|mueve|mover|lista|listar|lee|leer|escribe|escribir|adjunta|sube|subir|descarga|descargar|factura|transcripcion|analiza)\b/i.test(cleanMsg);
+        // Solo si explícitamente pide el acceso/link/url general del servicio o es el nombre exacto de la herramienta
+        const isExplicitLinkRequest = /\b(enlace|link|url|acceso|acceder|ir a|entrar a|dirección|direccion|dame el link|pasa el link|donde esta|dónde está)\b/i.test(cleanMsg) || 
+          /^(drive|gmail|calendar|sheets|inbox)$/i.test(cleanMsg);
         
-        if (!hasComplexAction && (isAskingForLink || cleanMsg.includes("drive") || cleanMsg.includes("calendar") || cleanMsg.includes("gmail") || cleanMsg.includes("sheets"))) {
+        if (isExplicitLinkRequest && (hasDrive || hasCalendar || hasGmail || hasSheets)) {
           const parts: string[] = [];
           if (hasDrive) parts.push(`📁 **Google Drive:** https://drive.google.com/drive/my-drive`);
           if (hasGmail) parts.push(`✉️ **Gmail:** https://mail.google.com/mail/u/0/#inbox`);
@@ -870,10 +874,10 @@ export function sanitizeAlucinatedLinks(responseText: string, history: any[]): s
   const validIds = new Set<string>();
   const validUrls = new Set<string>();
 
-  // 1. Escanear SOLO las respuestas de herramientas (role === "tool") de la sesión/turno actual
-  // para recopilar IDs y URLs verificados y legítimos
+  // 1. Escanear respuestas de herramientas (role === "tool") Y mensajes del historial (assistant / user)
+  // para recopilar IDs y URLs verificados y legítimos a lo largo de la conversación
   for (const msg of history) {
-    if (msg.role === "tool" && msg.content) {
+    if (msg.content) {
       const content = String(msg.content);
 
       // A. Extraer URLs completas verificadas
