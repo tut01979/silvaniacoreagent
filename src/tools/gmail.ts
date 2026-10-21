@@ -322,10 +322,13 @@ export async function gmailSend(userId: number, to: string, subject: string, bod
       requestBody: { raw },
     });
 
-    const id = result.data.threadId || result.data.id;
-    const link = id ? generateGmailLink(id) : "";
-    const linkStr = id ? `\n\n${formatEmailLink(subject, link)}` : "";
-    return `✅ **Email enviado correctamente**\n\n> 👤 **Para:** ${to}${linkStr}`;
+    const id = result.data.threadId || result.data.id || "";
+    const webLink = id ? generateGmailLink(id) : "https://mail.google.com/mail/u/0/#inbox";
+    const linkMarkdown = `[Abrir](${webLink})`;
+    const linkStr = id
+      ? `\n\n${formatEmailLink(subject, webLink)}\n> 🆔 **Message ID:** \`${id}\`\n> 🔗 **Enlace directo:** ${linkMarkdown} (${webLink})`
+      : `\n\n> 🔗 **Enlace directo:** ${linkMarkdown} (${webLink})`;
+    return `✅ **Email enviado correctamente**\n\n> 👤 **Para:** ${to}\n> 📌 **Asunto:** ${subject}${linkStr}`;
   } catch (error: any) {
     return `❌ Error enviando email: ${error.message}`;
   }

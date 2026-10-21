@@ -409,7 +409,9 @@ export const driveReadFile = async (fileId: string, userId?: number) => {
       downloadPath = tempPath + ".txt";
       await runGog(`drive download ${fileId} --format=txt --out="${downloadPath}"`, userId);
     } else {
-      downloadPath = tempPath + (name.includes(".") ? path.extname(name) : "");
+      let ext = name.includes(".") ? path.extname(name) : "";
+      if (!ext && (mimeType === "application/pdf" || name.toLowerCase().includes("pdf"))) ext = ".pdf";
+      downloadPath = tempPath + ext;
       await runGog(`drive download ${fileId} --out="${downloadPath}"`, userId);
     }
 
@@ -419,17 +421,26 @@ export const driveReadFile = async (fileId: string, userId?: number) => {
 
     let content = "";
     const extension = path.extname(downloadPath).toLowerCase();
+    const isPdf = extension === ".pdf" || mimeType === "application/pdf" || name.toLowerCase().includes("pdf");
     
     if (extension === ".txt" || extension === ".csv" || extension === ".json" || extension === ".md") {
       content = fs.readFileSync(downloadPath, "utf-8");
-    } else if (extension === ".pdf") {
+    } else if (isPdf) {
       try {
         const pdfParseModule = (await import("pdf-parse")) as any;
+        const PDFParseClass = pdfParseModule.PDFParse || pdfParseModule.default?.PDFParse;
         const dataBuffer = fs.readFileSync(downloadPath);
-        const parser = new pdfParseModule.PDFParse({ data: dataBuffer });
-        const textResult = await parser.getText();
-        content = textResult.text || "El PDF no contiene texto extraíble.";
-        await parser.destroy();
+        if (typeof PDFParseClass === "function") {
+          const parser = new PDFParseClass({ data: dataBuffer });
+          const textResult = await parser.getText();
+          content = textResult.text || "El PDF no contiene texto extraíble.";
+          if (parser.destroy) await parser.destroy();
+        } else if (typeof pdfParseModule.default === "function") {
+          const textResult = await pdfParseModule.default(dataBuffer);
+          content = textResult.text || "El PDF no contiene texto extraíble.";
+        } else {
+          content = "⚠️ No se encontró un motor compatible para parsear el PDF.";
+        }
       } catch (pdfErr: any) {
         console.error("Error parseando PDF con pdf-parse:", pdfErr.message);
         content = `⚠️ El archivo es un PDF. Hubo un error al leerlo: ${pdfErr.message}`;

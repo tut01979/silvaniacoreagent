@@ -34,7 +34,9 @@ export async function analyzeDocument({ file_id, prompt, userId }: { file_id: st
       downloadPath = tempPath + ".txt";
       await runGog(`drive download ${file_id} --format=txt --out="${downloadPath}"`, uId);
     } else {
-      downloadPath = tempPath + (name.includes(".") ? path.extname(name) : "");
+      let ext = name.includes(".") ? path.extname(name) : "";
+      if (!ext && (mimeType === "application/pdf" || name.toLowerCase().includes("pdf"))) ext = ".pdf";
+      downloadPath = tempPath + ext;
       await runGog(`drive download ${file_id} --out="${downloadPath}"`, uId);
     }
 
@@ -44,17 +46,26 @@ export async function analyzeDocument({ file_id, prompt, userId }: { file_id: st
 
     let textContent = "";
     const extension = path.extname(downloadPath).toLowerCase();
+    const isPdf = extension === ".pdf" || mimeType === "application/pdf" || name.toLowerCase().includes("pdf");
     
     if ([".txt", ".csv", ".json", ".md"].includes(extension)) {
       textContent = fs.readFileSync(downloadPath, "utf-8");
-    } else if (extension === ".pdf") {
+    } else if (isPdf) {
       try {
         const pdfParseModule = (await import("pdf-parse")) as any;
+        const PDFParseClass = pdfParseModule.PDFParse || pdfParseModule.default?.PDFParse;
         const dataBuffer = fs.readFileSync(downloadPath);
-        const parser = new pdfParseModule.PDFParse({ data: dataBuffer });
-        const textResult = await parser.getText();
-        textContent = textResult.text || "El PDF no contiene texto extraíble.";
-        await parser.destroy();
+        if (typeof PDFParseClass === "function") {
+          const parser = new PDFParseClass({ data: dataBuffer });
+          const textResult = await parser.getText();
+          textContent = textResult.text || "El PDF no contiene texto extraíble.";
+          if (parser.destroy) await parser.destroy();
+        } else if (typeof pdfParseModule.default === "function") {
+          const textResult = await pdfParseModule.default(dataBuffer);
+          textContent = textResult.text || "El PDF no contiene texto extraíble.";
+        } else {
+          textContent = "[PDF text extraction error: No se encontró un motor compatible para parsear el PDF]";
+        }
       } catch (pdfErr: any) {
         console.error("Error parseando PDF en analyzeDocument:", pdfErr.message);
         textContent = `[PDF text extraction error: ${pdfErr.message}]`;
@@ -64,6 +75,11 @@ export async function analyzeDocument({ file_id, prompt, userId }: { file_id: st
     }
 
     // Limpiar archivo descargado
+    try { if (fs.existsSync(downloadPath)) fs.unlinkSync(downloadPath); } catch {}
+
+    if (textContent.startsWith("[PDF text extraction error:") || textContent.includes("no legible directamente")) {
+      return `❌ No pude leer el archivo "${name}" (ID: ${file_id}): ${textContent}`;
+    }
     try { if (fs.existsSync(downloadPath)) fs.unlinkSync(downloadPath); } catch {}
 
     console.log(`🤖 [Document Analyzer] Enviando contenido del documento a Gemini-2.5-Flash...`);

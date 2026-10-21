@@ -312,6 +312,14 @@ ${userTier === "prod" ? `
      * **No Encontrado / Pendiente de Verificación**: aspectos que no pudieron verificarse de manera fidedigna (ej. si no hay CIF, teléfono comprobado o ficha oficial). Jamás inventes datos.
 7. Si el usuario pide explícitamente "enlace de autorización", "vincular Google", "conectar cuenta", "cambiar de cuenta" o "/auth": DEBES llamar obligatoriamente a la herramienta \`generate_authorization_link\`. NUNCA inventes enlaces de autorización ni utilices otros client_id ajenos al sistema.
 8. Si el usuario ya vinculó su cuenta o te indica frases como "ya lo vinculé", "inténtalo ahora", "prueba ahora", "reintenta", o solicita una acción ejecutiva (ej. "crea la reunión", "lista mis eventos", "envía el correo"): ESTÁ ESTRICTAMENTE PROHIBIDO volver a llamar a \`generate_authorization_link\` o pedir autorización. Debes proceder INMEDIATAMENTE a ejecutar la acción solicitada llamando a la herramienta correspondiente (\`calendar_create\`, \`gmail_send\`, \`drive_list\`, etc.). Solo si una herramienta devuelve expresamente un error de sesión expirada ('invalid_grant', 'unauthorized_client'), ofrecerás reconectar.
+9. CONFIRMACIÓN Y ENLACES DE GMAIL (\`gmail_send\`):
+   - Al confirmar el envío de un correo, incluye SIEMPRE el enlace directo en formato Markdown estándar: \`[Abrir](https://mail.google.com/mail/u/0/#inbox/{id})\` utilizando el Message ID devuelto por la herramienta.
+   - ESTRICTAMENTE PROHIBIDO emitir la palabra "Abrir" o "🔗 Abrir" sin su correspondiente hipervínculo en formato Markdown válido o con href vacío. Nunca escribas "Abrir" suelto sin enlace.
+10. LECTURA Y ANÁLISIS DE DOCUMENTOS / PDFS (REGLA DURA ANTI-ALUCINACIÓN):
+   - Cuando el usuario solicite leer, analizar, consultar o resumir un archivo, documento o PDF por su ID (ej. 1lwnmyCvSwjvjpHtXlvNCFWohThg9VLaj) o nombre: DEBES llamar obligatoriamente a la herramienta de lectura (\`analyze_document\` o \`drive_read_file\`) en el turno actual con dicho \`file_id\`.
+   - El contenido del documento SOLO y EXCLUSIVAMENTE puede proceder del resultado devuelto por dicha herramienta en el turno actual para ese ID específico.
+   - PROHIBICIÓN ABSOLUTA DE MEZCLAR O RELLENAR CON HISTORIAL PREVIO: Está TERMINANTEMENTE PROHIBIDO inventar el contenido o rellenarlo utilizando resúmenes o memorias de documentos anteriores del historial de conversación (ej. autos judiciales de Valencia, resoluciones, contratos o facturas de otros turnos o temas). Cada archivo es único y estanco.
+   - Si la herramienta falla, no encuentra el archivo o devuelve un error/vacío: responde taxativamente "No pude leer el archivo [ID]: [motivo/error devuelto por la herramienta]". NUNCA inventes su contenido ni supongas de qué trata basándote en memoria previa.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## 🌐 CAPACIDADES DE NAVEGACIÓN WEB E INVESTIGACIÓN (OBLIGATORIO)
@@ -552,6 +560,13 @@ Si detectas un error de red o de "Conflict", informa al usuario que estás reini
         requiresTools = true;
       }
 
+      // Detección de IDs de Google Drive (ej. 1lwnmyCvSwjvjpHtXlvNCFWohThg9VLaj) y operaciones con documentos / PDFs
+      const hasDriveFileId = /\b[a-zA-Z0-9_-]{25,65}\b/.test(userMessage);
+      const isDocOrFile = /\b(pdf|documento|documentos|doc|docx|archivo|archivos|analiza|analizar|analisis|análisis|analyze|adjunto|adjuntos)\b/i.test(userMessage);
+      if (hasDriveFileId || isDocOrFile) {
+        requiresTools = true;
+      }
+
       // Heurística de UX ampliada: Si el mensaje del usuario es una confirmación, orden corta o reintento
       // (ej: "ok", "si", "inténtalo de nuevo", "otra vez", "hazlo", "procede", "ejecútalo", "como que no?")
       // y el historial muestra que hubo actividad de herramientas o acción pendiente, forzar requiresTools = true.
@@ -584,7 +599,7 @@ Si detectas un error de red o de "Conflict", informa al usuario que estás reini
       if (!requiresTools) {
         console.log(`⚡ [Agent] Optimizando latencia: consulta conversacional simple detectada. Ejecutando sin herramientas.`);
         const responseText = await llmService.chatWithoutTools(history, targetModel);
-        const finalContent = filterFinalOutput(enforceHardLimit(sanitizeAlucinatedLinks(responseText || "No tengo una respuesta en este momento.", history)));
+        const finalContent = filterFinalOutput(enforceHardLimit(sanitizeAlucinatedLinks(responseText || "No tengo una respuesta en este momento.", history)), history);
         await dbService.addMessage(userId, "assistant", finalContent);
         
         // Guardar memoria actualizada en Google Drive en segundo plano (no bloqueante)
@@ -615,10 +630,44 @@ Si detectas un error de red o de "Conflict", informa al usuario que estás reini
           }
         }
         
-        // Si no quiere usar herramientas, terminamos
+        // Si no quiere usar herramientas, comprobamos guardias antes de terminar
         if (!response.tool_calls || response.tool_calls.length === 0) {
-          const rawContent = response.content || "No tengo una respuesta en este momento.";
-          const finalContent = filterFinalOutput(enforceHardLimit(sanitizeAlucinatedLinks(rawContent, history)));
+          // Si el usuario proporcionó un ID de archivo de Drive y el modelo intentó responder en la primera iteración sin llamar a la herramienta de lectura:
+          const driveIdMatch = userMessage.match(/\b([a-zA-Z0-9_-]{25,65})\b/);
+          const asksReading = /\b(lee|leer|analiza|analizar|resumen|resume|muestra|ver|contenido|archivo|documento|pdf)\b/i.test(userMessage);
+          if (iterations === 0 && driveIdMatch && asksReading) {
+            const fileId = driveIdMatch[1];
+            console.log(`📄 [Agent Guard] Usuario solicita lectura del archivo Drive ${fileId}. Forzando lectura.`);
+            history.push(response);
+            history.push({
+              role: "user" as const,
+              content: `⚠️ ACCIÓN OBLIGATORIA: Para responder sobre el archivo ${fileId}, DEBES ejecutar obligatoriamente la herramienta analyze_document (o drive_read_file) con file_id: "${fileId}". No respondas sin haber leído el archivo real.`
+            });
+            iterations++;
+            continue;
+          }
+
+          let rawContent = response.content || "No tengo una respuesta en este momento.";
+
+          // Anti-alucinación estricta de documentos: si una herramienta de lectura falló en este turno,
+          // está PROHIBIDO que el modelo invente o sustituya el contenido basándose en historial anterior.
+          const docToolResult = [...history].reverse().find(m => m.role === "tool" && (
+            String(m.content).includes("analyze_document") ||
+            String(m.content).includes("drive_read_file") ||
+            String(m.content).includes("Error al analizar el documento") ||
+            String(m.content).includes("Error al leer el archivo de Drive") ||
+            String(m.content).includes("No pude leer el archivo")
+          ));
+
+          if (docToolResult && String(docToolResult.content).startsWith("❌")) {
+            const errMatch = String(docToolResult.content).replace(/^❌\s*/, "");
+            if (!rawContent.toLowerCase().includes("no pude leer") && !rawContent.toLowerCase().includes("error")) {
+              console.warn("🚨 [Anti-Alucinación] La herramienta de lectura falló pero el modelo generó contenido simulado. Sustituyendo por fallo verificado.");
+              rawContent = `❌ No pude leer el archivo solicitado: ${errMatch}`;
+            }
+          }
+
+          const finalContent = filterFinalOutput(enforceHardLimit(sanitizeAlucinatedLinks(rawContent, history)), history);
           await dbService.addMessage(userId, "assistant", finalContent);
 
           // Guardar memoria actualizada en Google Drive en segundo plano (no bloqueante)
@@ -820,7 +869,7 @@ Si detectas un error de red o de "Conflict", informa al usuario que estás reini
       }
 
       // Sanitizar todo el reporte multitarea final para evitar enlaces alucinados
-      finalAgentResponse = filterFinalOutput(enforceHardLimit(sanitizeAlucinatedLinks(finalAgentResponse, history)));
+      finalAgentResponse = filterFinalOutput(enforceHardLimit(sanitizeAlucinatedLinks(finalAgentResponse, history)), history);
 
       // Guardar la respuesta final compilada en la DB del usuario
       await dbService.addMessage(userId, "assistant", finalAgentResponse);
@@ -887,13 +936,13 @@ export function sanitizeAlucinatedLinks(responseText: string, history: any[]): s
       }
 
       // B. Extraer IDs explícitos de Workspace (Drive, Gmail, Sheets, Calendar)
-      const explicitMatches = content.matchAll(/(?:ID:\s*`?|id["']?\s*:\s*["']?|\/d\/|\/folders\/|#inbox\/|[?&]id=)([a-zA-Z0-9_-]{10,65})/gi);
+      const explicitMatches = content.matchAll(/(?:ID:\s*`?|id["']?\s*:\s*["']?|\/d\/|\/folders\/|#inbox\/|[?&]id=)([a-zA-Z0-9_-]{8,65})/gi);
       for (const m of explicitMatches) {
         if (m[1]) validIds.add(m[1]);
       }
 
-      // C. Extraer identificadores técnicos entre backticks que contengan dígitos y letras (ej. `1aILvwkAH7NauwhUEQmduA79u0JmtuyAi`)
-      const backtickMatches = content.matchAll(/`([a-zA-Z0-9_-]{12,65})`/g);
+      // C. Extraer identificadores técnicos entre backticks que contengan dígitos y letras (ej. `1aILvwkAH7NauwhUEQmduA79u0JmtuyAi` o `192b0fa123456789`)
+      const backtickMatches = content.matchAll(/`([a-zA-Z0-9_-]{8,65})`/g);
       for (const bm of backtickMatches) {
         const val = bm[1];
         // Asegurar que no sea una palabra de diccionario: debe tener al menos un dígito o guión
@@ -1002,7 +1051,7 @@ function enforceHardLimit(text: string): string {
   return text;
 }
 
-export function filterFinalOutput(text: string): string {
+export function filterFinalOutput(text: string, history?: any[]): string {
   if (!text) return "";
 
   let cleaned = text;
@@ -1016,7 +1065,31 @@ export function filterFinalOutput(text: string): string {
   // 3. Eliminar sentencias sueltas de print(...) dentro del texto
   cleaned = cleaned.replace(/\bprint\((?:['"][^'"]*['"]|[a-zA-Z0-9_.]+\([^)]*\)|[^\n)]*)\);?/gi, "");
 
-  // 2. Detectar si aún contiene simulaciones crudas residuales de tool calls
+  // 4. Prevenir enlaces "Abrir" rotos o sin href: nunca dejar "[Abrir]()" ni "🔗 Abrir" sin URL válida
+  let verifiedGmailUrl = "";
+  if (Array.isArray(history)) {
+    for (const msg of history) {
+      if (msg.role === "tool" && msg.content) {
+        const gmailMatch = String(msg.content).match(/https:\/\/mail\.google\.com\/mail\/u\/0\/#inbox\/([a-zA-Z0-9_-]{8,65})/);
+        if (gmailMatch) {
+          verifiedGmailUrl = gmailMatch[0];
+          break;
+        }
+      }
+    }
+  }
+
+  // A. Si hay "[Abrir]()", "[Abrir](null)", "[Abrir](undefined)":
+  cleaned = cleaned.replace(/\[Abrir\]\((?:null|undefined|\s*)\)/gi, () => {
+    return verifiedGmailUrl ? `[Abrir](${verifiedGmailUrl})` : "";
+  });
+
+  // B. Si hay "🔗 Abrir" o "· Abrir" suelto que el modelo haya dejado sin formatear como enlace:
+  cleaned = cleaned.replace(/(?:🔗\s*|·\s*)Abrir(?!\s*\]|\s*\([^\s)]+\))/g, () => {
+    return verifiedGmailUrl ? `[Abrir](${verifiedGmailUrl})` : "";
+  });
+
+  // 5. Detectar si aún contiene simulaciones crudas residuales de tool calls
   const hasToolSimulations = /tools\.[a-zA-Z0-9_-]+\(/i.test(cleaned) || 
                             /print\((?:gmail_list|web_search|drive_list|read_url|sheets_|calendar_)[^)]*\)/i.test(cleaned) ||
                             /drive_create_text_file\(/i.test(cleaned) || 
@@ -1031,7 +1104,7 @@ export function filterFinalOutput(text: string): string {
     }
   }
 
-  // 3. Detectar patrones repetitivos infinitos (ej. secuencias de 8+ caracteres repetidas consecutivamente 4+ veces)
+  // 6. Detectar patrones repetitivos infinitos (ej. secuencias de 8+ caracteres repetidas consecutivamente 4+ veces)
   const cleanTrimmed = cleaned.trim();
   for (let len = 8; len <= 30; len++) {
     for (let i = 0; i <= cleanTrimmed.length - len * 4; i++) {
