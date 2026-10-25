@@ -32,7 +32,7 @@ El libro canónico `Taller_Partes` cuenta con diseño profesional corporativo Si
   11. `IVA`: Importe del IVA (21% o fórmula `=J3*0,21`).
   12. `Total`: Importe total con IVA (fórmula `=J3+K3` o número calculado).
   13. `Estado`: Estado del trabajo (`Pendiente`, `En reparación`, `Esperando piezas`, `Terminado`, `Entregado`).
-  14. `Notas`: Observaciones técnicas, piezas sustituidas o advertencias.
+  14. `Notas`: Observaciones técnicas, piezas sustituidas o advertencias. **REGLA CRÍTICA:** Datos como tipo de combustible (Diésel/Gasolina/Híbrido) o año del vehículo van OBLIGATORIAMENTE aquí dentro de `Notas`, NUNCA en la columna `Avería` ni en `Diagnóstico`.
   15. `Link_fotos`: Enlace a la carpeta de fotos/documentación en Google Drive (o vacío).
 
 ## Procedimiento Paso a Paso
@@ -52,7 +52,7 @@ El libro canónico `Taller_Partes` cuenta con diseño profesional corporativo Si
 - Llama a `sheets_append` con:
   - `spreadsheet_id`: El ID real del libro `Taller_Partes`.
   - `range`: `"A:O"`
-  - `values`: Matriz con los 15 valores en el orden exacto de cabeceras.
+  - `values`: Matriz 2D (array de arrays: `[["PARTE-001", "2026-10-25", ...]]`) con los 15 valores. PROHIBIDO enviar cadenas con ';' o texto plano.
 
 ### Paso 4: Respuesta al Usuario con Enlace Obligatorio Real
 - Informa al usuario con un resumen claro del parte registrado (ID, Cliente, Matrícula, Vehículo, Avería y Presupuesto).

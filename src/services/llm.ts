@@ -436,13 +436,23 @@ export const llmService = {
         type: "function",
         function: {
           name: "sheets_write",
-          description: "Escribe o actualiza datos en una hoja de cálculo. Los valores deben ser una cadena formateada como CSV o matriz 2D.",
+          description: "Escribe o actualiza datos en una hoja de cálculo. values DEBE ser una matriz 2D (array de arrays: [[fila1_col1, fila1_col2], [fila2_col1, fila2_col2]]). Está estrictamente prohibido pasar strings con punto y coma (';') o texto plano para matrices.",
           parameters: {
             type: "object",
             properties: {
-              spreadsheet_id: { type: "string", description: "ID de la hoja" },
-              range: { type: "string", description: "Rango (ej: 'Hoja1!A1')" },
-              values: { type: "string", description: "Valores en formato CSV (ej: 'Col1,Col2\nVal1,Val2')" }
+              spreadsheet_id: { type: "string", description: "ID de la hoja de cálculo" },
+              range: { type: "string", description: "Rango donde escribir (ej: 'A1', 'A1:O2', 'Hoja1!A1')" },
+              values: {
+                type: "array",
+                description: "Matriz 2D de datos (array de arrays). Cada elemento es una fila de celdas. Ejemplo: [['Col1', 'Col2'], ['Val1', 'Val2']]. PROHIBIDO pasar strings con punto y coma o texto plano CSV.",
+                items: {
+                  type: "array",
+                  items: {
+                    type: "string",
+                    description: "Valor de la celda individual"
+                  }
+                }
+              }
             },
             required: ["spreadsheet_id", "range", "values"]
           }
@@ -452,13 +462,23 @@ export const llmService = {
         type: "function",
         function: {
           name: "sheets_append",
-          description: "Añade una o más filas de datos al final de una hoja de cálculo existente (por ejemplo, para registrar un nuevo parte de taller al libro canónico Taller_Partes). Recibe el spreadsheet_id, el rango orientativo (ej: 'A:O') y los valores de la fila.",
+          description: "Añade una o más filas de datos al final de una hoja de cálculo existente (por ejemplo, para registrar un nuevo parte de taller al libro canónico Taller_Partes). Para Taller_Partes el orden de columnas es ESTRICTO (15 campos): [ID, Fecha, Cliente, Teléfono, Matrícula, Marca/Modelo, Km, Avería, Diagnóstico, Presupuesto_neto, IVA, Total, Estado, Notas, Link_fotos]. PROHIBIDO meter combustible o año en Avería o Diagnóstico; deben ir en Notas.",
           parameters: {
             type: "object",
             properties: {
               spreadsheet_id: { type: "string", description: "ID de la hoja de cálculo" },
               range: { type: "string", description: "Rango orientativo de columnas (ej: 'A:O' o 'Sheet1!A:O')" },
-              values: { type: "string", description: "Valores en formato CSV o matriz (ej: 'PARTE-001,2026-10-25,...')" }
+              values: {
+                type: "array",
+                description: "Matriz 2D de filas a añadir (array de arrays). Cada fila es un array con las 15 celdas individuales. Ejemplo: [['PARTE-001', '2026-10-25', 'Cliente', ...]]. PROHIBIDO pasar un string con punto y coma o cadena plana.",
+                items: {
+                  type: "array",
+                  items: {
+                    type: "string",
+                    description: "Valor de la celda individual"
+                  }
+                }
+              }
             },
             required: ["spreadsheet_id", "values"]
           }

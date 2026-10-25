@@ -47,25 +47,163 @@ function isValidSpreadsheetId(id?: string): boolean {
   return true;
 }
 
-export async function findExistingTallerPartes(userId: number): Promise<string | null> {
-  // 1. Consultar en la base de datos (drive_folders)
-  const cachedId = await dbService.getDriveFolder(userId, "sheet:Taller_Partes");
-  if (cachedId && isValidSpreadsheetId(cachedId)) {
-    return cachedId;
+export async function isSpreadsheetTrashedOrMissing(spreadsheetId: string, userId: number): Promise<boolean> {
+  if (!isValidSpreadsheetId(spreadsheetId)) return true;
+
+  // 1. Verificación directa con googleapis (Drive v3)
+  try {
+    const authClient = await getGoogleAuthForUser(userId);
+    if (authClient) {
+      const drive = google.drive({ version: "v3", auth: authClient });
+      const fileRes = await drive.files.get({
+        fileId: spreadsheetId,
+        fields: "id, name, trashed"
+      });
+      if (fileRes.data.trashed === true) {
+        console.warn(`🗑️ [Sheets] Hoja ${spreadsheetId} detectada en papelera (trashed: true).`);
+        return true;
+      }
+      return false;
+    }
+  } catch (apiErr: any) {
+    const errMsg = apiErr?.message || String(apiErr);
+    if (isNotFoundError(errMsg) || errMsg.includes("404") || errMsg.includes("notFound") || errMsg.includes("File not found")) {
+      console.warn(`❌ [Sheets] Hoja ${spreadsheetId} no encontrada (404/notFound):`, errMsg);
+      return true;
+    }
   }
 
-  // 2. Si no está en BD, buscar en Google Drive por nombre exacto
+  // 2. Fallback con gog CLI
+  try {
+    const res = await runGog(`drive get ${spreadsheetId} --json`, userId);
+    const parsed = JSON.parse(res);
+    const file = parsed.file || parsed;
+    if (file?.trashed === true) {
+      console.warn(`🗑️ [Sheets] Hoja ${spreadsheetId} detectada en papelera vía CLI (trashed: true).`);
+      return true;
+    }
+    return false;
+  } catch (cliErr: any) {
+    const errMsg = cliErr?.message || String(cliErr);
+    if (isNotFoundError(errMsg) || errMsg.includes("404") || errMsg.includes("notFound") || errMsg.includes("File not found") || errMsg.toLowerCase().includes("trash")) {
+      console.warn(`❌ [Sheets] Falló drive get para ${spreadsheetId} (posiblemente borrado/trashed):`, errMsg);
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export function normalizeValuesMatrix(values: any): any[][] {
+  if (values === null || values === undefined) {
+    return [];
+  }
+
+  let rawMatrix: any[][];
+
+  if (Array.isArray(values)) {
+    if (values.length === 0) return [];
+    if (!Array.isArray(values[0])) {
+      rawMatrix = [values];
+    } else {
+      rawMatrix = values;
+    }
+  } else if (typeof values === "string") {
+    const trimmed = values.trim();
+
+    if (trimmed.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          if (parsed.length === 0) return [];
+          if (!Array.isArray(parsed[0])) {
+            rawMatrix = [parsed];
+          } else {
+            rawMatrix = parsed;
+          }
+        } else {
+          rawMatrix = [[parsed]];
+        }
+      } catch (e: any) {
+        console.warn("⚠️ [Sheets] Error al parsear values como JSON, intentando fallback:", e?.message);
+        if (trimmed.includes(";")) {
+          rawMatrix = [trimmed.split(";").map(cell => cell.trim())];
+        } else {
+          const lines = trimmed.split("\n").filter(l => l.trim() !== "");
+          rawMatrix = lines.map(line => {
+            const sep = line.includes("|") ? "|" : ",";
+            return line.split(sep).map(c => c.trim());
+          });
+        }
+      }
+    } else if (trimmed.includes(";")) {
+      // Si es string con ';' y NO es JSON → split por ';' en UNA fila (solo fallback legacy)
+      rawMatrix = [trimmed.split(";").map(cell => cell.trim())];
+    } else {
+      const processed = trimmed.replace(/0,21/g, "21%").replace(/0\.21/g, "21%");
+      const lines = processed.split("\n").filter(l => l.trim() !== "");
+      if (lines.length === 0) return [];
+      rawMatrix = lines.map(line => {
+        const sep = line.includes("|") ? "|" : ",";
+        return line.split(sep).map(c => c.trim());
+      });
+    }
+  } else {
+    rawMatrix = [[values]];
+  }
+
+  return rawMatrix.map(row => {
+    if (!Array.isArray(row)) return [String(row ?? "")];
+    return row.map(cell => {
+      if (cell === null || cell === undefined) return "";
+      if (typeof cell === "number") return cell;
+      if (typeof cell === "boolean") return cell;
+
+      const str = String(cell).trim();
+      // Si es un número puro sin ceros a la izquierda, no fecha y no teléfono largo con '+'
+      if (str !== "" && !isNaN(Number(str)) && !/^0[0-9]+/.test(str) && !str.includes("-") && !str.includes("/")) {
+        return Number(str);
+      }
+      return str;
+    });
+  });
+}
+
+export async function findExistingTallerPartes(userId: number): Promise<string | null> {
+  const uId = userId || userContextStore.getStore()?.userId || 0;
+
+  // 1. Consultar en la base de datos (drive_folders)
+  const cachedId = await dbService.getDriveFolder(uId, "sheet:Taller_Partes");
+  if (cachedId) {
+    const isDead = await isSpreadsheetTrashedOrMissing(cachedId, uId);
+    if (isDead) {
+      console.warn(`🗑️ [Sheets] Taller_Partes en caché (${cachedId}) está en papelera o no existe. Purgando clave sheet:Taller_Partes de DB...`);
+      await dbService.deleteDriveFolder(uId, "sheet:Taller_Partes");
+      await dbService.deleteDriveFolderById(uId, cachedId);
+    } else if (isValidSpreadsheetId(cachedId)) {
+      return cachedId;
+    }
+  }
+
+  // 2. Si no está en BD o fue purgado, buscar en Google Drive por nombre exacto con trashed = false
   try {
     const searchRes = await runGog(
       `drive search "name = 'Taller_Partes' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false" --raw-query --json`,
-      userId
+      uId
     );
     const parsed = JSON.parse(searchRes);
     const files: any[] = parsed.files || (Array.isArray(parsed) ? parsed : []);
-    const valid = files.find(f => f.id && isValidSpreadsheetId(f.id));
-    if (valid) {
-      await dbService.saveDriveFolder(userId, "sheet:Taller_Partes", valid.id);
-      return valid.id;
+    for (const f of files) {
+      if (f.id && isValidSpreadsheetId(f.id) && !f.trashed) {
+        const isDead = await isSpreadsheetTrashedOrMissing(f.id, uId);
+        if (!isDead) {
+          await dbService.saveDriveFolder(uId, "sheet:Taller_Partes", f.id);
+          return f.id;
+        } else {
+          console.warn(`🗑️ [Sheets] Archivo en Drive '${f.id}' está en papelera/404. Purgando de DB...`);
+          await dbService.deleteDriveFolderById(uId, f.id);
+        }
+      }
     }
   } catch (sErr: any) {
     console.warn("⚠️ [Sheets] Error buscando Taller_Partes en Drive:", sErr.message);
@@ -324,24 +462,32 @@ export const sheetsList = async (userId?: number) => {
 export const sheetsCreate = async (title: string, userId?: number) => {
   try {
     const uId = userId || userContextStore.getStore()?.userId || 0;
-    const isTallerPartes = /taller[-_ ]?partes/i.test(title);
+    const isTallerOrPartes = /taller|partes/i.test(title);
+    const isCanonicalPartes = /taller[-_ ]?partes/i.test(title);
 
-    // Si el usuario pide crear Taller_Partes, verificar si ya existe el libro canónico
-    if (isTallerPartes) {
+    // Si el usuario pide crear Taller_Partes, verificar si ya existe el libro canónico y está vivo
+    if (isCanonicalPartes) {
       const existingId = await findExistingTallerPartes(uId);
       if (existingId) {
-        const link = `https://docs.google.com/spreadsheets/d/${existingId}/edit`;
-        return `ℹ️ **EL LIBRO CANÓNICO 'Taller_Partes' YA EXISTE**\n${SEP}\n\n` +
-               `📊 **Documento:** [Taller_Partes](${link}) · [Abrir en Google Sheets](${link})\n` +
-               `🆔 **ID:** \`${existingId}\`\n` +
-               `🆔 **spreadsheetId:** \`${existingId}\`\n` +
-               `🔗 **Enlace directo:** ${link}\n` +
-               `📂 **Ubicación:** Guardado en la carpeta canónica \`silvania/\`\n\n` +
-               `*Ya existe el libro único oficial de partes de taller. NO se ha creado un libro duplicado. Para registrar un nuevo parte de taller, usa sheets_append (o sheets_write) añadiendo la fila en este libro existente.*`;
+        const isDead = await isSpreadsheetTrashedOrMissing(existingId, uId);
+        if (isDead) {
+          console.warn(`🗑️ [Sheets] Taller_Partes canónico existente (${existingId}) detectado en papelera/404. Purgando de DB y creando uno nuevo...`);
+          await dbService.deleteDriveFolder(uId, "sheet:Taller_Partes");
+          await dbService.deleteDriveFolderById(uId, existingId);
+        } else {
+          const link = `https://docs.google.com/spreadsheets/d/${existingId}/edit`;
+          return `ℹ️ **EL LIBRO CANÓNICO 'Taller_Partes' YA EXISTE**\n${SEP}\n\n` +
+                 `📊 **Documento:** [Taller_Partes](${link}) · [Abrir en Google Sheets](${link})\n` +
+                 `🆔 **ID:** \`${existingId}\`\n` +
+                 `🆔 **spreadsheetId:** \`${existingId}\`\n` +
+                 `🔗 **Enlace directo:** ${link}\n` +
+                 `📂 **Ubicación:** Guardado en la carpeta canónica \`silvania/\`\n\n` +
+                 `*Ya existe el libro único oficial de partes de taller. NO se ha creado un libro duplicado. Para registrar un nuevo parte de taller, usa sheets_append (o sheets_write) añadiendo la fila en este libro existente.*`;
+        }
       }
     }
 
-    const cleanReqTitle = isTallerPartes ? "Taller_Partes" : title;
+    const cleanReqTitle = isCanonicalPartes ? "Taller_Partes" : title;
     const result = await runGog(`sheets create "${cleanReqTitle}" --json`, uId);
     const parsed = JSON.parse(result);
     const sheet = parsed.spreadsheet || parsed;
@@ -390,13 +536,25 @@ export const sheetsCreate = async (title: string, userId?: number) => {
     }
 
     let extraFormatNote = "";
-    if (isTallerPartes) {
-      await dbService.saveDriveFolder(uId, "sheet:Taller_Partes", id);
+    // B) Tras sheetsCreate de cualquier título que coincida /taller|partes/i (Taller_Partes, Silvania Taller, Partes_Taller_*):
+    // - Llamar formatTallerPartesSheet(spreadsheetId) siempre.
+    // - Guardar en drive_folders la clave del título y sheet:Taller_Partes solo si el libro está vivo.
+    if (isTallerOrPartes) {
       try {
         await formatTallerPartesSheet(id, uId);
         extraFormatNote = `\n\n*Se ha configurado el formato profesional de taller: título corporativo Silvania, 15 cabeceras estructuradas, fila 2 congelada, formatos de moneda con 2 decimales y anchos optimizados.*`;
       } catch (fErr: any) {
-        console.warn("⚠️ [Sheets] Error al formatear Taller_Partes:", fErr.message);
+        console.warn("⚠️ [Sheets] Error al formatear hoja de taller:", fErr.message);
+      }
+
+      const isDead = await isSpreadsheetTrashedOrMissing(id, uId);
+      if (!isDead) {
+        await dbService.saveDriveFolder(uId, "sheet:Taller_Partes", id);
+        await dbService.saveDriveFolder(uId, `sheet:${cleanTitle}`, id);
+        if (title !== cleanTitle) {
+          await dbService.saveDriveFolder(uId, `sheet:${title}`, id);
+        }
+        console.log(`💾 [Sheets] Claves guardadas en drive_folders para hoja de taller viva: sheet:Taller_Partes y sheet:${cleanTitle}`);
       }
     }
     
@@ -439,46 +597,13 @@ export const sheetsWrite = async (spreadsheetId: string, range: string, values: 
   if (!isValidSpreadsheetId(spreadsheetId)) {
     return `❌ Error: spreadsheet_id inválido o alucinado.`;
   }
-  let matrix: any[][];
-
-  if (Array.isArray(values)) {
-    matrix = values.map(row => {
-      if (Array.isArray(row)) {
-        return row.map(cell => {
-          if (cell === null || cell === undefined) return "";
-          const trimmed = String(cell).trim();
-          if (trimmed !== "" && !isNaN(Number(trimmed))) {
-            return Number(trimmed);
-          }
-          return trimmed;
-        });
-      }
-      const trimmed = String(row).trim();
-      if (trimmed !== "" && !isNaN(Number(trimmed))) {
-        return [Number(trimmed)];
-      }
-      return [trimmed];
-    });
-  } else {
-    const processedValues = String(values).replace(/0,21/g, "21%").replace(/0\.21/g, "21%");
-    const rows = processedValues.split("\n").filter(r => r.trim() !== "");
-    matrix = rows.map(row => {
-      const separator = row.includes("|") ? "|" : ",";
-      return row.split(separator).map(cell => {
-        const trimmed = cell.trim();
-        if (trimmed !== "" && !isNaN(Number(trimmed))) {
-          return Number(trimmed);
-        }
-        return trimmed;
-      });
-    });
-  }
-
+  const uId = userId || userContextStore.getStore()?.userId || 0;
+  const matrix = normalizeValuesMatrix(values);
   const jsonVal = JSON.stringify(matrix);
   const editLink = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
 
   try {
-    const result = await runGog(`sheets update ${spreadsheetId} "${range}" --values-json '${jsonVal}' --input USER_ENTERED`, userId);
+    const result = await runGog(`sheets update ${spreadsheetId} "${range}" --values-json '${jsonVal}' --input USER_ENTERED`, uId);
     return `✅ **DATOS ACTUALIZADOS CORRECTAMENTE**\n${SEP}\n\n` +
            `📊 **Documento:** [Abrir en Google Sheets](${editLink})\n` +
            `🆔 **ID:** \`${spreadsheetId}\`\n` +
@@ -491,7 +616,7 @@ export const sheetsWrite = async (spreadsheetId: string, range: string, values: 
       const fallbackRange = range.split("!").pop() || range;
       console.log(`⚠️ Falló sheets update con rango ${range}. Reintentando con rango simplificado ${fallbackRange}...`);
       try {
-        const result = await runGog(`sheets update ${spreadsheetId} "${fallbackRange}" --values-json '${jsonVal}' --input USER_ENTERED`, userId);
+        const result = await runGog(`sheets update ${spreadsheetId} "${fallbackRange}" --values-json '${jsonVal}' --input USER_ENTERED`, uId);
         return `✅ **DATOS ACTUALIZADOS CORRECTAMENTE**\n${SEP}\n\n` +
                `📊 **Documento:** [Abrir en Google Sheets](${editLink})\n` +
                `🆔 **ID:** \`${spreadsheetId}\`\n` +
@@ -512,41 +637,7 @@ export const sheetsAppend = async (spreadsheetId: string, range: string, values:
     return `❌ Error: spreadsheet_id inválido o alucinado.`;
   }
   const uId = userId || userContextStore.getStore()?.userId || 0;
-  let matrix: any[][];
-
-  if (Array.isArray(values)) {
-    matrix = values.map(row => {
-      if (Array.isArray(row)) {
-        return row.map(cell => {
-          if (cell === null || cell === undefined) return "";
-          const trimmed = String(cell).trim();
-          if (trimmed !== "" && !isNaN(Number(trimmed))) {
-            return Number(trimmed);
-          }
-          return trimmed;
-        });
-      }
-      const trimmed = String(row).trim();
-      if (trimmed !== "" && !isNaN(Number(trimmed))) {
-        return [Number(trimmed)];
-      }
-      return [trimmed];
-    });
-  } else {
-    const processedValues = String(values).replace(/0,21/g, "21%").replace(/0\.21/g, "21%");
-    const rows = processedValues.split("\n").filter(r => r.trim() !== "");
-    matrix = rows.map(row => {
-      const separator = row.includes("|") ? "|" : ",";
-      return row.split(separator).map(cell => {
-        const trimmed = cell.trim();
-        if (trimmed !== "" && !isNaN(Number(trimmed))) {
-          return Number(trimmed);
-        }
-        return trimmed;
-      });
-    });
-  }
-
+  const matrix = normalizeValuesMatrix(values);
   const effectiveRange = range && range.trim() !== "" ? range : "A:O";
   const jsonVal = JSON.stringify(matrix);
   const editLink = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
@@ -561,7 +652,68 @@ export const sheetsAppend = async (spreadsheetId: string, range: string, values:
            `🔗 **Enlace directo:** ${editLink}\n\n` +
            `*Se ha(n) añadido ${matrix.length} fila(s) al final de la hoja de cálculo.*`;
   } catch (error: any) {
-    // Si falla gog append, intentar con fallback via googleapis
+    const errMsg = error?.message || String(error);
+    const isDead = isNotFoundError(errMsg) ||
+                   errMsg.includes("404") ||
+                   errMsg.toLowerCase().includes("trash") ||
+                   errMsg.toLowerCase().includes("papelera") ||
+                   (await isSpreadsheetTrashedOrMissing(spreadsheetId, uId));
+
+    if (isDead) {
+      console.warn(`🚨 [Sheets Append] Archivo ${spreadsheetId} inválido o en papelera. Purgando clave sheet:Taller_Partes de DB...`);
+      // Purgar de DB si coincidía con Taller_Partes o por ID
+      await dbService.deleteDriveFolder(uId, "sheet:Taller_Partes");
+      await dbService.deleteDriveFolderById(uId, spreadsheetId);
+      const cachedTallerId = await dbService.getDriveFolder(uId, "sheet:Taller_Partes");
+      if (cachedTallerId) {
+        await dbService.deleteDriveFolder(uId, "sheet:Taller_Partes");
+        await dbService.deleteDriveFolderById(uId, cachedTallerId);
+      }
+
+      console.log(`🔄 [Sheets Append] Regenerando libro canónico 'Taller_Partes' para reintentar append...`);
+      const createRes = await sheetsCreate("Taller_Partes", uId);
+      const newIdMatch = createRes.match(/(?:spreadsheetId|ID):\s*`?([A-Za-z0-9_-]{20,80})`?/i);
+      const newSpreadsheetId = newIdMatch ? newIdMatch[1] : null;
+
+      if (newSpreadsheetId && newSpreadsheetId !== spreadsheetId) {
+        const newEditLink = `https://docs.google.com/spreadsheets/d/${newSpreadsheetId}/edit`;
+        try {
+          await runGog(`sheets append ${newSpreadsheetId} "${effectiveRange}" --values-json '${jsonVal}' --input USER_ENTERED`, uId);
+          return `✅ **LIBRO CANÓNICO REGENERADO TRAS BORRADO Y FILA AÑADIDA**\n${SEP}\n\n` +
+                 `📊 **Documento:** [Taller_Partes](${newEditLink}) · [Abrir en Google Sheets](${newEditLink})\n` +
+                 `🆔 **ID:** \`${newSpreadsheetId}\`\n` +
+                 `🆔 **spreadsheetId:** \`${newSpreadsheetId}\`\n` +
+                 `📍 **Rango / Destino:** ${effectiveRange}\n` +
+                 `🔗 **Enlace directo:** ${newEditLink}\n\n` +
+                 `*El libro anterior '${spreadsheetId}' estaba en la papelera o no disponible. Se ha regenerado un libro nuevo 'Taller_Partes' con su formato profesional en silvania/ y se ha añadido la fila solicitada.*`;
+        } catch (retryErr: any) {
+          try {
+            const authClient = await getGoogleAuthForUser(uId);
+            if (authClient) {
+              const sheets = google.sheets({ version: "v4", auth: authClient });
+              await sheets.spreadsheets.values.append({
+                spreadsheetId: newSpreadsheetId,
+                range: effectiveRange,
+                valueInputOption: "USER_ENTERED",
+                insertDataOption: "INSERT_ROWS",
+                requestBody: { values: matrix }
+              });
+              return `✅ **LIBRO CANÓNICO REGENERADO TRAS BORRADO Y FILA AÑADIDA**\n${SEP}\n\n` +
+                     `📊 **Documento:** [Taller_Partes](${newEditLink}) · [Abrir en Google Sheets](${newEditLink})\n` +
+                     `🆔 **ID:** \`${newSpreadsheetId}\`\n` +
+                     `🆔 **spreadsheetId:** \`${newSpreadsheetId}\`\n` +
+                     `📍 **Rango / Destino:** ${effectiveRange}\n` +
+                     `🔗 **Enlace directo:** ${newEditLink}\n\n` +
+                     `*El libro anterior '${spreadsheetId}' estaba en la papelera o no disponible. Se ha regenerado un libro nuevo 'Taller_Partes' con su formato profesional en silvania/ y se ha añadido la fila solicitada.*`;
+            }
+          } catch (apiRetryErr: any) {
+            console.warn("⚠️ [Sheets Append] Fallback de regeneración falló:", apiRetryErr.message);
+          }
+        }
+      }
+    }
+
+    // Si falla gog append por otra razón, intentar con fallback via googleapis
     try {
       const authClient = await getGoogleAuthForUser(uId);
       if (authClient) {

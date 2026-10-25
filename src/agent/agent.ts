@@ -494,6 +494,7 @@ Después de crear la skill, la instalas en el sistema y queda disponible para us
   * Para talleres mecánicos existe un único libro canónico llamado \`Taller_Partes\` en \`silvania/\`.
   * Si el libro ya existe, \`sheets_create\` devolverá su ID canónico para evitar crear libros duplicados.
   * Para registrar nuevos partes o vehículos en el taller, utiliza SIEMPRE \`sheets_append\` (o \`sheets_write\`) añadiendo la nueva fila con los 15 campos estructurados.
+  * El parámetro \`values\` de \`sheets_write\` y \`sheets_append\` debe ser SIEMPRE una matriz 2D (array de arrays: \`[[campo1, campo2, ...]]\`). PROHIBIDO terminantemente enviar cadenas de texto con punto y coma (';') o texto CSV plano.
 - Si la API falla: “La API no devolvió enlace. Reintenta.”
 - **REGLA DE ESCRITURA MASIVA (BATCH WRITE):**
   * Para rellenar o guardar datos (como listas de prospección, tablas de resultados de skills o informes), debes realizar una sola escritura tras tener todos los datos: primero ejecuta todas las herramientas de búsqueda/obtención de datos, y luego realiza exactamente 1× \`sheets_create\` (si aplica) + 1× \`sheets_write\` o \`sheets_append\` con la matriz 2D completa conteniendo \`[cabeceras, ...filas]\`.
@@ -1130,9 +1131,9 @@ export function sanitizeAlucinatedLinks(responseText: string, history: any[]): s
 
       // 3. Enlaces individuales de Drive / Docs / Sheets: /folders/{id} o /file/d/{id} o /d/{id} o ?id={id}
       let driveId = "";
-      const dMatch = cleanLink.match(/\/d\/([a-zA-Z0-9_-]{12,65})/i);
-      const folderMatch = cleanLink.match(/\/folders\/([a-zA-Z0-9_-]{12,65})/i);
-      const idParamMatch = cleanLink.match(/[?&]id=([a-zA-Z0-9_-]{12,65})/i);
+      const dMatch = cleanLink.match(/\/d\/([a-zA-Z0-9_-]{12,128})/i);
+      const folderMatch = cleanLink.match(/\/folders\/([a-zA-Z0-9_-]{12,128})/i);
+      const idParamMatch = cleanLink.match(/[?&]id=([a-zA-Z0-9_-]{12,128})/i);
 
       if (dMatch) driveId = dMatch[1];
       else if (folderMatch) driveId = folderMatch[1];
@@ -1201,7 +1202,7 @@ export function filterFinalOutput(text: string, history?: any[]): string {
 
   if (Array.isArray(history)) {
     for (const msg of history) {
-      if (msg.role === "tool" && msg.content) {
+      if (msg.content) {
         const strContent = String(msg.content);
         if (!verifiedGmailUrl) {
           const gmailMatch = strContent.match(/https:\/\/mail\.google\.com\/mail\/u\/0\/#inbox\/([a-zA-Z0-9_-]{8,65})/i);
@@ -1209,7 +1210,14 @@ export function filterFinalOutput(text: string, history?: any[]): string {
         }
         if (!verifiedSheetsUrl) {
           const sheetsMatch = strContent.match(/https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]{20,80})/i);
-          if (sheetsMatch) verifiedSheetsUrl = `https://docs.google.com/spreadsheets/d/${sheetsMatch[1]}/edit`;
+          if (sheetsMatch) {
+            verifiedSheetsUrl = `https://docs.google.com/spreadsheets/d/${sheetsMatch[1]}/edit`;
+          } else {
+            const idMatch = strContent.match(/(?:spreadsheetId|spreadsheet_id|ID)["':\s=]+`?([a-zA-Z0-9_-]{20,80})`?/i);
+            if (idMatch) {
+              verifiedSheetsUrl = `https://docs.google.com/spreadsheets/d/${idMatch[1]}/edit`;
+            }
+          }
         }
         if (!verifiedCalendarUrl) {
           const calMatch = strContent.match(/https?:\/\/(?:www\.)?(?:calendar\.google\.com|google\.[a-z.]+\/calendar)\S+/i);
@@ -1220,20 +1228,55 @@ export function filterFinalOutput(text: string, history?: any[]): string {
           if (driveMatch) verifiedDriveUrl = driveMatch[0].replace(/[)\]`'",;]+$/, "");
         }
       }
+
+      // Buscar también en msg.tool_calls si existen
+      if (!verifiedSheetsUrl && Array.isArray(msg.tool_calls)) {
+        for (const tc of msg.tool_calls) {
+          const argsStr = tc?.function?.arguments || "";
+          const tcMatch = argsStr.match(/(?:spreadsheet_id|spreadsheetId)["':\s=]+`?([a-zA-Z0-9_-]{20,80})`?/i);
+          if (tcMatch) {
+            verifiedSheetsUrl = `https://docs.google.com/spreadsheets/d/${tcMatch[1]}/edit`;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // Si no se encontró en history pero el texto tiene un ID explícito de hoja o URL
+  if (!verifiedSheetsUrl) {
+    const textUrlMatch = cleaned.match(/https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]{20,80})/i);
+    if (textUrlMatch) {
+      verifiedSheetsUrl = `https://docs.google.com/spreadsheets/d/${textUrlMatch[1]}/edit`;
+    } else {
+      const textIdMatch = cleaned.match(/(?:spreadsheetId|spreadsheet_id|ID)["':\s=]+`?([a-zA-Z0-9_-]{20,80})`?/i);
+      if (textIdMatch) {
+        verifiedSheetsUrl = `https://docs.google.com/spreadsheets/d/${textIdMatch[1]}/edit`;
+      }
     }
   }
 
   const primaryFallbackUrl = verifiedSheetsUrl || verifiedCalendarUrl || verifiedGmailUrl || verifiedDriveUrl;
 
-  // A. Si hay "[Abrir en Google Sheets](...)" con URL vacía o neutralizada:
-  cleaned = cleaned.replace(/\[Abrir en Google Sheets\]\((?:null|undefined|\s*|\[Enlace no disponible[^)]*\])\)/gi, () => {
-    return verifiedSheetsUrl ? `[Abrir en Google Sheets](${verifiedSheetsUrl})` : `[Abrir en Google Sheets](https://docs.google.com/spreadsheets/)`;
-  });
+  // D) filterFinalOutput: si hay spreadsheetId en el turno, sustituir "Abrir en Google Sheets" por markdown con https://docs.google.com/spreadsheets/d/ID/edit
+  if (verifiedSheetsUrl) {
+    // A. Reemplazar cualquier [Abrir en Google Sheets](...) si está roto, vacío, genérico o apunta a null/undefined
+    cleaned = cleaned.replace(/\[Abrir en Google Sheets\](?:\(([^)]*)\))?/gi, (match, currentHref) => {
+      if (!currentHref || currentHref.includes("null") || currentHref.includes("undefined") || !currentHref.includes("/d/")) {
+        return `[Abrir en Google Sheets](${verifiedSheetsUrl})`;
+      }
+      return match;
+    });
 
-  // B. Si hay "Abrir en Google Sheets" suelto que el modelo haya dejado sin formatear como enlace:
-  cleaned = cleaned.replace(/(?:🔗\s*|·\s*)?Abrir en Google Sheets(?!\s*\]|\s*\([^\s)]+\))/g, () => {
-    return verifiedSheetsUrl ? `[Abrir en Google Sheets](${verifiedSheetsUrl})` : `[Abrir en Google Sheets](https://docs.google.com/spreadsheets/)`;
-  });
+    // B. Reemplazar texto suelto "Abrir en Google Sheets" que no forme parte de un enlace markdown
+    cleaned = cleaned.replace(/(?:🔗\s*|·\s*)?(?<!\[)Abrir en Google Sheets(?!\s*\]|\s*\([^\s)]+\))/gi, () => {
+      return `[Abrir en Google Sheets](${verifiedSheetsUrl})`;
+    });
+  } else {
+    // Fallback cuando NO hay URL de Sheets en el turno: evitar enlaces rotos tipo [Abrir en Google Sheets]()
+    cleaned = cleaned.replace(/\[Abrir en Google Sheets\]\((?:null|undefined|\s*|\[Enlace no disponible[^)]*\])?\)/gi, `[Abrir en Google Sheets](https://docs.google.com/spreadsheets/)`);
+    cleaned = cleaned.replace(/(?:🔗\s*|·\s*)?Abrir en Google Sheets(?!\s*\]|\s*\([^\s)]+\))/g, `[Abrir en Google Sheets](https://docs.google.com/spreadsheets/)`);
+  }
 
   // C. Si hay "[Abrir en Google Calendar](...)" con URL vacía o neutralizada:
   cleaned = cleaned.replace(/\[Abrir en Google Calendar\]\((?:null|undefined|\s*|\[Enlace no disponible[^)]*\])\)/gi, () => {
