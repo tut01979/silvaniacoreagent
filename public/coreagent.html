@@ -306,6 +306,65 @@
       border-color: rgba(255, 255, 255, 0.2);
     }
 
+    /* Bloque de Confianza: Verificación Google OAuth */
+    .oauth-trust-box {
+      margin-top: 2rem;
+      padding: 1.2rem 1.4rem;
+      background: rgba(16, 185, 129, 0.06);
+      border: 1px solid rgba(16, 185, 129, 0.28);
+      border-radius: 18px;
+      backdrop-filter: blur(12px);
+      max-width: 560px;
+    }
+
+    .trust-badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 0.78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #34d399;
+      background: rgba(16, 185, 129, 0.14);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      padding: 0.28rem 0.75rem;
+      border-radius: 50px;
+      margin-bottom: 0.75rem;
+    }
+
+    .trust-statement {
+      color: #f8fafc;
+      font-size: 0.95rem;
+      font-weight: 600;
+      line-height: 1.55;
+      margin-bottom: 0.45rem;
+    }
+
+    .trust-subtext {
+      color: var(--text-muted);
+      font-size: 0.84rem;
+      line-height: 1.55;
+      margin-bottom: 0;
+    }
+
+    .trust-links {
+      display: inline-block;
+      margin-left: 0.35rem;
+    }
+
+    .trust-links a {
+      color: #38bdf8;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      transition: color 0.2s ease;
+      font-weight: 500;
+    }
+
+    .trust-links a:hover {
+      color: #7dd3fc;
+    }
+
     .hero-mockup-wrapper {
       position: relative;
       display: flex;
@@ -1157,6 +1216,7 @@
         height: 320px;
       }
       .cta-container { justify-content: center; }
+      .oauth-trust-box { margin: 2rem auto 0 auto; text-align: left; }
       .steps-grid { grid-template-columns: 1fr; }
       .transparency-box { grid-template-columns: 1fr; }
       nav { display: none; }
@@ -1209,6 +1269,22 @@
         <a href="#tutoriales" class="btn-secondary">
           <i class="fa-solid fa-circle-play"></i> Ver Vídeos Demos
         </a>
+      </div>
+
+      <!-- Bloque de Confianza: Verificación Google OAuth -->
+      <div class="oauth-trust-box">
+        <div class="trust-badge-pill">
+          <i class="fa-solid fa-shield-halved"></i> Verificado por Google · Permisos mínimos
+        </div>
+        <p class="trust-statement">
+          Silvania CoreAgent está verificado por Google para Calendar, Sheets, envío de correo y archivos de la app en Drive (permisos mínimos).
+        </p>
+        <p class="trust-subtext">
+          Conectas tu cuenta con OAuth 2.0. Tú controlas qué autorizas; puedes revocar el acceso en tu Cuenta de Google en cualquier momento.
+          <span class="trust-links">
+            <a href="https://silvania.ai/privacy">Política de Privacidad</a> · <a href="https://silvania.ai/terms">Términos</a>
+          </span>
+        </p>
       </div>
     </div>
     <div class="hero-mockup-wrapper">
@@ -1369,15 +1445,16 @@
     <div class="transparency-box">
       <div>
         <h3>Seguridad y Privacidad por Diseño</h3>
-        <p>Silvania CoreAgent está construido bajo una política estricta de permisos mínimos (*Principle of Least Privilege*). No pedimos acceso que no necesitemos.</p>
+        <p>Silvania CoreAgent está verificado por Google y opera bajo una estricta política de permisos mínimos (*Principle of Least Privilege*). Conexión directa mediante OAuth 2.0 oficial.</p>
       </div>
       <div>
         <ul class="check-list">
-          <li><i class="fa-solid fa-check"></i> <strong>SÍ</strong> gestiona eventos de calendario y hojas de cálculo que tú pidas.</li>
-          <li><i class="fa-solid fa-check"></i> <strong>SÍ</strong> almacena los archivos creados por la app en tu propio Drive.</li>
-          <li><i class="fa-solid fa-xmark"></i> <strong>NO</strong> lee toda tu bandeja de entrada privada de Gmail.</li>
-          <li><i class="fa-solid fa-xmark"></i> <strong>NO</strong> tiene acceso a los archivos ajenos que ya tenías en tu Drive.</li>
-          <li><i class="fa-solid fa-check"></i> <strong>Revocación inmediata:</strong> Puedes desvincular el bot en cualquier momento.</li>
+          <li><i class="fa-solid fa-check"></i> <strong>SÍ</strong> gestiona eventos en Calendar y hojas en Sheets bajo tu solicitud.</li>
+          <li><i class="fa-solid fa-check"></i> <strong>SÍ</strong> almacena en Drive únicamente los archivos creados por la app (<code>drive.file</code> acotado).</li>
+          <li><i class="fa-solid fa-check"></i> <strong>SÍ</strong> envía correos únicamente cuando tú lo confirmas expresamente (<code>gmail.send</code>).</li>
+          <li><i class="fa-solid fa-xmark"></i> <strong>NO</strong> lee tus correos ni accede a tu bandeja de entrada de Gmail.</li>
+          <li><i class="fa-solid fa-xmark"></i> <strong>NO</strong> tiene acceso al resto de tus documentos o archivos previos de Google Drive.</li>
+          <li><i class="fa-solid fa-check"></i> <strong>Revocación inmediata:</strong> Desvincula el acceso en cualquier momento desde tu Cuenta de Google.</li>
         </ul>
       </div>
     </div>

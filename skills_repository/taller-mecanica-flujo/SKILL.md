@@ -40,7 +40,8 @@ El libro canónico `Taller_Partes` cuenta con diseño profesional corporativo Si
 ### Paso 1: Localización del Libro Canónico
 - Ejecuta `sheets_create` con `title: "Taller_Partes"`.
 - Si el libro ya existía, la herramienta responderá indicando el `spreadsheetId` canónico y el enlace directo.
-- Si no existía, el sistema lo creará con el formato profesional corporativo y devolverá su nuevo `spreadsheetId`.
+- Si no existía, el sistema lo creará con el formato profesional corporativo (banner en fila 1 y 15 cabeceras en fila 2) y devolverá su nuevo `spreadsheetId`.
+- **REGLA CRÍTICA:** Tras crear `Taller_Partes` formateado, añadir partes solo con `sheets_append` (o `sheets_write` en la siguiente fila vacía como `A3`); NUNCA volver a escribir cabeceras en A1.
 
 ### Paso 2: Creación Opcional de Carpeta de Fotos (Google Drive)
 - Si el parte incluye fotos o documentación del vehículo:
@@ -48,11 +49,12 @@ El libro canónico `Taller_Partes` cuenta con diseño profesional corporativo Si
   - **REGLA ESTRICTA ANTI-ALUCINACIÓN:** Si `drive_mkdir` o `drive_search` **NO devuelve un `id` real de carpeta**, está TERMINANTEMENTE PROHIBIDO inventar un ID o URL falsa de Google Drive. En ese caso, deja la columna `Link_fotos` vacía o como `"No asignado"` e informa con honestidad al usuario.
   - Si la herramienta devuelve un `id` real de carpeta, construye el enlace: `https://drive.google.com/drive/folders/<id>`.
 
-### Paso 3: Inserción de la Fila (Append)
-- Llama a `sheets_append` con:
+### Paso 3: Inserción de la Fila (Append / Write)
+- **Tras crear Taller_Partes formateado, añadir partes solo con append/write en la siguiente fila vacía; no volver a escribir cabeceras.**
+- Llama a `sheets_append` (o `sheets_write` en `A3`) con:
   - `spreadsheet_id`: El ID real del libro `Taller_Partes`.
-  - `range`: `"A:O"`
-  - `values`: Matriz 2D (array de arrays: `[["PARTE-001", "2026-10-25", ...]]`) con los 15 valores. PROHIBIDO enviar cadenas con ';' o texto plano.
+  - `range`: `"A:O"` (o `"A3"` si usas `sheets_write`).
+  - `values`: Matriz 2D de 1 fila con los 15 valores (ej: `[["PARTE-001", "2026-10-25", ...]]`). No incluyas fila de cabeceras; solo la fila de datos 1x15. PROHIBIDO enviar cadenas con ';' o texto plano.
 
 ### Paso 4: Respuesta al Usuario con Enlace Obligatorio Real
 - Informa al usuario con un resumen claro del parte registrado (ID, Cliente, Matrícula, Vehículo, Avería y Presupuesto).

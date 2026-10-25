@@ -402,6 +402,7 @@
     }
 
     .tag-core { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .tag-verified { background: rgba(16, 185, 129, 0.12); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.35); }
     .tag-marketing { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
     .tag-eva { background: rgba(192, 132, 252, 0.15); color: #c084fc; border: 1px solid rgba(192, 132, 252, 0.3); }
     .tag-proximamente { background: rgba(148, 163, 184, 0.15); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.3); }
@@ -878,7 +879,10 @@
       <!-- Tarjeta 1: CoreAgent -->
       <div class="agent-card card-core" id="coreagent">
         <div>
-          <span class="agent-tag tag-core"><i class="fa-solid fa-bolt"></i> Productividad Ejecutiva</span>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.5rem;">
+            <span class="agent-tag tag-core" style="margin-bottom: 0;"><i class="fa-solid fa-bolt"></i> Productividad Ejecutiva</span>
+            <span class="agent-tag tag-verified" style="margin-bottom: 0;"><i class="fa-solid fa-shield-halved"></i> Verificado por Google · permisos mínimos</span>
+          </div>
           <h3>CoreAgent</h3>
           <p class="agent-headline">Tu oficina en Telegram para Google Workspace.</p>
           <p class="agent-desc">Gestiona eventos en Calendar, hojas de cálculo en Sheets, guarda facturas en Drive y redacta correos con tu confirmación mediante lenguaje natural.</p>

@@ -277,7 +277,7 @@ export async function formatTallerPartesSheet(spreadsheetId: string, userId?: nu
             fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)"
           }
         },
-        // C. Estilo fila 2: Cabeceras con fondo #e2e8f0, negrita, wrap text, centrado vertical
+        // C. Estilo fila 2: Cabeceras con fondo oscuro (#2d3748), texto blanco, negrita, wrap text, centrado vertical y horizontal (una celda por columna, sin merge)
         {
           repeatCell: {
             range: {
@@ -289,17 +289,18 @@ export async function formatTallerPartesSheet(spreadsheetId: string, userId?: nu
             },
             cell: {
               userEnteredFormat: {
-                backgroundColor: { red: 226 / 255, green: 232 / 255, blue: 240 / 255 },
+                backgroundColor: { red: 45 / 255, green: 55 / 255, blue: 72 / 255 },
                 wrapStrategy: "WRAP",
+                horizontalAlignment: "CENTER",
                 verticalAlignment: "MIDDLE",
                 textFormat: {
-                  foregroundColor: { red: 0.1, green: 0.1, blue: 0.1 },
+                  foregroundColor: { red: 1, green: 1, blue: 1 },
                   bold: true,
                   fontSize: 10
                 }
               }
             },
-            fields: "userEnteredFormat(backgroundColor,textFormat,wrapStrategy,verticalAlignment)"
+            fields: "userEnteredFormat(backgroundColor,textFormat,wrapStrategy,horizontalAlignment,verticalAlignment)"
           }
         },
         // D. Freeze fila 2
@@ -593,28 +594,59 @@ export const sheetsRead = async (spreadsheetId: string, range: string, userId?: 
   }
 };
 
+function isTallerPartesHeaderRow(row: any[]): boolean {
+  if (!Array.isArray(row) || row.length === 0) return false;
+  const first = String(row[0]).trim().toUpperCase();
+  if (first === "ID") {
+    const rowStr = row.map(c => String(c).toLowerCase()).join(" ");
+    return rowStr.includes("fecha") || rowStr.includes("matrícula") || rowStr.includes("matricula") || rowStr.includes("cliente");
+  }
+  return false;
+}
+
 export const sheetsWrite = async (spreadsheetId: string, range: string, values: string | any[][], userId?: number) => {
   if (!isValidSpreadsheetId(spreadsheetId)) {
     return `❌ Error: spreadsheet_id inválido o alucinado.`;
   }
   const uId = userId || userContextStore.getStore()?.userId || 0;
-  const matrix = normalizeValuesMatrix(values);
+  let matrix = normalizeValuesMatrix(values);
+  let effectiveRange = range;
+
+  // REGLAS Taller_Partes:
+  // 1) Tras formatTallerPartesSheet, NUNCA reescribir cabeceras en A1.
+  // 2) Solo insertar la fila de datos en A3 (o sheets_append al final), matriz 1x15.
+  // 3) Si sheetsCreate ya formateó, sheets_write/append de un parte nuevo = solo datos, sin fila de headers.
+  if (matrix.length > 0 && isTallerPartesHeaderRow(matrix[0])) {
+    console.warn("⚠️ [Sheets Write] Fila de cabeceras de Taller_Partes detectada en values. Descartando fila de cabeceras para proteger el banner en fila 1 y cabeceras en fila 2.");
+    matrix = matrix.slice(1);
+    if (!effectiveRange || /^(?:.*!)?A1(?::[A-Z0-9]+)?$/i.test(effectiveRange) || /^(?:.*!)?[A-Z]*[12](?::[A-Z0-9]+)?$/i.test(effectiveRange)) {
+      effectiveRange = "A3";
+    }
+  } else if (matrix.length > 0 && matrix[0].length === 15 && (/^(?:.*!)?A1(?::[A-Z0-9]+)?$/i.test(effectiveRange) || effectiveRange === "A:O")) {
+    console.warn("⚠️ [Sheets Write] Intento de escribir fila de parte en A1. Redirigiendo a A3 para no sobrescribir el banner corporativo ni las cabeceras.");
+    effectiveRange = "A3";
+  }
+
+  if (matrix.length === 0) {
+    return `⚠️ No hay datos que escribir (solo se habían proporcionado cabeceras que ya existen en el formato de la hoja).`;
+  }
+
   const jsonVal = JSON.stringify(matrix);
   const editLink = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
 
   try {
-    const result = await runGog(`sheets update ${spreadsheetId} "${range}" --values-json '${jsonVal}' --input USER_ENTERED`, uId);
+    const result = await runGog(`sheets update ${spreadsheetId} "${effectiveRange}" --values-json '${jsonVal}' --input USER_ENTERED`, uId);
     return `✅ **DATOS ACTUALIZADOS CORRECTAMENTE**\n${SEP}\n\n` +
            `📊 **Documento:** [Abrir en Google Sheets](${editLink})\n` +
            `🆔 **ID:** \`${spreadsheetId}\`\n` +
            `🆔 **spreadsheetId:** \`${spreadsheetId}\`\n` +
-           `📍 **Rango:** ${range}\n` +
+           `📍 **Rango:** ${effectiveRange}\n` +
            `🔗 **Enlace directo:** ${editLink}\n\n` +
            `*Los datos han sido volcados en la hoja de cálculo.*`;
   } catch (error: any) {
-    if (range.includes("!")) {
-      const fallbackRange = range.split("!").pop() || range;
-      console.log(`⚠️ Falló sheets update con rango ${range}. Reintentando con rango simplificado ${fallbackRange}...`);
+    if (effectiveRange.includes("!")) {
+      const fallbackRange = effectiveRange.split("!").pop() || effectiveRange;
+      console.log(`⚠️ Falló sheets update con rango ${effectiveRange}. Reintentando con rango simplificado ${fallbackRange}...`);
       try {
         const result = await runGog(`sheets update ${spreadsheetId} "${fallbackRange}" --values-json '${jsonVal}' --input USER_ENTERED`, uId);
         return `✅ **DATOS ACTUALIZADOS CORRECTAMENTE**\n${SEP}\n\n` +
@@ -637,7 +669,19 @@ export const sheetsAppend = async (spreadsheetId: string, range: string, values:
     return `❌ Error: spreadsheet_id inválido o alucinado.`;
   }
   const uId = userId || userContextStore.getStore()?.userId || 0;
-  const matrix = normalizeValuesMatrix(values);
+  let matrix = normalizeValuesMatrix(values);
+
+  // REGLAS Taller_Partes:
+  // Si envían fila de cabeceras al append, descartarla para añadir únicamente la fila de datos
+  if (matrix.length > 0 && isTallerPartesHeaderRow(matrix[0])) {
+    console.warn("⚠️ [Sheets Append] Fila de cabeceras detectada en values para append. Descartando cabeceras para añadir solo la fila de datos.");
+    matrix = matrix.slice(1);
+  }
+
+  if (matrix.length === 0) {
+    return `⚠️ No hay datos que añadir (solo se habían proporcionado cabeceras que ya existen en el formato de la hoja).`;
+  }
+
   const effectiveRange = range && range.trim() !== "" ? range : "A:O";
   const jsonVal = JSON.stringify(matrix);
   const editLink = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;

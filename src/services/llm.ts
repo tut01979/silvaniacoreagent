@@ -407,7 +407,7 @@ export const llmService = {
         type: "function",
         function: {
           name: "sheets_create",
-          description: "Crea una nueva hoja de cálculo en silvania/. Si el título es 'Taller_Partes' y ya existe el libro canónico, NO creará otro libro sino que devolverá el spreadsheetId existente para que le agregues filas con sheets_append.",
+          description: "Crea una nueva hoja de cálculo en silvania/. Para 'Taller_Partes' aplica automáticamente el diseño corporativo oficial (banner en fila 1 y 15 cabeceras en fila 2). Tras crear Taller_Partes formateado, añadir partes solo con append/write en la siguiente fila vacía; no volver a escribir cabeceras.",
           parameters: {
             type: "object",
             properties: {
@@ -436,12 +436,12 @@ export const llmService = {
         type: "function",
         function: {
           name: "sheets_write",
-          description: "Escribe o actualiza datos en una hoja de cálculo. values DEBE ser una matriz 2D (array de arrays: [[fila1_col1, fila1_col2], [fila2_col1, fila2_col2]]). Está estrictamente prohibido pasar strings con punto y coma (';') o texto plano para matrices.",
+          description: "Escribe o actualiza datos en una hoja de cálculo. values DEBE ser una matriz 2D (array de arrays: [[fila1_col1, fila1_col2], [fila2_col1, fila2_col2]]). Está estrictamente prohibido pasar strings con punto y coma (';') o texto plano para matrices. Tras crear Taller_Partes formateado, añadir partes solo con append/write en la siguiente fila vacía (ej: 'A3'); no volver a escribir cabeceras.",
           parameters: {
             type: "object",
             properties: {
               spreadsheet_id: { type: "string", description: "ID de la hoja de cálculo" },
-              range: { type: "string", description: "Rango donde escribir (ej: 'A1', 'A1:O2', 'Hoja1!A1')" },
+              range: { type: "string", description: "Rango donde escribir (ej: 'A3', 'A1:O2', 'Hoja1!A1')" },
               values: {
                 type: "array",
                 description: "Matriz 2D de datos (array de arrays). Cada elemento es una fila de celdas. Ejemplo: [['Col1', 'Col2'], ['Val1', 'Val2']]. PROHIBIDO pasar strings con punto y coma o texto plano CSV.",
@@ -462,7 +462,7 @@ export const llmService = {
         type: "function",
         function: {
           name: "sheets_append",
-          description: "Añade una o más filas de datos al final de una hoja de cálculo existente (por ejemplo, para registrar un nuevo parte de taller al libro canónico Taller_Partes). Para Taller_Partes el orden de columnas es ESTRICTO (15 campos): [ID, Fecha, Cliente, Teléfono, Matrícula, Marca/Modelo, Km, Avería, Diagnóstico, Presupuesto_neto, IVA, Total, Estado, Notas, Link_fotos]. PROHIBIDO meter combustible o año en Avería o Diagnóstico; deben ir en Notas.",
+          description: "Añade una o más filas de datos al final de una hoja de cálculo existente. Para Taller_Partes el orden de columnas es ESTRICTO (15 campos): [ID, Fecha, Cliente, Teléfono, Matrícula, Marca/Modelo, Km, Avería, Diagnóstico, Presupuesto_neto, IVA, Total, Estado, Notas, Link_fotos]. PROHIBIDO meter combustible o año en Avería o Diagnóstico; deben ir en Notas. Tras crear Taller_Partes formateado, añadir partes solo con append/write en la siguiente fila vacía; no volver a escribir cabeceras (solo la fila de datos 1x15).",
           parameters: {
             type: "object",
             properties: {

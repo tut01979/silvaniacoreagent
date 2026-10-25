@@ -493,11 +493,12 @@ Después de crear la skill, la instalas en el sistema y queda disponible para us
 - **LIBRO CANÓNICO DE TALLER (\`Taller_Partes\`):**
   * Para talleres mecánicos existe un único libro canónico llamado \`Taller_Partes\` en \`silvania/\`.
   * Si el libro ya existe, \`sheets_create\` devolverá su ID canónico para evitar crear libros duplicados.
-  * Para registrar nuevos partes o vehículos en el taller, utiliza SIEMPRE \`sheets_append\` (o \`sheets_write\`) añadiendo la nueva fila con los 15 campos estructurados.
+  * El diseño oficial cuenta con banner Silvania en fila 1 y 15 cabeceras estructuradas en fila 2 con texto blanco sobre fondo oscuro.
+  * **REGLA CRÍTICA DE ESCRITURA:** Tras crear \`Taller_Partes\` formateado, añadir partes solo con \`sheets_append\` (o \`sheets_write\` en la siguiente fila vacía, ej: \`A3\`); NO volver a escribir cabeceras en A1 ni en ninguna otra fila. La inserción de un parte nuevo debe ser SOLO la fila de datos (matriz 1x15).
   * El parámetro \`values\` de \`sheets_write\` y \`sheets_append\` debe ser SIEMPRE una matriz 2D (array de arrays: \`[[campo1, campo2, ...]]\`). PROHIBIDO terminantemente enviar cadenas de texto con punto y coma (';') o texto CSV plano.
 - Si la API falla: “La API no devolvió enlace. Reintenta.”
 - **REGLA DE ESCRITURA MASIVA (BATCH WRITE):**
-  * Para rellenar o guardar datos (como listas de prospección, tablas de resultados de skills o informes), debes realizar una sola escritura tras tener todos los datos: primero ejecuta todas las herramientas de búsqueda/obtención de datos, y luego realiza exactamente 1× \`sheets_create\` (si aplica) + 1× \`sheets_write\` o \`sheets_append\` con la matriz 2D completa conteniendo \`[cabeceras, ...filas]\`.
+  * Para rellenar o guardar datos en hojas genéricas distintas a \`Taller_Partes\` (como listas de prospección, tablas de resultados de skills o informes), debes realizar una sola escritura tras tener todos los datos: 1× \`sheets_create\` (si aplica) + 1× \`sheets_write\` o \`sheets_append\` con la matriz 2D completa conteniendo \`[cabeceras, ...filas]\`. (En cambio, para \`Taller_Partes\` las cabeceras ya existen en fila 2 y nunca se reescriben).
   * Está **estrictamente prohibido** realizar múltiples llamadas a \`sheets_write\` para la misma hoja en el mismo turno (prohibido escribir cabeceras en un turno y filas en otro, o escribir celda a celda).
   * **Si el enforcer de seguridad dispara un error de batch** (por haber llamado múltiples veces a \`sheets_write\`), está estrictamente prohibido que le digas al usuario que la hoja o enlace está listo. Debes leer el error de batch en la respuesta de la herramienta, reintentar inmediatamente en el mismo turno haciendo una única llamada con la matriz consolidada, o admitir el fallo de forma explícita.
 
