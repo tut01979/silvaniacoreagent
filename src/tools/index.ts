@@ -6,7 +6,7 @@ import { config } from "../config/config.js";
 import { driveList, driveSearch, driveMkdir, driveMove, driveUpload, driveRemove, driveReadFile, resolveOrCreateParentId } from "./drive.js";
 import { calendarList, calendarCreate, calendarDelete, calendarUpdate } from "./calendar.js";
 import { userContextStore } from "../services/context.js";
-import { sheetsList, sheetsCreate, sheetsRead, sheetsWrite, sheetsCreateInvoice } from "./sheets.js";
+import { sheetsList, sheetsCreate, sheetsRead, sheetsWrite, sheetsAppend, sheetsCreateInvoice } from "./sheets.js";
 import { runGog } from "./gogWrapper.js";
 import { searchSkills, getSkill, installSkill, createSkill, loadSkills, loadSkillsSummary, loadSkill } from "./skills.js";
 import { webSearch, readUrl } from "./webSearch.js";
@@ -48,16 +48,25 @@ export const tools = {
   gmail_list: async ({ max_results, userId }: { max_results?: number; userId?: number }) => {
     const uId = userId || userContextStore.getStore()?.userId;
     if (!uId) return "❌ Error: Usuario no identificado.";
+    if (!isBetaUser(uId)) {
+      return "⚠️ **Permisos de Gmail limitados (Tier Producción):** Tu cuenta de Google vinculada opera bajo los permisos mínimos verificados de producción con alcance de solo envío (`gmail.send`) para proteger tu privacidad. No dispones de permisos de lectura (`gmail.readonly`) para listar o consultar correos de tu bandeja de entrada.\n\n✉️ Puedes pedirme que **redacte y envíe un correo nuevo** en tu nombre, o bien consultar tu correspondencia directamente en [Gmail](https://mail.google.com/mail/u/0/#inbox).";
+    }
     return await gmailList(uId, max_results);
   },
   gmail_search: async ({ query, max_results, userId }: { query: string; max_results?: number; userId?: number }) => {
     const uId = userId || userContextStore.getStore()?.userId;
     if (!uId) return "❌ Error: Usuario no identificado.";
+    if (!isBetaUser(uId)) {
+      return "⚠️ **Permisos de Gmail limitados (Tier Producción):** Tu cuenta de Google vinculada opera bajo los permisos mínimos verificados de producción con alcance de solo envío (`gmail.send`) para proteger tu privacidad. No dispones de permisos de lectura (`gmail.readonly`) para buscar o consultar correos de tu bandeja de entrada.\n\n✉️ Puedes pedirme que **redacte y envíe un correo nuevo** en tu nombre, o bien buscar directamente en [Gmail](https://mail.google.com/mail/u/0/#inbox).";
+    }
     return await gmailSearch(uId, query, max_results);
   },
   gmail_thread: async ({ thread_id, userId }: { thread_id: string; userId?: number }) => {
     const uId = userId || userContextStore.getStore()?.userId;
     if (!uId) return "❌ Error: Usuario no identificado.";
+    if (!isBetaUser(uId)) {
+      return "⚠️ **Permisos de Gmail limitados (Tier Producción):** Tu cuenta de Google vinculada opera bajo los permisos mínimos verificados de producción con alcance de solo envío (`gmail.send`) para proteger tu privacidad. No dispones de permisos de lectura para ver hilos de correo.\n\n✉️ Puedes consultar el correo directamente en [Gmail](https://mail.google.com/mail/u/0/#inbox).";
+    }
     return await gmailThread(uId, thread_id);
   },
   gmail_send: async ({ to, subject, body, userId }: { to: string; subject: string; body: string; userId?: number }) => {
@@ -157,20 +166,20 @@ export const tools = {
     if (!uId) return "❌ Error: Usuario no identificado.";
     return await calendarList(uId, days_ahead, start_date);
   },
-  calendar_create: async ({ summary, start, end, description, userId }: { summary: string; start: string; end: string; description?: string; userId?: number }) => {
+  calendar_create: async ({ summary, start, end, description, attendees, userId }: { summary: string; start: string; end: string; description?: string; attendees?: string[] | string; userId?: number }) => {
     const uId = userId || userContextStore.getStore()?.userId;
     if (!uId) return "❌ Error: Usuario no identificado.";
-    return await calendarCreate(uId, summary, start, end, description);
+    return await calendarCreate(uId, summary, start, end, description, attendees);
   },
   calendar_delete: async ({ event_id, userId }: { event_id: string; userId?: number }) => {
     const uId = userId || userContextStore.getStore()?.userId;
     if (!uId) return "❌ Error: Usuario no identificado.";
     return await calendarDelete(uId, event_id);
   },
-  calendar_update: async ({ event_id, summary, start, end, description, userId }: { event_id: string; summary?: string; start?: string; end?: string; description?: string; userId?: number }) => {
+  calendar_update: async ({ event_id, summary, start, end, description, attendees, send_updates, userId }: { event_id: string; summary?: string; start?: string; end?: string; description?: string; attendees?: string[] | string; send_updates?: string; userId?: number }) => {
     const uId = userId || userContextStore.getStore()?.userId;
     if (!uId) return "❌ Error: Usuario no identificado.";
-    return await calendarUpdate(uId, event_id, summary, start, end, description);
+    return await calendarUpdate(uId, event_id, summary, start, end, description, attendees, send_updates);
   },
 
   // ─── SHEETS ───
@@ -189,6 +198,10 @@ export const tools = {
   sheets_write: async ({ spreadsheet_id, range, values, userId }: { spreadsheet_id: string; range: string; values: string | any[][]; userId?: number }) => {
     const uId = userId || userContextStore.getStore()?.userId;
     return await sheetsWrite(spreadsheet_id, range, values, uId);
+  },
+  sheets_append: async ({ spreadsheet_id, range, values, userId }: { spreadsheet_id: string; range?: string; values: string | any[][]; userId?: number }) => {
+    const uId = userId || userContextStore.getStore()?.userId;
+    return await sheetsAppend(spreadsheet_id, range || "A:O", values, uId);
   },
   sheets_create_invoice: async ({ title, number, date, locale, userId }: { title: string; number?: string; date?: string; locale?: "es" | "en"; userId?: number }) => {
     const uId = userId || userContextStore.getStore()?.userId;

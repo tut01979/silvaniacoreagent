@@ -334,14 +334,19 @@ export const llmService = {
         type: "function",
         function: {
           name: "calendar_create",
-          description: "Crea un nuevo evento en el calendario.",
+          description: "Crea un nuevo evento en Google Calendar. Si se especifican asistentes (attendees), se les enviará automáticamente una invitación por correo electrónico.",
           parameters: {
             type: "object",
             properties: {
-              summary: { type: "string", description: "Título del evento" },
-              start: { type: "string", description: "Inicio (ISO, ej: 2024-05-01T10:00:00Z)" },
-              end: { type: "string", description: "Fin (ISO, ej: 2024-05-01T11:00:00Z)" },
-              description: { type: "string", description: "Descripción opcional" }
+              summary: { type: "string", description: "Título o asunto del evento" },
+              start: { type: "string", description: "Fecha y hora de inicio en formato ISO (ej: 2026-10-26T10:00:00+02:00)" },
+              end: { type: "string", description: "Fecha y hora de fin en formato ISO (ej: 2026-10-26T11:00:00+02:00)" },
+              description: { type: "string", description: "Descripción o notas del evento (opcional)" },
+              attendees: {
+                type: "array",
+                items: { type: "string" },
+                description: "Lista de correos electrónicos de los invitados a quienes enviar la invitación (opcional)"
+              }
             },
             required: ["summary", "start", "end"]
           }
@@ -365,15 +370,25 @@ export const llmService = {
         type: "function",
         function: {
           name: "calendar_update",
-          description: "Actualiza un evento existente en el calendario.",
+          description: "Actualiza un evento existente en Google Calendar. Permite cambiar título, horarios, descripción o INVITAR/AÑADIR ASISTENTES (emails) enviando invitaciones por correo electrónico.",
           parameters: {
             type: "object",
             properties: {
-              event_id: { type: "string", description: "ID del evento a actualizar" },
+              event_id: { type: "string", description: "ID del evento existente a actualizar o al que invitar asistentes" },
               summary: { type: "string", description: "Nuevo título del evento (opcional)" },
-              start: { type: "string", description: "Nuevo inicio (ISO, ej: 2024-05-01T10:00:00Z, opcional)" },
-              end: { type: "string", description: "Nuevo fin (ISO, ej: 2024-05-01T11:00:00Z, opcional)" },
-              description: { type: "string", description: "Nueva descripción (opcional)" }
+              start: { type: "string", description: "Nuevo inicio en formato ISO (opcional)" },
+              end: { type: "string", description: "Nuevo fin en formato ISO (opcional)" },
+              description: { type: "string", description: "Nueva descripción (opcional)" },
+              attendees: {
+                type: "array",
+                items: { type: "string" },
+                description: "Lista de correos de asistentes a invitar o añadir al evento (se enviará invitación por email)"
+              },
+              send_updates: {
+                type: "string",
+                enum: ["all", "externalOnly", "none"],
+                description: "Notificaciones por correo a los invitados (por defecto 'all' si hay asistentes)"
+              }
             },
             required: ["event_id"]
           }
@@ -392,7 +407,7 @@ export const llmService = {
         type: "function",
         function: {
           name: "sheets_create",
-          description: "Crea una nueva hoja de cálculo.",
+          description: "Crea una nueva hoja de cálculo en silvania/. Si el título es 'Taller_Partes' y ya existe el libro canónico, NO creará otro libro sino que devolverá el spreadsheetId existente para que le agregues filas con sheets_append.",
           parameters: {
             type: "object",
             properties: {
@@ -421,7 +436,7 @@ export const llmService = {
         type: "function",
         function: {
           name: "sheets_write",
-          description: "Escribe datos en una hoja de cálculo. Los valores deben ser una cadena formateada como CSV.",
+          description: "Escribe o actualiza datos en una hoja de cálculo. Los valores deben ser una cadena formateada como CSV o matriz 2D.",
           parameters: {
             type: "object",
             properties: {
@@ -430,6 +445,22 @@ export const llmService = {
               values: { type: "string", description: "Valores en formato CSV (ej: 'Col1,Col2\nVal1,Val2')" }
             },
             required: ["spreadsheet_id", "range", "values"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "sheets_append",
+          description: "Añade una o más filas de datos al final de una hoja de cálculo existente (por ejemplo, para registrar un nuevo parte de taller al libro canónico Taller_Partes). Recibe el spreadsheet_id, el rango orientativo (ej: 'A:O') y los valores de la fila.",
+          parameters: {
+            type: "object",
+            properties: {
+              spreadsheet_id: { type: "string", description: "ID de la hoja de cálculo" },
+              range: { type: "string", description: "Rango orientativo de columnas (ej: 'A:O' o 'Sheet1!A:O')" },
+              values: { type: "string", description: "Valores en formato CSV o matriz (ej: 'PARTE-001,2026-10-25,...')" }
+            },
+            required: ["spreadsheet_id", "values"]
           }
         }
       },

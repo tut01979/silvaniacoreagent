@@ -310,7 +310,7 @@
       </div>
       <h1>Política de Privacidad</h1>
       <div class="last-updated">
-        Última actualización: <strong>7 de septiembre de 2026</strong> · Vigente para el ecosistema Silvania.ai
+        Última actualización: <strong>23 de octubre de 2026</strong> · Vigente para el ecosistema Silvania.ai
       </div>
 
       <p>
@@ -383,8 +383,61 @@
         <li><strong>Cumplimiento con Google API Services User Data Policy:</strong> El uso y transferencia por parte de Silvania AI de la información recibida a través de las APIs de Google se adhiere a la <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank">Google API Services User Data Policy</a>, incluidos los requisitos de Uso Limitado (Limited Use).</li>
       </ul>
 
-      <!-- 6. Conservación y Revocación -->
-      <h2><i class="fa-solid fa-clock-rotate-left" style="color: #f59e0b;"></i> 6. Conservación de Datos y Derecho de Revocación</h2>
+      <!-- 6. Compartición, Transferencia y Divulgación de Datos de Google -->
+      <h2><i class="fa-solid fa-share-nodes" style="color: var(--secondary);"></i> 6. Compartición, Transferencia y Divulgación de Datos de Google</h2>
+      <p>
+        Para dar cumplimiento riguroso a los requerimientos de verificación de Google OAuth (proyecto <code>silvania-coreagent-prod</code> / <code>760882162591</code>) y de conformidad con el RGPD, a continuación se especifica detalladamente con quién se comparten, transfieren o divulgan los datos de usuario de Google:
+      </p>
+
+      <h3>A. Ámbito y acceso condicionado a solicitud del usuario</h3>
+      <p>
+        Silvania CoreAgent accede a datos de Google (Calendar con alcance <code>calendar.events</code>, Sheets con <code>spreadsheets</code>, Drive con <code>drive.file</code>, y Gmail con <code>gmail.send</code>) <strong>única y exclusivamente tras la autorización OAuth del usuario</strong> y para ejecutar de forma reactiva las acciones concretas que el usuario solicita en el chat de Telegram. En ningún momento Silvania CoreAgent accede de manera autónoma, masiva o desvinculada de una orden expresa del usuario a dichos datos.
+      </p>
+
+      <h3>B. Destinatarios: Con quién se tratan o pueden tratarse los datos</h3>
+      <p>
+        Los datos de usuario obtenidos a través de las APIs de Google Workspace únicamente son tratados por o pueden comunicarse a las siguientes categorías de destinatarios:
+      </p>
+      <ul>
+        <li>
+          <strong>Google LLC (APIs oficiales de Workspace):</strong> La comunicación se realiza de forma directa y cifrada entre los servidores de Silvania CoreAgent y los endpoints oficiales de Google a través de OAuth 2.0 y HTTPS/TLS. El tratamiento por parte de Google se rige por sus políticas oficiales y por la <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank">Google API Services User Data Policy</a>, incluidos los estándares de Uso Limitado (<em>Limited Use</em>).
+        </li>
+        <li>
+          <strong>Proveedores técnicos de hosting e infraestructura (Encargados del Tratamiento):</strong> La aplicación, su backend y bases de datos se alojan en plataformas en la nube indispensables para la prestación técnica del servicio (como el proveedor de hosting donde se ejecuta silvania.ai —Railway— y los servicios de base de datos segura para almacenamiento de credenciales y tokens cifrados —Firebase / Google Cloud Firestore—). Estos proveedores actúan <strong>únicamente en calidad de encargados del tratamiento</strong> conforme al RGPD, con la sola finalidad de posibilitar la ejecución del software, sin facultad para utilizar dichos datos para fines propios ni para el entrenamiento de sistemas o modelos de inteligencia artificial.
+        </li>
+        <li>
+          <strong>Proveedores de modelos de lenguaje (LLMs):</strong> Para interpretar las peticiones del usuario y estructurar respuestas ejecutivas, el agente puede enviar al proveedor del modelo de lenguaje (como OpenAI o Groq) el texto puntual de la interacción en Telegram estrictamente indispensable para contestar la solicitud. <strong>En ningún caso se envía de forma masiva, automática ni sistemática el contenido completo de buzones de Gmail, carpetas de Google Drive, calendarios o tablas de Sheets</strong>. Además, los términos de servicio para API con dichos proveedores prohíben explícitamente el uso de las entradas de API para el entrenamiento de modelos de IA propios o de terceros.
+        </li>
+        <li>
+          <strong>Autoridades judiciales y legales:</strong> Silvania AI solo divulgará información a autoridades públicas competentes en caso de existir un mandato judicial formal, requerimiento imperativo o una obligación legal estrictamente aplicable.
+        </li>
+      </ul>
+
+      <div class="callout-box callout-info">
+        <i class="fa-solid fa-hand-holding-hand"></i>
+        <div>
+          <strong>Compromisos y Prohibiciones Absolutas sobre Datos de Google:</strong>
+          <ul style="margin-top: 0.5rem; margin-bottom: 0;">
+            <li><strong>NO venta:</strong> No vendemos, no alquilamos ni comercializamos datos de usuarios de Google a ningún tercero bajo ninguna circunstancia.</li>
+            <li><strong>NO publicidad:</strong> No utilizamos ni transferimos datos de Google para publicidad dirigida, remarketing ni elaboración de perfiles comerciales.</li>
+            <li><strong>NO entrenamiento de IA con contenido privado:</strong> No utilizamos ni cedemos el contenido de correos, archivos, eventos de calendario ni hojas de cálculo del usuario para entrenar modelos de inteligencia artificial propios ni de terceros.</li>
+            <li><strong>NO cesión a terceros comerciales:</strong> No existe cesión, venta ni transferencia a intermediarios de datos (<em>data brokers</em>), redes publicitarias ni empresas de analítica comercial basada en datos de Google.</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>C. Transferencias Internacionales de Datos</h3>
+      <p>
+        Si alguno de los encargados técnicos de infraestructura o proveedores de servicios descritos trata datos fuera del Espacio Económico Europeo (EEE), dichas transferencias se efectúan al amparo de las garantías adecuadas exigidas por el RGPD, tales como Decisiones de Adecuación de la Comisión Europea (incluido el marco <em>Data Privacy Framework</em> UE-EE.UU.) o mediante la suscripción de Cláusulas Contractuales Tipo (SCC), asegurando un nivel de protección equivalente y riguroso.
+      </p>
+
+      <h3>D. Revocación en cualquier momento</h3>
+      <p>
+        El usuario puede revocar y anular los permisos concedidos a Silvania CoreAgent en cualquier momento desde la configuración de seguridad de su cuenta de Google en <a href="https://myaccount.google.com/permissions" target="_blank">https://myaccount.google.com/permissions</a>. Al revocar el acceso, los tokens quedan inmediatamente invalidados y la aplicación pierde al instante la capacidad técnica de acceder o interactuar con los servicios de Google del usuario.
+      </p>
+
+      <!-- 7. Conservación y Revocación -->
+      <h2><i class="fa-solid fa-clock-rotate-left" style="color: #f59e0b;"></i> 7. Conservación de Datos y Derecho de Revocación</h2>
       <p>
         Los tokens OAuth se conservan cifrados mientras mantengas vinculada tu cuenta para permitir la continuidad del servicio en Telegram.
       </p>
@@ -393,8 +446,8 @@
         <li><strong>Comando de borrado:</strong> Puedes escribir el comando <code>/clear</code> en el chat de Telegram para restablecer la memoria operativa del bot.</li>
       </ul>
 
-      <!-- 7. Eva - Privacidad Infantil y de Voz -->
-      <h2><i class="fa-solid fa-face-smile" style="color: #c084fc;"></i> 7. Eva — Privacidad Infantil, Audio y Estimulación Vocal</h2>
+      <!-- 8. Eva - Privacidad Infantil y de Voz -->
+      <h2><i class="fa-solid fa-face-smile" style="color: #c084fc;"></i> 8. Eva — Privacidad Infantil, Audio y Estimulación Vocal</h2>
       <p>
         La aplicación <strong>Eva</strong> (disponible en <code>https://silvania.ai/eva</code>) está concebida bajo las directrices más rigurosas de privacidad familiar e infantil:
       </p>
@@ -414,8 +467,8 @@
         </div>
       </div>
 
-      <!-- 8. Infraestructura y Seguridad -->
-      <h2><i class="fa-solid fa-server" style="color: var(--secondary);"></i> 8. Infraestructura y Medidas Técnicas</h2>
+      <!-- 9. Infraestructura y Seguridad -->
+      <h2><i class="fa-solid fa-server" style="color: var(--secondary);"></i> 9. Infraestructura y Medidas Técnicas</h2>
       <p>
         Implementamos medidas técnicas y organizativas para salvaguardar la confidencialidad e integridad de la información:
       </p>
@@ -425,8 +478,8 @@
         <li><strong>Límites de tasa (Rate Limiting):</strong> Protección perimetral contra ataques de fuerza bruta y abusos de API.</li>
       </ul>
 
-      <!-- 9. Contacto -->
-      <h2><i class="fa-solid fa-envelope" style="color: var(--primary);"></i> 9. Contacto y Ejercicio de Derechos</h2>
+      <!-- 10. Contacto -->
+      <h2><i class="fa-solid fa-envelope" style="color: var(--primary);"></i> 10. Contacto y Ejercicio de Derechos</h2>
       <p>
         Puedes ejercer tus derechos de acceso, rectificación, supresión, limitación y oposición, o remitir cualquier duda sobre este documento escribiendo a:
       </p>

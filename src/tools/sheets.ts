@@ -2,8 +2,30 @@ import { runGog } from "./gogWrapper.js";
 import { formatFolderLink } from "../services/linkFormatter.js";
 import { folderCacheService, isNotFoundError, isZombieFolder } from "../services/folderCache.js";
 import { userContextStore } from "../services/context.js";
+import { dbService } from "../database/db.js";
+import { getGoogleAuthForUser } from "./googleAuth.js";
+import { google } from "googleapis";
 
 const SEP = "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
+
+export const TALLER_PARTES_TITLE = "Taller_Partes";
+export const TALLER_PARTES_HEADERS = [
+  "ID",
+  "Fecha",
+  "Cliente",
+  "Teléfono",
+  "Matrícula",
+  "Marca/Modelo",
+  "Km",
+  "Avería",
+  "Diagnóstico",
+  "Presupuesto_neto",
+  "IVA",
+  "Total",
+  "Estado",
+  "Notas",
+  "Link_fotos"
+];
 
 function isValidSpreadsheetId(id?: string): boolean {
   if (!id || typeof id !== "string") return false;
@@ -25,6 +47,248 @@ function isValidSpreadsheetId(id?: string): boolean {
   return true;
 }
 
+export async function findExistingTallerPartes(userId: number): Promise<string | null> {
+  // 1. Consultar en la base de datos (drive_folders)
+  const cachedId = await dbService.getDriveFolder(userId, "sheet:Taller_Partes");
+  if (cachedId && isValidSpreadsheetId(cachedId)) {
+    return cachedId;
+  }
+
+  // 2. Si no está en BD, buscar en Google Drive por nombre exacto
+  try {
+    const searchRes = await runGog(
+      `drive search "name = 'Taller_Partes' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false" --raw-query --json`,
+      userId
+    );
+    const parsed = JSON.parse(searchRes);
+    const files: any[] = parsed.files || (Array.isArray(parsed) ? parsed : []);
+    const valid = files.find(f => f.id && isValidSpreadsheetId(f.id));
+    if (valid) {
+      await dbService.saveDriveFolder(userId, "sheet:Taller_Partes", valid.id);
+      return valid.id;
+    }
+  } catch (sErr: any) {
+    console.warn("⚠️ [Sheets] Error buscando Taller_Partes en Drive:", sErr.message);
+  }
+
+  return null;
+}
+
+export async function formatTallerPartesSheet(spreadsheetId: string, userId?: number): Promise<void> {
+  const uId = userId || userContextStore.getStore()?.userId || 0;
+  
+  // Fila 1: Título corporativo con merge A1:O1
+  // Fila 2: Cabeceras estructuradas
+  const initialMatrix = [
+    ["PARTES DE TALLER — Silvania", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+    TALLER_PARTES_HEADERS
+  ];
+
+  try {
+    const authClient = await getGoogleAuthForUser(uId);
+    if (authClient) {
+      const sheets = google.sheets({ version: "v4", auth: authClient });
+
+      const meta = await sheets.spreadsheets.get({ spreadsheetId });
+      const sheetId = meta.data.sheets?.[0]?.properties?.sheetId || 0;
+
+      // Actualizar valores de A1:O2
+      await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: "A1:O2",
+        valueInputOption: "USER_ENTERED",
+        requestBody: { values: initialMatrix }
+      });
+
+      const requests: any[] = [
+        // A. Merge A1:O1 para el título
+        {
+          mergeCells: {
+            range: {
+              sheetId,
+              startRowIndex: 0,
+              endRowIndex: 1,
+              startColumnIndex: 0,
+              endColumnIndex: 15
+            },
+            mergeType: "MERGE_ALL"
+          }
+        },
+        // B. Estilo fila 1: Fondo #1a365d, texto blanco, negrita, tamaño 13, centrado
+        {
+          repeatCell: {
+            range: {
+              sheetId,
+              startRowIndex: 0,
+              endRowIndex: 1,
+              startColumnIndex: 0,
+              endColumnIndex: 15
+            },
+            cell: {
+              userEnteredFormat: {
+                backgroundColor: { red: 26 / 255, green: 54 / 255, blue: 93 / 255 },
+                horizontalAlignment: "CENTER",
+                verticalAlignment: "MIDDLE",
+                textFormat: {
+                  foregroundColor: { red: 1, green: 1, blue: 1 },
+                  bold: true,
+                  fontSize: 13
+                }
+              }
+            },
+            fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)"
+          }
+        },
+        // C. Estilo fila 2: Cabeceras con fondo #e2e8f0, negrita, wrap text, centrado vertical
+        {
+          repeatCell: {
+            range: {
+              sheetId,
+              startRowIndex: 1,
+              endRowIndex: 2,
+              startColumnIndex: 0,
+              endColumnIndex: 15
+            },
+            cell: {
+              userEnteredFormat: {
+                backgroundColor: { red: 226 / 255, green: 232 / 255, blue: 240 / 255 },
+                wrapStrategy: "WRAP",
+                verticalAlignment: "MIDDLE",
+                textFormat: {
+                  foregroundColor: { red: 0.1, green: 0.1, blue: 0.1 },
+                  bold: true,
+                  fontSize: 10
+                }
+              }
+            },
+            fields: "userEnteredFormat(backgroundColor,textFormat,wrapStrategy,verticalAlignment)"
+          }
+        },
+        // D. Freeze fila 2
+        {
+          updateSheetProperties: {
+            properties: {
+              sheetId,
+              gridProperties: {
+                frozenRowCount: 2
+              }
+            },
+            fields: "gridProperties.frozenRowCount"
+          }
+        },
+        // E. Formato columnas J:L (índices 9, 10, 11) como número con 2 decimales
+        {
+          repeatCell: {
+            range: {
+              sheetId,
+              startRowIndex: 2,
+              endRowIndex: 1000,
+              startColumnIndex: 9,
+              endColumnIndex: 12
+            },
+            cell: {
+              userEnteredFormat: {
+                numberFormat: {
+                  type: "NUMBER",
+                  pattern: "#,##0.00"
+                },
+                horizontalAlignment: "RIGHT"
+              }
+            },
+            fields: "userEnteredFormat(numberFormat,horizontalAlignment)"
+          }
+        },
+        // F. Formato columnas D (Teléfono, 3) y E (Matrícula, 4) como texto
+        {
+          repeatCell: {
+            range: {
+              sheetId,
+              startRowIndex: 2,
+              endRowIndex: 1000,
+              startColumnIndex: 3,
+              endColumnIndex: 5
+            },
+            cell: {
+              userEnteredFormat: {
+                numberFormat: {
+                  type: "TEXT"
+                },
+                horizontalAlignment: "LEFT"
+              }
+            },
+            fields: "userEnteredFormat(numberFormat,horizontalAlignment)"
+          }
+        },
+        // G. Altura de filas
+        {
+          updateDimensionProperties: {
+            range: { sheetId, dimension: "ROWS", startIndex: 0, endIndex: 1 },
+            properties: { pixelSize: 42 },
+            fields: "pixelSize"
+          }
+        },
+        {
+          updateDimensionProperties: {
+            range: { sheetId, dimension: "ROWS", startIndex: 1, endIndex: 2 },
+            properties: { pixelSize: 34 },
+            fields: "pixelSize"
+          }
+        }
+      ];
+
+      // H. Anchos de columnas mínimos (Avería y Diagnóstico más anchos)
+      const colWidths: { [col: number]: number } = {
+        0: 90,   // ID
+        1: 110,  // Fecha
+        2: 170,  // Cliente
+        3: 120,  // Teléfono
+        4: 110,  // Matrícula
+        5: 170,  // Marca/Modelo
+        6: 90,   // Km
+        7: 280,  // Avería
+        8: 280,  // Diagnóstico
+        9: 140,  // Presupuesto_neto
+        10: 110, // IVA
+        11: 120, // Total
+        12: 120, // Estado
+        13: 220, // Notas
+        14: 200  // Link_fotos
+      };
+
+      for (const [colIdxStr, width] of Object.entries(colWidths)) {
+        const colIdx = parseInt(colIdxStr, 10);
+        requests.push({
+          updateDimensionProperties: {
+            range: { sheetId, dimension: "COLUMNS", startIndex: colIdx, endIndex: colIdx + 1 },
+            properties: { pixelSize: width },
+            fields: "pixelSize"
+          }
+        });
+      }
+
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId,
+        requestBody: { requests }
+      });
+      console.log(`✅ [Sheets] Formato profesional aplicado con éxito a Taller_Partes (${spreadsheetId})`);
+      return;
+    }
+  } catch (apiErr: any) {
+    console.warn("⚠️ [Sheets] Error aplicando batchUpdate con googleapis, aplicando fallback vía gog CLI:", apiErr.message);
+  }
+
+  // Fallback con comandos CLI de gog
+  try {
+    const jsonMatrix = JSON.stringify(initialMatrix);
+    await runGog(`sheets update ${spreadsheetId} "A1:O2" --values-json '${jsonMatrix}' --input USER_ENTERED`, uId);
+    await runGog(`sheets merge ${spreadsheetId} "A1:O1" --type MERGE_ALL`, uId);
+    await runGog(`sheets freeze ${spreadsheetId} --rows=2`, uId);
+    await runGog(`sheets resize-columns ${spreadsheetId} "H:I" --width=280`, uId);
+  } catch (cliErr: any) {
+    console.warn("⚠️ [Sheets] Fallback CLI parcial en formatTallerPartesSheet:", cliErr.message);
+  }
+}
+
 function formatSheetsList(raw: any): string {
   const sheets: any[] = raw.sheets || raw.spreadsheets || (Array.isArray(raw) ? raw : []);
   if (!sheets || sheets.length === 0) return "📊 No se encontraron hojas de cálculo.";
@@ -36,7 +300,7 @@ function formatSheetsList(raw: any): string {
     const sName = s.name || s.title || "Sin nombre";
     const link = `https://docs.google.com/spreadsheets/d/${sId}/edit`;
     
-    out += `${formatFolderLink(sName, link)}\n`;
+    out += `📄 **${sName}** · [Abrir en Google Sheets](${link})\n`;
     out += `spreadsheetId: ${sId}\n\n`;
   }
   return out;
@@ -60,7 +324,25 @@ export const sheetsList = async (userId?: number) => {
 export const sheetsCreate = async (title: string, userId?: number) => {
   try {
     const uId = userId || userContextStore.getStore()?.userId || 0;
-    const result = await runGog(`sheets create "${title}" --json`, uId);
+    const isTallerPartes = /taller[-_ ]?partes/i.test(title);
+
+    // Si el usuario pide crear Taller_Partes, verificar si ya existe el libro canónico
+    if (isTallerPartes) {
+      const existingId = await findExistingTallerPartes(uId);
+      if (existingId) {
+        const link = `https://docs.google.com/spreadsheets/d/${existingId}/edit`;
+        return `ℹ️ **EL LIBRO CANÓNICO 'Taller_Partes' YA EXISTE**\n${SEP}\n\n` +
+               `📊 **Documento:** [Taller_Partes](${link}) · [Abrir en Google Sheets](${link})\n` +
+               `🆔 **ID:** \`${existingId}\`\n` +
+               `🆔 **spreadsheetId:** \`${existingId}\`\n` +
+               `🔗 **Enlace directo:** ${link}\n` +
+               `📂 **Ubicación:** Guardado en la carpeta canónica \`silvania/\`\n\n` +
+               `*Ya existe el libro único oficial de partes de taller. NO se ha creado un libro duplicado. Para registrar un nuevo parte de taller, usa sheets_append (o sheets_write) añadiendo la fila en este libro existente.*`;
+      }
+    }
+
+    const cleanReqTitle = isTallerPartes ? "Taller_Partes" : title;
+    const result = await runGog(`sheets create "${cleanReqTitle}" --json`, uId);
     const parsed = JSON.parse(result);
     const sheet = parsed.spreadsheet || parsed;
     const id = sheet.spreadsheetId || sheet.id;
@@ -68,8 +350,7 @@ export const sheetsCreate = async (title: string, userId?: number) => {
       throw new Error(`No se pudo obtener el ID de la hoja de cálculo. Respuesta: ${result}`);
     }
     const link = sheet.spreadsheetUrl || `https://docs.google.com/spreadsheets/d/${id}/edit`;
-    const cleanTitle = sheet.title || sheet.properties?.title || title;
-    const linkStr = formatFolderLink(cleanTitle, link);
+    const cleanTitle = sheet.title || sheet.properties?.title || cleanReqTitle;
 
     let moveInfo = "";
     try {
@@ -107,12 +388,24 @@ export const sheetsCreate = async (title: string, userId?: number) => {
       console.warn(`⚠️ [Sheets] Falló la resolución de silvania/ para mover la hoja:`, moveErr?.message || moveErr);
       moveInfo = `\n⚠️ *Aviso: La hoja fue creada en la raíz de Google Drive pero no se pudo mover a la carpeta silvania/.*`;
     }
+
+    let extraFormatNote = "";
+    if (isTallerPartes) {
+      await dbService.saveDriveFolder(uId, "sheet:Taller_Partes", id);
+      try {
+        await formatTallerPartesSheet(id, uId);
+        extraFormatNote = `\n\n*Se ha configurado el formato profesional de taller: título corporativo Silvania, 15 cabeceras estructuradas, fila 2 congelada, formatos de moneda con 2 decimales y anchos optimizados.*`;
+      } catch (fErr: any) {
+        console.warn("⚠️ [Sheets] Error al formatear Taller_Partes:", fErr.message);
+      }
+    }
     
     return `✅ **HOJA DE CÁLCULO CREADA**\n${SEP}\n\n` +
-           `${linkStr}\n` +
-           `ID: ${id}\n` +
-           `spreadsheetId: ${id}${moveInfo}\n\n` +
-           `*Puedes empezar a escribir datos usando sheets_write.*`;
+           `📊 **Documento:** [${cleanTitle}](${link}) · [Abrir en Google Sheets](${link})\n` +
+           `🆔 **ID:** \`${id}\`\n` +
+           `🆔 **spreadsheetId:** \`${id}\`\n` +
+           `🔗 **Enlace directo:** ${link}${moveInfo}${extraFormatNote}\n\n` +
+           `*Puedes escribir o añadir datos usando sheets_write o sheets_append.*`;
   } catch (error: any) {
     return `❌ **Error al crear la hoja de cálculo:** ${error.message}`;
   }
@@ -182,12 +475,16 @@ export const sheetsWrite = async (spreadsheetId: string, range: string, values: 
   }
 
   const jsonVal = JSON.stringify(matrix);
+  const editLink = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
 
   try {
     const result = await runGog(`sheets update ${spreadsheetId} "${range}" --values-json '${jsonVal}' --input USER_ENTERED`, userId);
     return `✅ **DATOS ACTUALIZADOS CORRECTAMENTE**\n${SEP}\n\n` +
-           `📊 **ID:** ` + "`" + spreadsheetId + "`" + `\n` +
-           `📍 **Rango:** ${range}\n\n` +
+           `📊 **Documento:** [Abrir en Google Sheets](${editLink})\n` +
+           `🆔 **ID:** \`${spreadsheetId}\`\n` +
+           `🆔 **spreadsheetId:** \`${spreadsheetId}\`\n` +
+           `📍 **Rango:** ${range}\n` +
+           `🔗 **Enlace directo:** ${editLink}\n\n` +
            `*Los datos han sido volcados en la hoja de cálculo.*`;
   } catch (error: any) {
     if (range.includes("!")) {
@@ -196,14 +493,98 @@ export const sheetsWrite = async (spreadsheetId: string, range: string, values: 
       try {
         const result = await runGog(`sheets update ${spreadsheetId} "${fallbackRange}" --values-json '${jsonVal}' --input USER_ENTERED`, userId);
         return `✅ **DATOS ACTUALIZADOS CORRECTAMENTE**\n${SEP}\n\n` +
-               `📊 **ID:** ` + "`" + spreadsheetId + "`" + `\n` +
-               `📍 **Rango:** ${fallbackRange}\n\n` +
+               `📊 **Documento:** [Abrir en Google Sheets](${editLink})\n` +
+               `🆔 **ID:** \`${spreadsheetId}\`\n` +
+               `🆔 **spreadsheetId:** \`${spreadsheetId}\`\n` +
+               `📍 **Rango:** ${fallbackRange}\n` +
+               `🔗 **Enlace directo:** ${editLink}\n\n` +
                `*Los datos han sido volcados en la hoja de cálculo (fallback de rango aplicado).*`;
       } catch (fallbackErr: any) {
         return `❌ **Error al escribir en la hoja:** ${fallbackErr.message}`;
       }
     }
     return `❌ **Error al escribir en la hoja:** ${error.message}`;
+  }
+};
+
+export const sheetsAppend = async (spreadsheetId: string, range: string, values: string | any[][], userId?: number) => {
+  if (!isValidSpreadsheetId(spreadsheetId)) {
+    return `❌ Error: spreadsheet_id inválido o alucinado.`;
+  }
+  const uId = userId || userContextStore.getStore()?.userId || 0;
+  let matrix: any[][];
+
+  if (Array.isArray(values)) {
+    matrix = values.map(row => {
+      if (Array.isArray(row)) {
+        return row.map(cell => {
+          if (cell === null || cell === undefined) return "";
+          const trimmed = String(cell).trim();
+          if (trimmed !== "" && !isNaN(Number(trimmed))) {
+            return Number(trimmed);
+          }
+          return trimmed;
+        });
+      }
+      const trimmed = String(row).trim();
+      if (trimmed !== "" && !isNaN(Number(trimmed))) {
+        return [Number(trimmed)];
+      }
+      return [trimmed];
+    });
+  } else {
+    const processedValues = String(values).replace(/0,21/g, "21%").replace(/0\.21/g, "21%");
+    const rows = processedValues.split("\n").filter(r => r.trim() !== "");
+    matrix = rows.map(row => {
+      const separator = row.includes("|") ? "|" : ",";
+      return row.split(separator).map(cell => {
+        const trimmed = cell.trim();
+        if (trimmed !== "" && !isNaN(Number(trimmed))) {
+          return Number(trimmed);
+        }
+        return trimmed;
+      });
+    });
+  }
+
+  const effectiveRange = range && range.trim() !== "" ? range : "A:O";
+  const jsonVal = JSON.stringify(matrix);
+  const editLink = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
+
+  try {
+    const result = await runGog(`sheets append ${spreadsheetId} "${effectiveRange}" --values-json '${jsonVal}' --input USER_ENTERED`, uId);
+    return `✅ **FILA(S) AÑADIDA(S) CORRECTAMENTE**\n${SEP}\n\n` +
+           `📊 **Documento:** [Abrir en Google Sheets](${editLink})\n` +
+           `🆔 **ID:** \`${spreadsheetId}\`\n` +
+           `🆔 **spreadsheetId:** \`${spreadsheetId}\`\n` +
+           `📍 **Rango / Destino:** ${effectiveRange}\n` +
+           `🔗 **Enlace directo:** ${editLink}\n\n` +
+           `*Se ha(n) añadido ${matrix.length} fila(s) al final de la hoja de cálculo.*`;
+  } catch (error: any) {
+    // Si falla gog append, intentar con fallback via googleapis
+    try {
+      const authClient = await getGoogleAuthForUser(uId);
+      if (authClient) {
+        const sheets = google.sheets({ version: "v4", auth: authClient });
+        await sheets.spreadsheets.values.append({
+          spreadsheetId,
+          range: effectiveRange,
+          valueInputOption: "USER_ENTERED",
+          insertDataOption: "INSERT_ROWS",
+          requestBody: { values: matrix }
+        });
+        return `✅ **FILA(S) AÑADIDA(S) CORRECTAMENTE**\n${SEP}\n\n` +
+               `📊 **Documento:** [Abrir en Google Sheets](${editLink})\n` +
+               `🆔 **ID:** \`${spreadsheetId}\`\n` +
+               `🆔 **spreadsheetId:** \`${spreadsheetId}\`\n` +
+               `📍 **Rango / Destino:** ${effectiveRange}\n` +
+               `🔗 **Enlace directo:** ${editLink}\n\n` +
+               `*Se ha(n) añadido ${matrix.length} fila(s) al final de la hoja de cálculo (vía API).*`;
+      }
+    } catch (apiErr: any) {
+      console.warn("⚠️ [Sheets Append] Fallback de googleapis falló:", apiErr.message);
+    }
+    return `❌ **Error al añadir filas a la hoja:** ${error.message}`;
   }
 };
 
@@ -298,8 +679,10 @@ export const sheetsCreateInvoice = async (opts: { title: string; number?: string
 
     const editLink = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
     return `✅ **FACTURA CREADA Y CONFIGURADA CON ÉXITO**\n${SEP}\n\n` +
-           `📊 **Documento:** [${title}](${editLink})\n` +
+           `📊 **Documento:** [${title}](${editLink}) · [Abrir en Google Sheets](${editLink})\n` +
+           `🆔 **ID:** \`${spreadsheetId}\`\n` +
            `🆔 **spreadsheetId:** \`${spreadsheetId}\`${moveNote}\n` +
+           `🔗 **Enlace directo:** ${editLink}\n` +
            `📍 **Rango inicial:** \`A1\` (matriz 2D escrita de una sola vez)\n\n` +
            `*Se han volcado las fórmulas automáticas vivas de Importe (=B12*C12, etc.), Subtotal, IVA 21% y Total de forma correcta.*`;
   } catch (error: any) {

@@ -11,6 +11,68 @@ import { config } from "../config/config.js";
 
 const MAX_ITERATIONS = 10;
 
+/**
+ * Calcula con precisión matemática el calendario de referencia de los próximos 7 días
+ * y el offset horario real en Europe/Madrid (evita desfases de cambio de hora y errores de fechas relativas).
+ */
+export function getMadridRelativeCalendar(baseDate: Date = new Date()): { calendarText: string; offsetStr: string; todayIso: string; nowStr: string } {
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: "Europe/Madrid",
+    weekday: "long", day: "numeric", month: "long", year: "numeric",
+    hour: "2-digit", minute: "2-digit", timeZoneName: "short"
+  };
+  const nowStr = baseDate.toLocaleString("es-ES", options);
+
+  const madridFormatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Madrid",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hour12: false
+  });
+  const parts = madridFormatter.format(baseDate).split(", ");
+  const [yyyy, mm, dd] = parts[0].split("-").map(Number);
+  const timeStr = parts[1] || "12:00:00";
+
+  const tzParts = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Madrid", timeZoneName: "shortOffset" }).formatToParts(baseDate);
+  const tzName = tzParts.find(p => p.type === "timeZoneName")?.value || "GMT+2";
+  let offsetStr = "+02:00";
+  const offsetMatch = tzName.match(/([+-])(\d{1,2})(?::?(\d{2}))?/);
+  if (offsetMatch) {
+    const sign = offsetMatch[1];
+    const hours = offsetMatch[2].padStart(2, "0");
+    const mins = offsetMatch[3] || "00";
+    offsetStr = `${sign}${hours}:${mins}`;
+  }
+
+  const todayIso = `${parts[0]}T${timeStr}${offsetStr}`;
+
+  const rows: string[] = [];
+  const dayNames = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+
+  for (let i = 0; i <= 7; i++) {
+    const targetDate = new Date(Date.UTC(yyyy, mm - 1, dd + i, 12, 0, 0));
+    const targetYyyy = targetDate.getUTCFullYear();
+    const targetMm = String(targetDate.getUTCMonth() + 1).padStart(2, "0");
+    const targetDd = String(targetDate.getUTCDate()).padStart(2, "0");
+    const dayOfWeek = dayNames[targetDate.getUTCDay()];
+    const isoDate = `${targetYyyy}-${targetMm}-${targetDd}`;
+
+    let label = "";
+    if (i === 0) label = " (HOY)";
+    else if (i === 1) label = " (MAÑANA)";
+    else if (i === 2) label = " (PASADO MAÑANA)";
+
+    rows.push(`  - ${dayOfWeek.toUpperCase()}${label}: ${isoDate}`);
+  }
+
+  const calendarText = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📅 CALENDARIO DE REFERENCIA OBLIGATORIO (Europe/Madrid):\n` +
+    rows.join("\n") +
+    `\n  Offset horario oficial: ${offsetStr}` +
+    `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+
+  return { calendarText, offsetStr, todayIso, nowStr };
+}
+
 export async function runAgent(userId: number, userMessage: string) {
   return userContextStore.run({ userId }, async () => {
     // 0. Enrutamiento estricto por producto / canal (/marketing, /campaña, /eva)
@@ -143,6 +205,21 @@ export async function runAgent(userId: number, userMessage: string) {
     const creds = getGoogleCredentials(userId);
     const effectiveScopes = creds?.scopes || (userIsBeta ? config.oauth.betaScopes : config.oauth.prodScopes);
 
+    // Detección proactiva en producción para peticiones de lectura/listado de Gmail (scope insuficiente)
+    if (userTier === "prod") {
+      const asksGmailRead = /(?:lista|listar|busca|buscar|lee|leer|muestra|mostrar|ver|mira|mirar|qu[eé]\s+hay|tengo|consultar)\s+(?:mis\s+|los\s+)?(?:correos|emails|mails|mensajes|bandeja|inbox)/i.test(userMessage) ||
+                            /^(?:mis\s+)?(?:correos|emails|mails|mensajes|bandeja)(?:\s+recibidos|\s+de\s+hoy)?\??$/i.test(userMessage.trim());
+      const asksGmailSend = /(?:envia|envía|mandar|manda|redacta|escribe)\s+(?:un\s+)?(?:correo|email|mail|mensaje)/i.test(userMessage);
+
+      if (asksGmailRead && !asksGmailSend) {
+        console.log(`🔒 [Agent Guard] Petición de lectura de Gmail en Tier Producción detectada ("${userMessage}"). Devolviendo limitación oficial.`);
+        const prodNotice = "⚠️ **Permisos de Gmail limitados (Tier Producción):** En tu plan actual Silvania cuenta únicamente con permisos mínimos verificados de envío (`gmail.send`) para proteger la privacidad de tu correspondencia. No disponemos de permisos para listar, buscar o leer los correos de tu bandeja de entrada.\n\n" +
+                           "✉️ Si lo deseas, puedes pedirme que **redacte y envíe un correo** nuevo en tu nombre, o bien acceder directamente a tu bandeja de entrada en [Gmail](https://mail.google.com/mail/u/0/#inbox).";
+        await dbService.addMessage(userId, "assistant", prodNotice);
+        return prodNotice;
+      }
+    }
+
     // Inspección de Memoria Activa
     const userSkillsDir = path.resolve("skills", userId.toString());
     let installedSkillNames: string[] = [];
@@ -193,23 +270,13 @@ export async function runAgent(userId: number, userMessage: string) {
     const currentHistory = await dbService.getHistory(userId);
     const todayMsgCount = currentHistory.length;
 
-    // 3. Fecha y hora actual para contexto del agente
+    // 3. Fecha y hora actual y calendario relativo verificado para contexto del agente
     const now = new Date();
-    const options: Intl.DateTimeFormatOptions = {
-      timeZone: "Europe/Madrid",
-      weekday: "long", day: "numeric", month: "long", year: "numeric",
-      hour: "2-digit", minute: "2-digit", timeZoneName: "short"
-    };
-    const nowStr = now.toLocaleString("es-ES", options);
-    
-    // Format local ISO for UTC+2
-    const localNow = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Madrid" }));
-    const pad = (n: number) => n.toString().padStart(2, "0");
-    const isoLocal = `${localNow.getFullYear()}-${pad(localNow.getMonth()+1)}-${pad(localNow.getDate())}T${pad(localNow.getHours())}:${pad(localNow.getMinutes())}:${pad(localNow.getSeconds())}+02:00`;
+    const { calendarText, offsetStr, todayIso: isoLocal, nowStr } = getMadridRelativeCalendar(now);
 
     const googleToolsStr = userTier === "prod"
-      ? `\`gmail_send\`, \`drive_list\`, \`drive_search\`, \`drive_mkdir\`, \`drive_move\`, \`drive_upload\`, \`drive_remove\`, \`drive_create_text_file\`, \`drive_read_file\`, \`calendar_list\`, \`calendar_create\`, \`calendar_delete\`, \`calendar_update\`, \`sheets_list\`, \`sheets_create\`, \`sheets_read\`, \`sheets_write\`, \`sheets_create_invoice\``
-      : `\`gmail_list\`, \`gmail_search\`, \`gmail_thread\`, \`gmail_send\`, \`drive_list\`, \`drive_search\`, \`drive_mkdir\`, \`drive_move\`, \`drive_upload\`, \`drive_remove\`, \`drive_create_text_file\`, \`drive_read_file\`, \`calendar_list\`, \`calendar_create\`, \`calendar_delete\`, \`calendar_update\`, \`sheets_list\`, \`sheets_create\`, \`sheets_read\`, \`sheets_write\`, \`sheets_create_invoice\`, \`google_workspace\``;
+      ? `\`gmail_send\`, \`drive_list\`, \`drive_search\`, \`drive_mkdir\`, \`drive_move\`, \`drive_upload\`, \`drive_remove\`, \`drive_create_text_file\`, \`drive_read_file\`, \`calendar_list\`, \`calendar_create\`, \`calendar_delete\`, \`calendar_update\`, \`sheets_list\`, \`sheets_create\`, \`sheets_read\`, \`sheets_write\`, \`sheets_append\`, \`sheets_create_invoice\``
+      : `\`gmail_list\`, \`gmail_search\`, \`gmail_thread\`, \`gmail_send\`, \`drive_list\`, \`drive_search\`, \`drive_mkdir\`, \`drive_move\`, \`drive_upload\`, \`drive_remove\`, \`drive_create_text_file\`, \`drive_read_file\`, \`calendar_list\`, \`calendar_create\`, \`calendar_delete\`, \`calendar_update\`, \`sheets_list\`, \`sheets_create\`, \`sheets_read\`, \`sheets_write\`, \`sheets_append\`, \`sheets_create_invoice\`, \`google_workspace\``;
 
     const gmailHandlingStr = userTier === "prod"
       ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -237,7 +304,9 @@ Silvania.ai es una plataforma SaaS multi-usuario de agentes de inteligencia arti
 
 ⏰ FECHA Y HORA ACTUAL: ${nowStr}
 Formato ISO local: ${isoLocal}
-Zona horaria: UTC+2 (CEST). Usa esta fecha (y su offset) para crear eventos o calcular fechas. NO llames a get_current_time.
+Zona horaria: Europe/Madrid (${offsetStr}). Usa estas fechas y offset para crear eventos o calcular fechas. NO llames a get_current_time.
+
+${calendarText}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## 🔷 IDENTIDAD DEL AGENTE (SILVANIA COREAGENT)
@@ -296,7 +365,7 @@ ${userTier === "prod" ? `
 ## 🔷 REGLAS ESTRICTAS ANTI-ALUCINACIÓN Y ENLACES (OBLIGATORIA)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 1. NUNCA INVENTES identificadores (\`fileId\`, \`messageId\`, \`folderId\`) ni enlaces de Google Drive (\`drive.google.com/drive/folders/...\`) o Gmail (\`#inbox/...\`).
-2. SOLO puedes proporcionar enlaces específicos o IDs que hayan sido devueltos EXPLÍCITAMENTE por una herramienta (\`drive_list\`, \`drive_search\`, \`gmail_list\`, \`web_search\`, \`read_url\`) en esta conversación, o las URLs oficiales raíz canónicas:
+2. SOLO puedes proporcionar enlaces específicos o IDs que hayan sido devueltos EXPLÍCITAMENTE por una herramienta (\`drive_list\`, \`drive_search\`, \`gmail_list\`, \`web_search\`, \`read_url\`, \`calendar_create\`, \`calendar_update\`, \`calendar_list\`) en esta conversación, o las URLs oficiales raíz canónicas:
    - Drive: https://drive.google.com/drive/my-drive
    - Gmail: https://mail.google.com/mail/u/0/#inbox
    - Calendar: https://calendar.google.com/calendar/u/0/
@@ -315,11 +384,25 @@ ${userTier === "prod" ? `
 9. CONFIRMACIÓN Y ENLACES DE GMAIL (\`gmail_send\`):
    - Al confirmar el envío de un correo, incluye SIEMPRE el enlace directo en formato Markdown estándar: \`[Abrir](https://mail.google.com/mail/u/0/#inbox/{id})\` utilizando el Message ID devuelto por la herramienta.
    - ESTRICTAMENTE PROHIBIDO emitir la palabra "Abrir" o "🔗 Abrir" sin su correspondiente hipervínculo en formato Markdown válido o con href vacío. Nunca escribas "Abrir" suelto sin enlace.
-10. LECTURA Y ANÁLISIS DE DOCUMENTOS / PDFS (REGLA DURA ANTI-ALUCINACIÓN):
+10. GESTIÓN DE EVENTOS, ASISTENTES Y ENLACES DE GOOGLE CALENDAR (\`calendar_create\`, \`calendar_update\`):
+   - Al crear eventos (\`calendar_create\`): si el usuario menciona a alguien (ej: "con ana@ejemplo.com", "invita a carlos@empresa.com"), pásalo obligatoriamente en el parámetro \`attendees: ["correo@ejemplo.com"]\`. La herramienta enviará automáticamente la invitación por correo (\`sendUpdates=all\`).
+   - Al invitar a eventos existentes o actualizarlos (\`calendar_update\`): si el usuario pide "añade a X a la reunión", "invita a X", "comparte el evento con X", etc.: ESTÁ ESTRICTAMENTE PROHIBIDO decir que es imposible o que no se puede invitar a un evento ya creado. Debes ejecutar de inmediato \`calendar_update\` con el \`event_id\` y \`attendees: ["correo@ejemplo.com"]\`.
+   - REUTILIZACIÓN DE IDs (PROHIBIDO INVENTAR): Si acabas de crear un evento en este turno o en el anterior, REUTILIZA exactamente el \`ID\` devuelto por \`calendar_create\` o \`calendar_list\`. NUNCA inventes identificadores.
+   - ENLACE DIRECTO COMPLETO: Incluye SIEMPRE en tu confirmación al usuario el enlace en formato Markdown estándar \`[Abrir en Google Calendar](url_devuelta)\` o \`[Abrir](url_devuelta)\` utilizando el \`htmlLink\` real devuelto por la herramienta (ej: \`https://www.google.com/calendar/event?eid=...\`). NUNCA escribas "Abrir" sin su enlace válido.
+11. RESOLUCIÓN DE FECHAS RELATIVAS (EUROPE/MADRID):
+   - Consulta OBLIGATORIAMENTE la tabla "CALENDARIO DE REFERENCIA OBLIGATORIO" de arriba antes de definir fechas y horas para el calendario.
+   - Si el usuario dice "lunes", localiza la fila correspondiente a "LUNES" en la tabla. Si hoy es domingo 25/10/2026, el lunes siguiente es INVARIABLEMENTE 2026-10-26 (NO 2026-10-27).
+   - "mañana" es siempre la fila marcada como (MAÑANA).
+   - Utiliza siempre el offset horario oficial indicado en la tabla (ej: ${offsetStr}) en las fechas ISO de inicio y fin.
+12. LECTURA Y ANÁLISIS DE DOCUMENTOS / PDFS (REGLA DURA ANTI-ALUCINACIÓN):
    - Cuando el usuario solicite leer, analizar, consultar o resumir un archivo, documento o PDF por su ID (ej. 1lwnmyCvSwjvjpHtXlvNCFWohThg9VLaj) o nombre: DEBES llamar obligatoriamente a la herramienta de lectura (\`analyze_document\` o \`drive_read_file\`) en el turno actual con dicho \`file_id\`.
    - El contenido del documento SOLO y EXCLUSIVAMENTE puede proceder del resultado devuelto por dicha herramienta en el turno actual para ese ID específico.
    - PROHIBICIÓN ABSOLUTA DE MEZCLAR O RELLENAR CON HISTORIAL PREVIO: Está TERMINANTEMENTE PROHIBIDO inventar el contenido o rellenarlo utilizando resúmenes o memorias de documentos anteriores del historial de conversación (ej. autos judiciales de Valencia, resoluciones, contratos o facturas de otros turnos o temas). Cada archivo es único y estanco.
    - Si la herramienta falla, no encuentra el archivo o devuelve un error/vacío: responde taxativamente "No pude leer el archivo [ID]: [motivo/error devuelto por la herramienta]". NUNCA inventes su contenido ni supongas de qué trata basándote en memoria previa.
+13. ENLACES Y GESTIÓN DE GOOGLE SHEETS (LIBROS Y PARTES DE TALLER):
+   - Si el usuario te pide "enlace al sheet", "pásame el link de la hoja", "dónde está el archivo", o el enlace a un parte o registro: DEBES utilizar OBLIGATORIAMENTE el \`spreadsheetId\` real devuelto por la herramienta en el turno actual o en el historial (\`https://docs.google.com/spreadsheets/d/{spreadsheetId}/edit\`).
+   - ESTÁ ESTRICTAMENTE PROHIBIDO responder con la URL raíz genérica https://docs.google.com/spreadsheets/ o decir "Abrir en Google Sheets" sin enlace Markdown real.
+   - Libro canónico \`Taller_Partes\`: para partes de taller mecánico existe UN ÚNICO libro canónico en la carpeta \`silvania/\`. Está estrictamente prohibido crear hojas duplicadas; utiliza \`sheets_append\` (o \`sheets_write\`) para añadir filas al libro canónico existente.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## 🌐 CAPACIDADES DE NAVEGACIÓN WEB E INVESTIGACIÓN (OBLIGATORIO)
@@ -405,10 +488,15 @@ Después de crear la skill, la instalas en el sistema y queda disponible para us
 - Crear estructura completa.
 - Añadir fórmulas reales.
 - Confirmar que las fórmulas existen.
-- Devolver enlace válido.
+- Devolver SIEMPRE enlace Markdown completo: \`[Abrir en Google Sheets](https://docs.google.com/spreadsheets/d/{spreadsheetId}/edit)\` utilizando el spreadsheetId real. ESTRICTAMENTE PROHIBIDO responder solo "Abrir en Google Sheets" sin enlace o con URLs ficticias/raíz.
+- Si el usuario pide "enlace al sheet" del parte o de cualquier hoja, usa OBLIGATORIAMENTE el \`spreadsheetId\` del turno actual o el canónico guardado; NUNCA des https://docs.google.com/spreadsheets/ genérico.
+- **LIBRO CANÓNICO DE TALLER (\`Taller_Partes\`):**
+  * Para talleres mecánicos existe un único libro canónico llamado \`Taller_Partes\` en \`silvania/\`.
+  * Si el libro ya existe, \`sheets_create\` devolverá su ID canónico para evitar crear libros duplicados.
+  * Para registrar nuevos partes o vehículos en el taller, utiliza SIEMPRE \`sheets_append\` (o \`sheets_write\`) añadiendo la nueva fila con los 15 campos estructurados.
 - Si la API falla: “La API no devolvió enlace. Reintenta.”
 - **REGLA DE ESCRITURA MASIVA (BATCH WRITE):**
-  * Para rellenar o guardar datos (como listas de prospección, tablas de resultados de skills o informes), debes realizar una sola escritura tras tener todos los datos: primero ejecuta todas las herramientas de búsqueda/obtención de datos, y luego realiza exactamente 1× \`sheets_create\` (si aplica) + 1× \`sheets_write\` con la matriz 2D completa conteniendo \`[cabeceras, ...filas]\`.
+  * Para rellenar o guardar datos (como listas de prospección, tablas de resultados de skills o informes), debes realizar una sola escritura tras tener todos los datos: primero ejecuta todas las herramientas de búsqueda/obtención de datos, y luego realiza exactamente 1× \`sheets_create\` (si aplica) + 1× \`sheets_write\` o \`sheets_append\` con la matriz 2D completa conteniendo \`[cabeceras, ...filas]\`.
   * Está **estrictamente prohibido** realizar múltiples llamadas a \`sheets_write\` para la misma hoja en el mismo turno (prohibido escribir cabeceras en un turno y filas en otro, o escribir celda a celda).
   * **Si el enforcer de seguridad dispara un error de batch** (por haber llamado múltiples veces a \`sheets_write\`), está estrictamente prohibido que le digas al usuario que la hoja o enlace está listo. Debes leer el error de batch en la respuesta de la herramienta, reintentar inmediatamente en el mismo turno haciendo una única llamada con la matriz consolidada, o admitir el fallo de forma explícita.
 
@@ -665,6 +753,22 @@ Si detectas un error de red o de "Conflict", informa al usuario que estás reini
               console.warn("🚨 [Anti-Alucinación] La herramienta de lectura falló pero el modelo generó contenido simulado. Sustituyendo por fallo verificado.");
               rawContent = `❌ No pude leer el archivo solicitado: ${errMatch}`;
             }
+          }
+
+          // Anti-alucinación estricta de Gmail en producción: si una herramienta devolvió aviso de permisos limitados,
+          // está TERMINANTEMENTE PROHIBIDO alucinar correos ficticios o enlaces inventados.
+          const gmailLimitResult = [...history].reverse().find(m => m.role === "tool" && (
+            String(m.content).includes("Permisos de Gmail limitados") ||
+            String(m.content).includes("solo envío (`gmail.send`)")
+          ));
+          if (gmailLimitResult && (
+            rawContent.includes("Asunto:") || 
+            rawContent.includes("De:") || 
+            rawContent.includes("Remitente:") || 
+            /\[Abrir\]\(https:\/\/mail\.google\.com\/mail\/u\/0\/#inbox\/[a-zA-Z0-9_-]+\)/.test(rawContent)
+          )) {
+            console.warn("🚨 [Anti-Alucinación] Detectada alucinación de correos tras aviso de scope insuficiente. Reemplazando por limitación oficial.");
+            rawContent = String(gmailLimitResult.content);
           }
 
           const finalContent = filterFinalOutput(enforceHardLimit(sanitizeAlucinatedLinks(rawContent, history)), history);
@@ -936,17 +1040,17 @@ export function sanitizeAlucinatedLinks(responseText: string, history: any[]): s
       }
 
       // B. Extraer IDs explícitos de Workspace (Drive, Gmail, Sheets, Calendar)
-      const explicitMatches = content.matchAll(/(?:ID:\s*`?|id["']?\s*:\s*["']?|\/d\/|\/folders\/|#inbox\/|[?&]id=)([a-zA-Z0-9_-]{8,65})/gi);
+      const explicitMatches = content.matchAll(/(?:ID:\s*`?|id["']?\s*:\s*["']?|\/d\/|\/folders\/|#inbox\/|[?&]id=|[?&]eid=)([a-zA-Z0-9_=-]{8,128})/gi);
       for (const m of explicitMatches) {
         if (m[1]) validIds.add(m[1]);
       }
 
-      // C. Extraer identificadores técnicos entre backticks que contengan dígitos y letras (ej. `1aILvwkAH7NauwhUEQmduA79u0JmtuyAi` o `192b0fa123456789`)
-      const backtickMatches = content.matchAll(/`([a-zA-Z0-9_-]{8,65})`/g);
+      // C. Extraer identificadores técnicos entre backticks que contengan dígitos y letras
+      const backtickMatches = content.matchAll(/`([a-zA-Z0-9_=-]{8,128})`/g);
       for (const bm of backtickMatches) {
         const val = bm[1];
-        // Asegurar que no sea una palabra de diccionario: debe tener al menos un dígito o guión
-        if (/[0-9_-]/.test(val)) {
+        // Asegurar que no sea una palabra de diccionario: debe tener al menos un dígito o guión/igual
+        if (/[0-9_=-]/.test(val)) {
           validIds.add(val);
         }
       }
@@ -961,7 +1065,11 @@ export function sanitizeAlucinatedLinks(responseText: string, history: any[]): s
     "https://mail.google.com/mail",
     "https://mail.google.com",
     "https://calendar.google.com/calendar/u/0/",
+    "https://calendar.google.com/calendar/u/0",
+    "https://calendar.google.com/calendar/u/0/r",
+    "https://calendar.google.com/calendar",
     "https://calendar.google.com",
+    "https://www.google.com/calendar",
     "https://docs.google.com/spreadsheets",
     "https://silvania.ai"
   ];
@@ -982,12 +1090,12 @@ export function sanitizeAlucinatedLinks(responseText: string, history: any[]): s
     }
 
     // B. Si la URL completa vino explícitamente en el resultado de una tool, se permite
-    if (validUrls.has(cleanLink) || Array.from(validUrls).some(u => u === cleanLink || cleanLink.startsWith(u))) {
+    if (validUrls.has(cleanLink) || Array.from(validUrls).some(u => u === cleanLink || cleanLink.startsWith(u) || u.startsWith(cleanLink))) {
       continue;
     }
 
-    // C. Verificación de enlaces de Google Workspace (Gmail, Drive, Docs, Sheets)
-    const isGoogleService = /(?:mail|drive|docs|calendar)\.google\.com/i.test(cleanLink);
+    // C. Verificación de enlaces de Google Workspace (Gmail, Drive, Docs, Sheets, Calendar)
+    const isGoogleService = /(?:mail|drive|docs|calendar)\.google\.com|google\.[a-z.]+\/calendar/i.test(cleanLink);
     if (isGoogleService) {
       // 1. Enlaces individuales de Gmail: https://mail.google.com/mail/u/0/#inbox/{id}
       const gmailMatch = cleanLink.match(/#inbox\/([a-zA-Z0-9_-]{8,65})/i);
@@ -1000,7 +1108,27 @@ export function sanitizeAlucinatedLinks(responseText: string, history: any[]): s
         }
       }
 
-      // 2. Enlaces individuales de Drive / Docs / Sheets: /folders/{id} o /file/d/{id} o /d/{id} o ?id={id}
+      // 2. Enlaces individuales de Google Calendar: eid=... o /eventedit/ o ID
+      const isCalendarLink = /(?:calendar\.google\.com|google\.[a-z.]+\/calendar)/i.test(cleanLink);
+      if (isCalendarLink) {
+        const matchesToolUrl = validUrls.has(cleanLink) || Array.from(validUrls).some(u => u === cleanLink || cleanLink.startsWith(u) || u.startsWith(cleanLink));
+        const eidMatch = cleanLink.match(/[?&]eid=([a-zA-Z0-9_=-]+)/i);
+        const hasKnownEid = eidMatch && (validIds.has(eidMatch[1]) || Array.from(validIds).some(id => eidMatch[1].includes(id)));
+
+        if (matchesToolUrl || hasKnownEid) {
+          continue;
+        }
+
+        if (cleanLink.startsWith("https://calendar.google.com/calendar/u/0") || cleanLink === "https://calendar.google.com" || cleanLink === "https://www.google.com/calendar") {
+          continue;
+        }
+
+        neutralizedCount++;
+        sanitizedText = sanitizedText.replace(link, "[Enlace no disponible — no devuelto por la herramienta]");
+        continue;
+      }
+
+      // 3. Enlaces individuales de Drive / Docs / Sheets: /folders/{id} o /file/d/{id} o /d/{id} o ?id={id}
       let driveId = "";
       const dMatch = cleanLink.match(/\/d\/([a-zA-Z0-9_-]{12,65})/i);
       const folderMatch = cleanLink.match(/\/folders\/([a-zA-Z0-9_-]{12,65})/i);
@@ -1016,7 +1144,7 @@ export function sanitizeAlucinatedLinks(responseText: string, history: any[]): s
           sanitizedText = sanitizedText.replace(link, "[Enlace no disponible — no devuelto por la herramienta]");
           continue;
         }
-      } else {
+      } else if (!gmailMatch) {
         // Enlace de Google desconocido o sospechoso que no está en whitelist ni tiene ID verificado
         neutralizedCount++;
         sanitizedText = sanitizedText.replace(link, "[Enlace no disponible — no devuelto por la herramienta]");
@@ -1067,26 +1195,59 @@ export function filterFinalOutput(text: string, history?: any[]): string {
 
   // 4. Prevenir enlaces "Abrir" rotos o sin href: nunca dejar "[Abrir]()" ni "🔗 Abrir" sin URL válida
   let verifiedGmailUrl = "";
+  let verifiedSheetsUrl = "";
+  let verifiedCalendarUrl = "";
+  let verifiedDriveUrl = "";
+
   if (Array.isArray(history)) {
     for (const msg of history) {
       if (msg.role === "tool" && msg.content) {
-        const gmailMatch = String(msg.content).match(/https:\/\/mail\.google\.com\/mail\/u\/0\/#inbox\/([a-zA-Z0-9_-]{8,65})/);
-        if (gmailMatch) {
-          verifiedGmailUrl = gmailMatch[0];
-          break;
+        const strContent = String(msg.content);
+        if (!verifiedGmailUrl) {
+          const gmailMatch = strContent.match(/https:\/\/mail\.google\.com\/mail\/u\/0\/#inbox\/([a-zA-Z0-9_-]{8,65})/i);
+          if (gmailMatch) verifiedGmailUrl = gmailMatch[0];
+        }
+        if (!verifiedSheetsUrl) {
+          const sheetsMatch = strContent.match(/https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]{20,80})/i);
+          if (sheetsMatch) verifiedSheetsUrl = `https://docs.google.com/spreadsheets/d/${sheetsMatch[1]}/edit`;
+        }
+        if (!verifiedCalendarUrl) {
+          const calMatch = strContent.match(/https?:\/\/(?:www\.)?(?:calendar\.google\.com|google\.[a-z.]+\/calendar)\S+/i);
+          if (calMatch) verifiedCalendarUrl = calMatch[0].replace(/[)\]`'",;]+$/, "");
+        }
+        if (!verifiedDriveUrl) {
+          const driveMatch = strContent.match(/https:\/\/drive\.google\.com\S+/i);
+          if (driveMatch) verifiedDriveUrl = driveMatch[0].replace(/[)\]`'",;]+$/, "");
         }
       }
     }
   }
 
-  // A. Si hay "[Abrir]()", "[Abrir](null)", "[Abrir](undefined)":
-  cleaned = cleaned.replace(/\[Abrir\]\((?:null|undefined|\s*)\)/gi, () => {
-    return verifiedGmailUrl ? `[Abrir](${verifiedGmailUrl})` : "";
+  const primaryFallbackUrl = verifiedSheetsUrl || verifiedCalendarUrl || verifiedGmailUrl || verifiedDriveUrl;
+
+  // A. Si hay "[Abrir en Google Sheets](...)" con URL vacía o neutralizada:
+  cleaned = cleaned.replace(/\[Abrir en Google Sheets\]\((?:null|undefined|\s*|\[Enlace no disponible[^)]*\])\)/gi, () => {
+    return verifiedSheetsUrl ? `[Abrir en Google Sheets](${verifiedSheetsUrl})` : `[Abrir en Google Sheets](https://docs.google.com/spreadsheets/)`;
   });
 
-  // B. Si hay "🔗 Abrir" o "· Abrir" suelto que el modelo haya dejado sin formatear como enlace:
+  // B. Si hay "Abrir en Google Sheets" suelto que el modelo haya dejado sin formatear como enlace:
+  cleaned = cleaned.replace(/(?:🔗\s*|·\s*)?Abrir en Google Sheets(?!\s*\]|\s*\([^\s)]+\))/g, () => {
+    return verifiedSheetsUrl ? `[Abrir en Google Sheets](${verifiedSheetsUrl})` : `[Abrir en Google Sheets](https://docs.google.com/spreadsheets/)`;
+  });
+
+  // C. Si hay "[Abrir en Google Calendar](...)" con URL vacía o neutralizada:
+  cleaned = cleaned.replace(/\[Abrir en Google Calendar\]\((?:null|undefined|\s*|\[Enlace no disponible[^)]*\])\)/gi, () => {
+    return verifiedCalendarUrl ? `[Abrir en Google Calendar](${verifiedCalendarUrl})` : `[Abrir en Google Calendar](https://calendar.google.com/calendar/u/0/)`;
+  });
+
+  // D. Si hay "[Abrir]()", "[Abrir](null)", "[Abrir](undefined)", "[Abrir]([Enlace no disponible...])":
+  cleaned = cleaned.replace(/\[Abrir\]\((?:null|undefined|\s*|\[Enlace no disponible[^)]*\])\)/gi, () => {
+    return primaryFallbackUrl ? `[Abrir](${primaryFallbackUrl})` : "";
+  });
+
+  // E. Si hay "🔗 Abrir" o "· Abrir" suelto que el modelo haya dejado sin formatear como enlace:
   cleaned = cleaned.replace(/(?:🔗\s*|·\s*)Abrir(?!\s*\]|\s*\([^\s)]+\))/g, () => {
-    return verifiedGmailUrl ? `[Abrir](${verifiedGmailUrl})` : "";
+    return primaryFallbackUrl ? `[Abrir](${primaryFallbackUrl})` : "";
   });
 
   // 5. Detectar si aún contiene simulaciones crudas residuales de tool calls

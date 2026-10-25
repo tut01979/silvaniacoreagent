@@ -5,10 +5,7 @@ import { formatEventLink } from "../services/linkFormatter.js";
 const SEP = "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
 
 function safeCalendarLink(link?: string): string | undefined {
-  if (!link) return undefined;
-  if (typeof link !== "string") return undefined;
-
-  // Evitar enlaces corruptos o infinitos
+  if (!link || typeof link !== "string") return undefined;
   if (link.length > 500) return undefined;
 
   // Solo aceptar dominios legítimos de Google Calendar
@@ -16,11 +13,34 @@ function safeCalendarLink(link?: string): string | undefined {
     return undefined;
   }
 
-  // Evitar patrones repetitivos (base64 corrupto)
-  const repeated = /(2czY5|YzYxNnI2Z28)/i;
-  if (repeated.test(link)) return undefined;
-
   return link;
+}
+
+function buildCanonicalCalendarLink(eventId?: string, htmlLink?: string): string {
+  const verified = safeCalendarLink(htmlLink);
+  if (verified) return verified;
+  if (eventId) {
+    try {
+      const eid = Buffer.from(`${eventId} primary`).toString("base64").replace(/=/g, "");
+      return `https://www.google.com/calendar/event?eid=${eid}`;
+    } catch {
+      return `https://calendar.google.com/calendar/u/0/r/eventedit/${eventId}`;
+    }
+  }
+  return "https://calendar.google.com/calendar/u/0/";
+}
+
+function parseAttendeesList(attendees?: string[] | string): { email: string }[] {
+  if (!attendees) return [];
+  let rawList: string[] = [];
+  if (Array.isArray(attendees)) {
+    rawList = attendees.map(e => String(e).trim());
+  } else if (typeof attendees === "string" && attendees.trim()) {
+    rawList = attendees.split(/[,;\s]+/).map(e => e.trim());
+  }
+  return rawList
+    .filter(email => email.includes("@") && email.includes("."))
+    .map(email => ({ email }));
 }
 
 function formatCalendarEvents(items: any[]): string {
@@ -33,8 +53,8 @@ function formatCalendarEvents(items: any[]): string {
     const start = e.start?.dateTime || e.start?.date || "";
     const end   = e.end?.dateTime || e.end?.date || "";
     const location = e.location || "";
-    const link  = safeCalendarLink(e.htmlLink || undefined) || "";
     const id    = e.id || "";
+    const link  = buildCanonicalCalendarLink(id, e.htmlLink || undefined);
     
     let timeStr = "";
     if (start) {
@@ -48,8 +68,14 @@ function formatCalendarEvents(items: any[]): string {
     }
 
     out += `${formatEventLink(title, link)}\n`;
+    if (id) out += `> 🆔 **ID:** \`${id}\`\n`;
     if (timeStr) out += `> ⏰ ${timeStr}\n`;
-    if (location) out += `> 📍 ${location}\n\n`;
+    if (location) out += `> 📍 ${location}\n`;
+    if (e.attendees && e.attendees.length > 0) {
+      const attendeesEmails = e.attendees.map((a: any) => a.email).filter(Boolean).join(", ");
+      if (attendeesEmails) out += `> 👥 **Invitados:** ${attendeesEmails}\n`;
+    }
+    out += `\n`;
   }
   return out;
 }
@@ -93,7 +119,8 @@ export const calendarCreate = async (
   summary: string,
   start: string,
   end: string,
-  description?: string
+  description?: string,
+  attendees?: string[] | string
 ) => {
   try {
     const auth = await getGoogleAuthForUser(userId);
@@ -102,35 +129,46 @@ export const calendarCreate = async (
     }
 
     const calendar = google.calendar({ version: "v3", auth });
+    const attendeeList = parseAttendeesList(attendees);
+    const hasAttendees = attendeeList.length > 0;
 
-    const event = {
+    const event: any = {
       summary,
       description: description || "",
       start: { dateTime: start, timeZone: "Europe/Madrid" },
-      end: { dateTime: end, timeZone: "Europe/Madrid" }
+      end: { dateTime: end, timeZone: "Europe/Madrid" },
+      ...(hasAttendees ? { attendees: attendeeList } : {})
     };
 
     const response = await calendar.events.insert({
       calendarId: "primary",
       requestBody: event,
-      sendUpdates: "none" // Evitar notificaciones masivas/correos a invitados o compartidos
+      sendUpdates: hasAttendees ? "all" : "none"
     });
 
     const eventData = response.data;
+    const eventId = eventData.id || "";
     const startStr = new Date(eventData.start?.dateTime || eventData.start?.date || start).toLocaleString("es-ES", {
       timeZone: "Europe/Madrid", weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit"
     });
 
-    const safeLink = safeCalendarLink(eventData.htmlLink || undefined) || "";
-    const linkStr = formatEventLink(eventData.summary || summary, safeLink);
+    const realLink = buildCanonicalCalendarLink(eventId, eventData.htmlLink || undefined);
+    const linkStr = formatEventLink(eventData.summary || summary, realLink);
+    const attendeesStr = hasAttendees
+      ? `\n> 👥 **Invitados:** ${attendeeList.map(a => a.email).join(", ")} (notificación de invitación enviada por email)`
+      : "";
+
     return `✅ **EVENTO PROGRAMADO CON ÉXITO**\n${SEP}\n\n` +
            `${linkStr}\n` +
+           `> 🆔 **ID:** \`${eventId}\`\n` +
            `> ⏰ **Cuándo:** ${startStr}\n` +
-           `> 📍 **Lugar:** ${eventData.location || "No especificado"}\n\n` +
+           `> 📍 **Lugar:** ${eventData.location || "No especificado"}` +
+           `${attendeesStr}\n` +
+           `> 🔗 **Enlace directo:** ${realLink}\n\n` +
            `*Silvania CoreAgent ha agendado esto por ti.*`;
   } catch (error: any) {
     console.error("Error en calendarCreate:", error);
-    return `❌ **Error al crear el evento:** ${error.message}\n\n_Asegúrate de que las fechas estén en formato ISO (ej: 2024-05-01T10:00:00Z) o usa términos claros como "mañana a las 10am"._`;
+    return `❌ **Error al crear el evento:** ${error.message}\n\n_Asegúrate de que las fechas estén en formato ISO (ej: 2026-10-26T10:00:00+02:00) o consulta las fechas relativas en el chat._`;
   }
 };
 
@@ -168,7 +206,9 @@ export const calendarUpdate = async (
   summary?: string,
   start?: string,
   end?: string,
-  description?: string
+  description?: string,
+  attendees?: string[] | string,
+  sendUpdates?: string
 ) => {
   try {
     const auth = await getGoogleAuthForUser(userId);
@@ -178,37 +218,72 @@ export const calendarUpdate = async (
 
     const calendar = google.calendar({ version: "v3", auth });
 
-    // Obtener el evento actual para preservar otros campos
+    // Obtener el evento actual para preservar otros campos y combinar asistentes
     const existing = await calendar.events.get({ calendarId: "primary", eventId });
     const eventData = existing.data;
 
-    const updateData: any = {};
-    if (summary !== undefined) updateData.summary = summary;
-    if (description !== undefined) updateData.description = description;
+    const patchBody: any = {};
+    if (summary !== undefined) patchBody.summary = summary;
+    if (description !== undefined) patchBody.description = description;
     if (start) {
-      updateData.start = { dateTime: start, timeZone: eventData.start?.timeZone || "Europe/Madrid" };
+      patchBody.start = { dateTime: start, timeZone: eventData.start?.timeZone || "Europe/Madrid" };
     }
     if (end) {
-      updateData.end = { dateTime: end, timeZone: eventData.end?.timeZone || "Europe/Madrid" };
+      patchBody.end = { dateTime: end, timeZone: eventData.end?.timeZone || "Europe/Madrid" };
     }
 
-    const response = await calendar.events.update({
+    const newAttendees = parseAttendeesList(attendees);
+    let finalAttendees: { email: string }[] | undefined = undefined;
+
+    if (newAttendees.length > 0) {
+      const existingEmails = new Set<string>(
+        (eventData.attendees || [])
+          .map(a => a.email?.toLowerCase())
+          .filter((e): e is string => Boolean(e))
+      );
+      finalAttendees = (eventData.attendees || [])
+        .filter(a => Boolean(a.email))
+        .map(a => ({ email: a.email as string }));
+
+      for (const na of newAttendees) {
+        if (!existingEmails.has(na.email.toLowerCase())) {
+          finalAttendees.push(na);
+          existingEmails.add(na.email.toLowerCase());
+        }
+      }
+      patchBody.attendees = finalAttendees;
+    }
+
+    const effectiveSendUpdates = sendUpdates || (newAttendees.length > 0 ? "all" : "none");
+
+    const response = await calendar.events.patch({
       calendarId: "primary",
       eventId,
-      requestBody: { ...eventData, ...updateData },
-      sendUpdates: "none"
+      requestBody: patchBody,
+      sendUpdates: effectiveSendUpdates as any
     });
 
-    const startStr = new Date(response.data.start?.dateTime || response.data.start?.date || "").toLocaleString("es-ES", {
+    const updatedEvent = response.data;
+    const startStr = new Date(updatedEvent.start?.dateTime || updatedEvent.start?.date || "").toLocaleString("es-ES", {
       timeZone: "Europe/Madrid", weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit"
     });
 
-    const linkStr = formatEventLink(response.data.summary || summary || "Evento", response.data.htmlLink || "");
+    const realLink = buildCanonicalCalendarLink(eventId, updatedEvent.htmlLink || undefined);
+    const linkStr = formatEventLink(updatedEvent.summary || summary || "Evento", realLink);
+    
+    const attendeesStr = updatedEvent.attendees && updatedEvent.attendees.length > 0
+      ? `\n> 👥 **Asistentes:** ${updatedEvent.attendees.map((a: any) => a.email).filter(Boolean).join(", ")}${newAttendees.length > 0 ? " (notificación enviada por email)" : ""}`
+      : "";
+
     return `✅ **EVENTO ACTUALIZADO CON ÉXITO**\n${SEP}\n\n` +
            `${linkStr}\n` +
+           `> 🆔 **ID:** \`${eventId}\`\n` +
            `> ⏰ **Cuándo:** ${startStr}\n` +
-           `> 📍 **Lugar:** ${response.data.location || "No especificado"}`;
+           `> 📍 **Lugar:** ${updatedEvent.location || "No especificado"}` +
+           `${attendeesStr}\n` +
+           `> 🔗 **Enlace directo:** ${realLink}`;
   } catch (error: any) {
     return `❌ **Error al actualizar el evento:** ${error.message}`;
   }
 };
+
