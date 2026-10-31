@@ -146,6 +146,29 @@ export async function runAgent(userId: number, userMessage: string) {
     // 1. Guardar mensaje del usuario
     await dbService.addMessage(userId, "user", userMessage);
 
+    // 1.b Onboarding / Fast-path para saludo y presentación de nombre (ej. "hola soy Eduardo")
+    const introducedName = extractUserNameIntroduction(userMessage);
+    if (introducedName) {
+      await saveUserPreferredName(userId, introducedName);
+    }
+
+    if (!hasTaskOrQuestionIntent(userMessage)) {
+      if (introducedName && userMessage.trim().split(/\s+/).length <= 14) {
+        const shortIntroReply = `¡Hola, ${introducedName}! Encantado de saludarte, ya he anotado tu nombre.\n¿En qué te puedo ayudar hoy?`;
+        await dbService.addMessage(userId, "assistant", shortIntroReply);
+        return shortIntroReply;
+      }
+
+      if (isPureShortGreeting(userMessage)) {
+        const savedName = introducedName || (await getUserPreferredName(userId));
+        const shortGreetingReply = savedName
+          ? `¡Hola, ${savedName}! ¿En qué te puedo ayudar hoy?`
+          : `¡Hola! ¿En qué te puedo ayudar hoy?`;
+        await dbService.addMessage(userId, "assistant", shortGreetingReply);
+        return shortGreetingReply;
+      }
+    }
+
     // Obtener estado real de conexión de Google
     const email = await dbService.getUserEmail(userId);
     const token = await dbService.getUserToken(userId);
@@ -153,6 +176,25 @@ export async function runAgent(userId: number, userMessage: string) {
     const googleStatusStr = isLinked
       ? `Estado Google: VINCULADO (${email || "email desconocido"})`
       : `Estado Google: NO VINCULADO`;
+
+    // Intercepción prioritaria: si el usuario pide el enlace a la hoja/factura recién creada, usar el último spreadsheetId de la sesión (NO sheets_list)
+    const asksRecentSheetLink =
+      !/\b(crea|crear|nueva|nuevo|genera|generar|haz|hacer|añade|añadir|escribe|escribir|modifica|modificar)\b/i.test(userMessage) &&
+      (
+        /\b(enlace|link|url)\b.*\b(sheet|sheets|hoja|factura|excel|tabla)\b/i.test(userMessage) ||
+        /\b(sheet|sheets|hoja|factura|excel|tabla)\b.*\b(enlace|link|url)\b/i.test(userMessage) ||
+        /\b(el\s+enlace\s+no\s+es\s+v[aá]lido|no\s+funciona\s+el\s+enlace|p[aá]same\s+el\s+enlace|dame\s+el\s+enlace|dame\s+el\s+link|pasa\s+el\s+link)\b/i.test(userMessage)
+      );
+
+    if (asksRecentSheetLink) {
+      const recentHistory = await dbService.getHistory(userId, 10);
+      const lastSheet = await getLastSessionSpreadsheet(userId, recentHistory);
+      if (lastSheet) {
+        const singleLineMarkdown = `[${lastSheet.title}](${lastSheet.url})`;
+        await dbService.addMessage(userId, "assistant", singleLineMarkdown);
+        return singleLineMarkdown;
+      }
+    }
 
     // Intercepción de ruteo rápido para enlaces directos de Google si ya está vinculado
     if (isLinked) {
@@ -315,6 +357,9 @@ ${calendarText}
 - Rol Principal: Asistente ejecutivo y operativo personal/corporativo para Google Workspace y ejecución de skills instaladas.
 - Actúas exclusivamente bajo instrucciones explícitas del usuario.
 - Nunca actúas de forma autónoma, nunca inventas datos ni enlaces falsos.
+- REGLA DE ONBOARDING (PROHIBIDO REPETIR EL PITCH DE /start):
+  * Si el usuario saluda o se presenta con su nombre (ej. "hola soy Eduardo"), reconócelo por su nombre en 1-2 líneas y pregúntale en qué puedes ayudarle. NUNCA repitas la presentación de capacidades de /start.
+  * Si el usuario trae directamente una tarea ("crea evento...", "factura..."), ejecuta de inmediato la herramienta correspondiente sin soltar presentaciones.
 - SEPARACIÓN ESTRICTA DE PRODUCTOS SILVANIA:
   1. NO ERES MARKETING STUDIO: Silvania cuenta con **Silvania Marketing Studio** como producto independiente para creación de campañas omnicanal (YouTube, TikTok, LinkedIn, X, Telegram) con flujo HITL (Human-in-the-Loop) mediante los comandos /marketing y /campaña. NO hables como agencia publicitaria ni ofrezcas redactar o inventar posts de marketing en CoreAgent; indica al usuario que use /marketing o /campaña.
   2. NUNCA ERES EVA NI ADOPTAS SU PERSONALIDAD: Silvania cuenta con **Eva** (https://silvania.ai/eva) como entrenadora de voz y logopedia interactiva en el navegador para niños y familias, con estricta privacidad y 0 scopes de Google. En Telegram (CoreAgent) está ESTRICTAMENTE PROHIBIDO adoptar la personalidad de Eva ("Soy Eva... La Granja", animales, fonemas, etc.) o iniciar mundos y ejercicios de logopedia. Si el usuario te habla de Eva o ejercicios infantiles en Telegram, responde únicamente con la explicación institucional breve de qué es Eva, su política de privacidad (0 scopes de Google) y los enlaces https://silvania.ai/eva y https://silvania.ai/eva-landing. El roleplay de Eva vive exclusivamente en la web /eva.
@@ -382,13 +427,13 @@ ${userTier === "prod" ? `
 7. Si el usuario pide explícitamente "enlace de autorización", "vincular Google", "conectar cuenta", "cambiar de cuenta" o "/auth": DEBES llamar obligatoriamente a la herramienta \`generate_authorization_link\`. NUNCA inventes enlaces de autorización ni utilices otros client_id ajenos al sistema.
 8. Si el usuario ya vinculó su cuenta o te indica frases como "ya lo vinculé", "inténtalo ahora", "prueba ahora", "reintenta", o solicita una acción ejecutiva (ej. "crea la reunión", "lista mis eventos", "envía el correo"): ESTÁ ESTRICTAMENTE PROHIBIDO volver a llamar a \`generate_authorization_link\` o pedir autorización. Debes proceder INMEDIATAMENTE a ejecutar la acción solicitada llamando a la herramienta correspondiente (\`calendar_create\`, \`gmail_send\`, \`drive_list\`, etc.). Solo si una herramienta devuelve expresamente un error de sesión expirada ('invalid_grant', 'unauthorized_client'), ofrecerás reconectar.
 9. CONFIRMACIÓN Y ENLACES DE GMAIL (\`gmail_send\`):
-   - Al confirmar el envío de un correo, incluye SIEMPRE el enlace directo en formato Markdown estándar: \`[Abrir](https://mail.google.com/mail/u/0/#inbox/{id})\` utilizando el Message ID devuelto por la herramienta.
+   - Tras \`gmail_send\`, la respuesta al usuario DEBE incluir SIEMPRE en una línea el enlace Markdown completo con el asunto/título del correo: \`[Asunto del correo](https://mail.google.com/mail/u/0/#inbox/{id})\` utilizando el Message ID real devuelto por la herramienta. Prohibido dejar solo la palabra "Abrir" o el título sin URL.
    - ESTRICTAMENTE PROHIBIDO emitir la palabra "Abrir" o "🔗 Abrir" sin su correspondiente hipervínculo en formato Markdown válido o con href vacío. Nunca escribas "Abrir" suelto sin enlace.
 10. GESTIÓN DE EVENTOS, ASISTENTES Y ENLACES DE GOOGLE CALENDAR (\`calendar_create\`, \`calendar_update\`):
    - Al crear eventos (\`calendar_create\`): si el usuario menciona a alguien (ej: "con ana@ejemplo.com", "invita a carlos@empresa.com"), pásalo obligatoriamente en el parámetro \`attendees: ["correo@ejemplo.com"]\`. La herramienta enviará automáticamente la invitación por correo (\`sendUpdates=all\`).
    - Al invitar a eventos existentes o actualizarlos (\`calendar_update\`): si el usuario pide "añade a X a la reunión", "invita a X", "comparte el evento con X", etc.: ESTÁ ESTRICTAMENTE PROHIBIDO decir que es imposible o que no se puede invitar a un evento ya creado. Debes ejecutar de inmediato \`calendar_update\` con el \`event_id\` y \`attendees: ["correo@ejemplo.com"]\`.
    - REUTILIZACIÓN DE IDs (PROHIBIDO INVENTAR): Si acabas de crear un evento en este turno o en el anterior, REUTILIZA exactamente el \`ID\` devuelto por \`calendar_create\` o \`calendar_list\`. NUNCA inventes identificadores.
-   - ENLACE DIRECTO COMPLETO: Incluye SIEMPRE en tu confirmación al usuario el enlace en formato Markdown estándar \`[Abrir en Google Calendar](url_devuelta)\` o \`[Abrir](url_devuelta)\` utilizando el \`htmlLink\` real devuelto por la herramienta (ej: \`https://www.google.com/calendar/event?eid=...\`). NUNCA escribas "Abrir" sin su enlace válido.
+   - ENLACE DIRECTO COMPLETO: Tras \`calendar_create\` o \`calendar_update\`, la respuesta al usuario DEBE incluir SIEMPRE en una línea el enlace Markdown completo con el título del evento: \`[Título del evento](url_https_completa)\` utilizando el \`htmlLink\` real devuelto por la herramienta (ej: \`https://www.google.com/calendar/event?eid=...\`). Prohibido dejar solo la palabra "Abrir" o el título sin URL.
 11. RESOLUCIÓN DE FECHAS RELATIVAS (EUROPE/MADRID):
    - Consulta OBLIGATORIAMENTE la tabla "CALENDARIO DE REFERENCIA OBLIGATORIO" de arriba antes de definir fechas y horas para el calendario.
    - Si el usuario dice "lunes", localiza la fila correspondiente a "LUNES" en la tabla. Si hoy es domingo 25/10/2026, el lunes siguiente es INVARIABLEMENTE 2026-10-26 (NO 2026-10-27).
@@ -416,6 +461,12 @@ ${userTier === "prod" ? `
    - "No tengo web materna"
    - "No puedo acceder a silvania.ai"
 4. Si el usuario te pide entrar, leer, consultar o investigar cualquier web, URL o dominio (ej. "silvania.ai", "entra a la web...", "lee esta url..."), DEBES llamar INMEDIATAMENTE a \`read_url\` o \`web_search\` para leer su contenido en tiempo real y responder con los datos encontrados.
+5. NOTICIAS Y RESULTADOS DE WEB_SEARCH (\`web_search\`):
+   - Cada titular o resultado listado en tu respuesta DEBE llevar obligatoriamente la URL devuelta por la herramienta en formato Markdown \`[Titular](url_https_completa)\`.
+   - Si un titular o ítem no tiene URL devuelta por la herramienta, OMITE el ítem por completo. Prohibido listar titulares sin URL.
+6. BÚSQUEDA EN YOUTUBE (\`youtube_search\`):
+   - Si el idioma del usuario/config es \`es\` o el mensaje va en español, incluye SIEMPRE \`"en español"\` en el \`query\` desde la primera llamada a \`youtube_search\`, no solo tras corrección del usuario.
+   - Cada vídeo listado debe incluir su enlace completo \`[Título del vídeo](https://www.youtube.com/watch?v=...)\`.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## 🔷 CAPACIDADES DE VOZ Y LECTURA EN VOZ ALTA (TTS)
@@ -511,7 +562,7 @@ Columnas:
 5. Subtotal (\`=SUMA(D12:D14)\` en español, o \`=SUM(D12:D14)\` en inglés).
 6. IVA (\`=D16*0,21\` en español, o \`=D16*0.21\` en inglés).
 7. Total (\`=D16+D17\`).
-*(Nota técnica OBLIGATORIA: Si el usuario pide factura o plantilla de factura, es ESTRICTAMENTE OBLIGATORIO usar \`sheets_create_invoice\`, que crea la hoja en \`silvania/\` y escribe de una sola vez en \`A1\` la matriz 2D 18×4 completa con fórmulas \`USER_ENTERED\` vivas. Está PROHIBIDO usar \`sheets_create\` vacío + \`sheets_write\` celda a celda.)*
+*(Nota técnica OBLIGATORIA: Si el usuario pide factura o plantilla de factura, es ESTRICTAMENTE OBLIGATORIO usar \`sheets_create_invoice\`. La herramienta devuelve \`SPREADSHEET_ID=<id>\` y \`LINK=https://docs.google.com/spreadsheets/d/<id>/edit\`. Si la escritura falla y la herramienta devuelve \`❌ Error\`, informa del error claramente y NUNCA digas que la factura fue creada con IVA. Si tiene éxito, entrega al usuario el enlace en una sola línea Markdown limpia: \`[Nombre](https://docs.google.com/spreadsheets/d/ID/edit)\` sin repetir el ID en texto suelto. Si el usuario pide después el enlace a la hoja/factura, usa ese mismo \`SPREADSHEET_ID\` del turno/sesión y NUNCA llames a \`sheets_list\`.)*
 
 ${gmailHandlingStr}
 
@@ -642,7 +693,7 @@ Si detectas un error de red o de "Conflict", informa al usuario que estás reini
 
     if (tasks.length <= 1) {
       // Usar chat sin herramientas si la consulta no menciona palabras clave de herramientas, búsqueda, navegación o memoria
-      let requiresTools = /crea|crear|lista|listar|busca|buscar|envia|envía|envias|envías|lee|leer|open|genera|generar|sube|subir|mueve|mover|borra|borrar|investiga|investigar|resume|resumir|transcribe|transcribir|factura|evento|correo|email|gmail|mensaje|recibido|bandeja|drive|carpeta|archivo|subir|descargar|mkdir|calendar|calendario|cita|reunion|reunión|agenda|programar|youtube|video|transcripcion|transcripción|sheets|excel|hoja|celda|fila|columna|web_search|read_url|noticia|noticias|memoria|historial|resumen|recordar|recuerdas|nombre|ayer|hablamos|primera|conversacion|conversación|dijiste|dije|skill|skills|habilidad|habilidades|entra|entrar|visita|visitar|accede|acceder|mira|mirar|consulta|consultar|url|urls|web|sitio|pagina|página|portal|internet|link|enlace|silvania|sylvania|https?:\/\/|[a-zA-Z0-9-]+\.(ai|com|es|org|net|io|co|dev|app)\b/i.test(userMessage);
+      let requiresTools = /crea|crear|agendar|apunta|apuntar|anota|anotar|lista|listar|busca|buscar|envia|envía|envias|envías|lee|leer|open|genera|generar|sube|subir|mueve|mover|borra|borrar|investiga|investigar|resume|resumir|transcribe|transcribir|factura|evento|correo|email|gmail|mensaje|recibido|bandeja|drive|carpeta|archivo|subir|descargar|mkdir|calendar|calendario|cita|reunion|reunión|agenda|programar|youtube|video|transcripcion|transcripción|sheets|excel|hoja|celda|fila|columna|web_search|read_url|noticia|noticias|memoria|historial|resumen|recordar|recuerdas|ayer|hablamos|primera|conversacion|conversación|dijiste|dije|skill|skills|habilidad|habilidades|entra|entrar|visita|visitar|accede|acceder|mira|mirar|consulta|consultar|url|urls|web|sitio|pagina|página|portal|internet|link|enlace|silvania|sylvania|https?:\/\/|[a-zA-Z0-9-]+\.(ai|com|es|org|net|io|co|dev|app)\b/i.test(userMessage);
 
       // Anti-fast-path regex para garantizar acceso a herramientas en investigación, enlaces y operaciones de Google
       const antiFastPathRegex = /investig|protocolo|empresa|paleplast|maps|correo|gmail|drive|list|enlace|intent|ejecut|autoriz|gmail_list|drive_list|read_url|web_search/i;
@@ -1002,6 +1053,172 @@ async function parseMultipleTasks(userMessage: string): Promise<string[]> {
 /**
  * Detecta saludos y cortesías ultra-simples para ruteo rápido.
  */
+export async function getLastSessionSpreadsheet(
+  userId: number,
+  history?: any[]
+): Promise<{ id: string; title: string; url: string } | null> {
+  // 1. Priorizar el ID autoritativo guardado directamente por la herramienta (sheets_create_invoice / sheets_create)
+  try {
+    const saved =
+      (await dbService.getDriveFolder(userId, "sheet:LAST_INVOICE")) ||
+      (await dbService.getDriveFolder(userId, "sheet:LAST_ACTIVE"));
+    if (saved) {
+      const [id, title] = saved.split("|");
+      if (id && id.length >= 20) {
+        return {
+          id,
+          title: title || "Factura",
+          url: `https://docs.google.com/spreadsheets/d/${id}/edit`
+        };
+      }
+    }
+  } catch {}
+
+  // 2. Fallback al historial de mensajes/tools de la sesión
+  if (Array.isArray(history)) {
+    for (let i = history.length - 1; i >= 0; i--) {
+      const content = String(history[i]?.content || "");
+      if (!content) continue;
+      const mdMatch = content.match(/\[([^\]]+)\]\(https:\/\/docs\.google\.com\/spreadsheets\/d\/([A-Za-z0-9_-]{20,80})(?:\/edit)?\)/i);
+      if (mdMatch && mdMatch[2]) {
+        const title = mdMatch[1].replace(/^Abrir en Google Sheets$/i, "Factura").trim() || "Hoja de cálculo";
+        return {
+          id: mdMatch[2],
+          title,
+          url: `https://docs.google.com/spreadsheets/d/${mdMatch[2]}/edit`
+        };
+      }
+      const idMatch =
+        content.match(/SPREADSHEET_ID=([A-Za-z0-9_-]{20,80})/i) ||
+        content.match(/https:\/\/docs\.google\.com\/spreadsheets\/d\/([A-Za-z0-9_-]{20,80})/i);
+      if (idMatch && idMatch[1]) {
+        return {
+          id: idMatch[1],
+          title: "Hoja de cálculo",
+          url: `https://docs.google.com/spreadsheets/d/${idMatch[1]}/edit`
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+export function extractUserNameIntroduction(text: string): string | null {
+  if (!text) return null;
+  const clean = text.trim();
+  const match = clean.match(
+    /(?:^|[\s,.;:!¡¿?-])(?:yo\s+)?(?:soy|me\s+llamo|mi\s+nombre\s+es|ll[aá]mame|puedes\s+llamarme)\s+([A-ZÁÉÍÓÚÜÑa-záéíóúüñ]{2,25})(?:\s+([A-ZÁÉÍÓÚÜÑa-záéíóúüñ]{2,25}))?(?=[\s,.;:!¡¿?]|$)/i
+  );
+  if (!match) return null;
+
+  const nonNames = new Set([
+    "nuevo", "nueva", "cliente", "usuario", "usuaria", "autonomo", "autónomo",
+    "autonoma", "autónoma", "empresa", "pyme", "el", "la", "un", "una", "de",
+    "del", "tu", "su", "yo", "silvania", "bot", "agente", "administrador", "admin",
+    "comercial", "abogado", "mecanico", "mecánico", "doctor", "ingeniero", "gerente"
+  ]);
+
+  const firstWord = match[1];
+  const firstNorm = firstWord.toLowerCase();
+  if (nonNames.has(firstNorm)) return null;
+
+  const formatWord = (w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+  let fullName = formatWord(firstWord);
+
+  if (match[2]) {
+    const secondWord = match[2];
+    const secondNorm = secondWord.toLowerCase();
+    const stopSecondWords = new Set([
+      "y", "o", "pero", "quiero", "necesito", "puedes", "crea", "crear", "haz",
+      "hacer", "envia", "envía", "busca", "lista", "tengo", "estoy", "vengo",
+      "para", "por", "con", "sin", "de", "del", "en", "que", "como", "cómo",
+      "encantado", "encantada", "gracias", "buenas", "hola", "mañana", "manana", "hoy"
+    ]);
+    if (!nonNames.has(secondNorm) && !stopSecondWords.has(secondNorm)) {
+      fullName += " " + formatWord(secondWord);
+    }
+  }
+  return fullName;
+}
+
+export async function saveUserPreferredName(userId: number, userName: string): Promise<void> {
+  try {
+    const currentPrompt = (await dbService.getCustomPrompt(userId)) || "";
+    const nameDirective = `Nombre del usuario: ${userName}.`;
+    let updatedPrompt = currentPrompt;
+    if (/Nombre del usuario:\s*[^\n.]+(\.|$)/i.test(currentPrompt)) {
+      updatedPrompt = currentPrompt.replace(/Nombre del usuario:\s*[^\n.]+(\.|$)/i, nameDirective);
+    } else {
+      updatedPrompt = currentPrompt.trim()
+        ? `${currentPrompt.trim()}\n${nameDirective}`
+        : nameDirective;
+    }
+    await dbService.setCustomPrompt(userId, updatedPrompt);
+
+    const userFolder = path.join(process.cwd(), "data", `user_${userId}`);
+    const localConfigPath = path.join(userFolder, "config.json");
+    if (fs.existsSync(localConfigPath)) {
+      try {
+        const conf = JSON.parse(fs.readFileSync(localConfigPath, "utf8"));
+        conf.userName = userName;
+        conf.customPrompt = updatedPrompt;
+        fs.writeFileSync(localConfigPath, JSON.stringify(conf, null, 2), "utf8");
+      } catch {}
+    }
+  } catch (err: any) {
+    console.warn("⚠️ [Agent] No se pudo guardar el nombre preferido del usuario:", err.message);
+  }
+}
+
+export async function getUserPreferredName(userId: number): Promise<string | null> {
+  try {
+    const currentPrompt = (await dbService.getCustomPrompt(userId)) || "";
+    const match = currentPrompt.match(/Nombre del usuario:\s*([^\n.]+)/i);
+    if (match && match[1]) return match[1].trim();
+
+    const localConfigPath = path.join(process.cwd(), "data", `user_${userId}`, "config.json");
+    if (fs.existsSync(localConfigPath)) {
+      const conf = JSON.parse(fs.readFileSync(localConfigPath, "utf8"));
+      if (conf.userName) return String(conf.userName).trim();
+    }
+  } catch {}
+  return null;
+}
+
+export function hasTaskOrQuestionIntent(text: string): boolean {
+  if (!text) return false;
+  const clean = text.trim();
+  if (
+    /\b(crea|crear|agendar|agenda|programa|programar|apunta|apuntar|anota|anotar|pon|poner|evento|eventos|cita|citas|reuni[oó]n|reuniones|recordatorio|calendar|calendario|factura|facturas|presupuesto|hoja|hojas|sheet|sheets|excel|tabla|parte|taller|correo|correos|email|emails|gmail|env[ií]a|enviar|manda|mandar|redacta|redactar|drive|carpeta|archivo|archivos|documento|documentos|pdf|sube|subir|descarga|descargar|busca|buscar|investiga|investigar|lista|listar|lee|leer|analiza|analizar|resumen|resume|resumir|borra|borrar|elimina|eliminar|mueve|mover|actualiza|actualizar|modifica|modificar|cambia|cambiar|skill|skills|habilidad|web|url|link|enlace|auth|vincular|conectar|transcribe|transcribir|youtube|video|noticias|ayer|mañana|manana|pasado\s+mañana|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\b/i.test(clean)
+  ) {
+    return true;
+  }
+  if (/[?¿]/.test(clean)) {
+    const withoutCourtesyQuestion = clean
+      .replace(/¿?\s*(?:qu[eé]\s+tal|c[oó]mo\s+est[aá]s|c[oó]mo\s+va(?:\s+todo)?|qu[eé]\s+hay|todo\s+bien)\s*\??/gi, "")
+      .trim();
+    if (
+      /[?¿]/.test(withoutCourtesyQuestion) ||
+      /\b(qu[eé]|c[oó]mo|cu[aá]ndo|d[oó]nde|cu[aá]l|cu[aá]les|cu[aá]nto|por\s+qu[eé]|puedes|podr[ií]as|sabes|tienes)\b/i.test(withoutCourtesyQuestion)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function isPureShortGreeting(text: string): boolean {
+  if (!text) return false;
+  const clean = text
+    .trim()
+    .toLowerCase()
+    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?¡¿]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return /^(?:hola|hey|buenas|buenos dias|buenos días|buenas tardes|buenas noches|saludos)(?:\s+(?:que tal|qué tal|como estas|cómo estás|todo bien|silvania|equipo))?$/i.test(clean);
+}
+
 export function isUltraSimpleCourtesy(text: string): boolean {
   if (!text) return false;
   const clean = text
@@ -1042,7 +1259,16 @@ export function sanitizeAlucinatedLinks(responseText: string, history: any[]): s
       }
 
       // B. Extraer IDs explícitos de Workspace (Drive, Gmail, Sheets, Calendar)
-      const explicitMatches = content.matchAll(/(?:ID:\s*`?|id["']?\s*:\s*["']?|\/d\/|\/folders\/|#inbox\/|[?&]id=|[?&]eid=)([a-zA-Z0-9_=-]{8,128})/gi);
+      const explicitMatches = content.matchAll(/(?:SPREADSHEET_ID=|spreadsheetId[*`"'=:\s]+|spreadsheet_id[*`"'=:\s]+|ID[*`"'=:\s]+|id["']?\s*:\s*["']?|\/d\/|\/folders\/|#inbox\/|[?&]id=|[?&]eid=)([a-zA-Z0-9_=-]{8,128})/gi);
+      for (const m of explicitMatches) {
+        if (m[1]) {
+          validIds.add(m[1]);
+          if (m[1].length >= 20) {
+            validUrls.add(`https://docs.google.com/spreadsheets/d/${m[1]}/edit`);
+            validUrls.add(`https://docs.google.com/spreadsheets/d/${m[1]}`);
+          }
+        }
+      }
       for (const m of explicitMatches) {
         if (m[1]) validIds.add(m[1]);
       }
@@ -1076,12 +1302,13 @@ export function sanitizeAlucinatedLinks(responseText: string, history: any[]): s
     "https://silvania.ai"
   ];
 
-  let sanitizedText = responseText;
+  // Purgar repeticiones basura tipo "2E6W0Z3Y9" o chunks alfanuméricos repetidos 3+ veces antes de validar enlaces
+  let sanitizedText = responseText.replace(/(?:2E6W0Z3Y9[-_\s]*)+/gi, "").replace(/([A-Za-z0-9]{6,20})(?:[-_]?(\1)){2,}/g, "");
   let neutralizedCount = 0;
 
   // Regex para todas las URLs http/https del texto
   const allUrlsRegex = /(https?:\/\/[^\s)\]`'"]+)/gi;
-  const linksFound = responseText.match(allUrlsRegex) || [];
+  const linksFound = sanitizedText.match(allUrlsRegex) || [];
 
   for (const link of linksFound) {
     const cleanLink = link.trim().replace(/[.,;:]+$/, ""); // Limpiar puntuación al final
@@ -1186,6 +1413,10 @@ export function filterFinalOutput(text: string, history?: any[]): string {
 
   let cleaned = text;
 
+  // 0. Purgar cualquier repetición basura tipo "2E6W0Z3Y9" o chunks alfanuméricos repetidos
+  cleaned = cleaned.replace(/(?:2E6W0Z3Y9[-_\s]*)+/gi, "");
+  cleaned = cleaned.replace(/([A-Za-z0-9]{6,20})(?:[-_]?(\1)){2,}/g, "");
+
   // 1. Eliminar cualquier bloque de código markdown ```...``` que contenga print( o tools. en cualquier parte de su interior
   cleaned = cleaned.replace(/```(?:[a-zA-Z0-9_-]+)?[\s\S]*?(?:print\(|tools\.|await\s+tools\.|executeTool\(|gmail_|drive_|sheets_|calendar_)[\s\S]*?```/gi, "");
 
@@ -1195,16 +1426,69 @@ export function filterFinalOutput(text: string, history?: any[]): string {
   // 3. Eliminar sentencias sueltas de print(...) dentro del texto
   cleaned = cleaned.replace(/\bprint\((?:['"][^'"]*['"]|[a-zA-Z0-9_.]+\([^)]*\)|[^\n)]*)\);?/gi, "");
 
-  // 4. Prevenir enlaces "Abrir" rotos o sin href: nunca dejar "[Abrir]()" ni "🔗 Abrir" sin URL válida
+  // 4. Prevenir enlaces "Abrir" rotos o sin href y garantizar [título](url_https_completa) en una línea tras calendar_create, gmail_send y sheets_create_invoice
   let verifiedGmailUrl = "";
+  let verifiedGmailTitle = "";
   let verifiedSheetsUrl = "";
+  let verifiedSheetsTitle = "";
+  let hasInvoiceMandatoryMarkdown = "";
+  let invoiceToolError = "";
   let verifiedCalendarUrl = "";
+  let verifiedCalendarTitle = "";
   let verifiedDriveUrl = "";
 
+  let turnCalendarMarkdown = "";
+  let turnGmailMarkdown = "";
+  let hasTurnNewsSearch = false;
+  const turnNewsItems: { title: string; url: string }[] = [];
+
   if (Array.isArray(history)) {
-    for (const msg of history) {
+    let lastUserIdx = -1;
+    for (let i = history.length - 1; i >= 0; i--) {
+      if (history[i]?.role === "user" && !String(history[i]?.content || "").startsWith("⚠️ ACCIÓN OBLIGATORIA:")) {
+        lastUserIdx = i;
+        break;
+      }
+    }
+
+    for (let idx = 0; idx < history.length; idx++) {
+      const msg = history[idx];
+      const isCurrentTurn = idx > lastUserIdx;
       if (msg.content) {
         const strContent = String(msg.content);
+        if (isCurrentTurn && msg.role === "tool" && /^❌ Error.*factura/i.test(strContent.trim())) {
+          invoiceToolError = strContent.trim();
+        }
+        if (isCurrentTurn && msg.role === "tool") {
+          const calMdMatch = strContent.match(/CALENDAR_MARKDOWN=\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/i);
+          if (calMdMatch) {
+            verifiedCalendarTitle = calMdMatch[1].trim();
+            verifiedCalendarUrl = calMdMatch[2].trim();
+            turnCalendarMarkdown = `[${verifiedCalendarTitle}](${verifiedCalendarUrl})`;
+          }
+          const gmailMdMatch = strContent.match(/GMAIL_MARKDOWN=\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/i);
+          if (gmailMdMatch) {
+            verifiedGmailTitle = gmailMdMatch[1].trim();
+            verifiedGmailUrl = gmailMdMatch[2].trim();
+            turnGmailMarkdown = `[${verifiedGmailTitle}](${verifiedGmailUrl})`;
+          }
+          const mandatoryMatch = strContent.match(/RESPUESTA_OBLIGATORIA=(\[[^\]]+\]\(https:\/\/docs\.google\.com\/spreadsheets\/d\/[A-Za-z0-9_-]{20,80}\/edit\))/i);
+          if (mandatoryMatch && mandatoryMatch[1]) {
+            hasInvoiceMandatoryMarkdown = mandatoryMatch[1].trim();
+          }
+          if (strContent.includes("📰 NOTICIAS PARA:") || strContent.includes("🌐 RESULTADOS WEB PARA:")) {
+            if (strContent.includes("📰 NOTICIAS PARA:")) {
+              hasTurnNewsSearch = true;
+            }
+            const itemMatches = strContent.matchAll(/(?:📰|🔗|📍)\s*(?:\*\*)?\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g);
+            for (const im of itemMatches) {
+              if (im[1] && im[2]) {
+                turnNewsItems.push({ title: im[1].trim(), url: im[2].trim() });
+              }
+            }
+          }
+        }
+
         if (!verifiedGmailUrl) {
           const gmailMatch = strContent.match(/https:\/\/mail\.google\.com\/mail\/u\/0\/#inbox\/([a-zA-Z0-9_-]{8,65})/i);
           if (gmailMatch) verifiedGmailUrl = gmailMatch[0];
@@ -1214,23 +1498,27 @@ export function filterFinalOutput(text: string, history?: any[]): string {
           if (sheetsMatch) {
             verifiedSheetsUrl = `https://docs.google.com/spreadsheets/d/${sheetsMatch[1]}/edit`;
           } else {
-            const idMatch = strContent.match(/(?:spreadsheetId|spreadsheet_id|ID)["':\s=]+`?([a-zA-Z0-9_-]{20,80})`?/i);
+            const idMatch = strContent.match(/(?:SPREADSHEET_ID=|spreadsheetId[*`"'=:\s]+|spreadsheet_id[*`"'=:\s]+|ID[*`"'=:\s]+)`?([a-zA-Z0-9_-]{20,80})`?/i);
             if (idMatch) {
               verifiedSheetsUrl = `https://docs.google.com/spreadsheets/d/${idMatch[1]}/edit`;
             }
           }
         }
+        const mdTitleMatch = strContent.match(/MARKDOWN=\[([^\]]+)\]\(https:\/\/docs\.google\.com\/spreadsheets\/d\/([A-Za-z0-9_-]{20,80})\/edit\)/i);
+        if (mdTitleMatch && mdTitleMatch[1]) {
+          verifiedSheetsTitle = mdTitleMatch[1].trim();
+          verifiedSheetsUrl = `https://docs.google.com/spreadsheets/d/${mdTitleMatch[2]}/edit`;
+        }
         if (!verifiedCalendarUrl) {
           const calMatch = strContent.match(/https?:\/\/(?:www\.)?(?:calendar\.google\.com|google\.[a-z.]+\/calendar)\S+/i);
-          if (calMatch) verifiedCalendarUrl = calMatch[0].replace(/[)\]`'",;]+$/, "");
+          if (calMatch) verifiedCalendarUrl = calMatch[0].replace(/[)\]`"',;]+$/, "");
         }
         if (!verifiedDriveUrl) {
           const driveMatch = strContent.match(/https:\/\/drive\.google\.com\S+/i);
-          if (driveMatch) verifiedDriveUrl = driveMatch[0].replace(/[)\]`'",;]+$/, "");
+          if (driveMatch) verifiedDriveUrl = driveMatch[0].replace(/[)\]`"',;]+$/, "");
         }
       }
 
-      // Buscar también en msg.tool_calls si existen
       if (!verifiedSheetsUrl && Array.isArray(msg.tool_calls)) {
         for (const tc of msg.tool_calls) {
           const argsStr = tc?.function?.arguments || "";
@@ -1242,6 +1530,16 @@ export function filterFinalOutput(text: string, history?: any[]): string {
         }
       }
     }
+  }
+
+  // Si la herramienta de factura falló en el turno, nunca permitir que el LLM diga "creada con IVA"
+  if (invoiceToolError) {
+    return invoiceToolError;
+  }
+
+  // Si en este turno se ejecutó sheets_create_invoice con éxito, responder SIEMPRE en una sola línea Markdown limpia: [Nombre](https://docs.google.com/spreadsheets/d/ID/edit)
+  if (hasInvoiceMandatoryMarkdown) {
+    return hasInvoiceMandatoryMarkdown;
   }
 
   // Si no se encontró en history pero el texto tiene un ID explícito de hoja o URL
@@ -1257,42 +1555,107 @@ export function filterFinalOutput(text: string, history?: any[]): string {
     }
   }
 
-  const primaryFallbackUrl = verifiedSheetsUrl || verifiedCalendarUrl || verifiedGmailUrl || verifiedDriveUrl;
+  const sheetsFullMarkdown = verifiedSheetsUrl
+    ? `[${verifiedSheetsTitle || "Hoja de cálculo"}](${verifiedSheetsUrl})`
+    : "";
+  const calendarFullMarkdown =
+    turnCalendarMarkdown ||
+    (verifiedCalendarUrl ? `[${verifiedCalendarTitle || "Evento en Google Calendar"}](${verifiedCalendarUrl})` : "");
+  const gmailFullMarkdown =
+    turnGmailMarkdown ||
+    (verifiedGmailUrl ? `[${verifiedGmailTitle || "Correo enviado en Gmail"}](${verifiedGmailUrl})` : "");
 
-  // D) filterFinalOutput: si hay spreadsheetId en el turno, sustituir "Abrir en Google Sheets" por markdown con https://docs.google.com/spreadsheets/d/ID/edit
+  const primaryFallbackMarkdown =
+    sheetsFullMarkdown ||
+    calendarFullMarkdown ||
+    gmailFullMarkdown ||
+    (verifiedDriveUrl ? `[Carpeta en Google Drive](${verifiedDriveUrl})` : "");
+
+  // D) filterFinalOutput: si hay spreadsheetId en el turno, sustituir "Abrir en Google Sheets" por markdown con [título](https://docs.google.com/spreadsheets/d/ID/edit)
   if (verifiedSheetsUrl) {
-    // A. Reemplazar cualquier [Abrir en Google Sheets](...) si está roto, vacío, genérico o apunta a null/undefined
-    cleaned = cleaned.replace(/\[Abrir en Google Sheets\](?:\(([^)]*)\))?/gi, (match, currentHref) => {
-      if (!currentHref || currentHref.includes("null") || currentHref.includes("undefined") || !currentHref.includes("/d/")) {
-        return `[Abrir en Google Sheets](${verifiedSheetsUrl})`;
-      }
-      return match;
+    cleaned = cleaned.replace(/\[(?:Abrir|Abrir en Google Sheets)\](?:\(([^)]*)\))?/gi, () => {
+      return sheetsFullMarkdown;
     });
-
-    // B. Reemplazar texto suelto "Abrir en Google Sheets" que no forme parte de un enlace markdown
     cleaned = cleaned.replace(/(?:🔗\s*|·\s*)?(?<!\[)Abrir en Google Sheets(?!\s*\]|\s*\([^\s)]+\))/gi, () => {
-      return `[Abrir en Google Sheets](${verifiedSheetsUrl})`;
+      return sheetsFullMarkdown;
     });
   } else {
-    // Fallback cuando NO hay URL de Sheets en el turno: evitar enlaces rotos tipo [Abrir en Google Sheets]()
-    cleaned = cleaned.replace(/\[Abrir en Google Sheets\]\((?:null|undefined|\s*|\[Enlace no disponible[^)]*\])?\)/gi, `[Abrir en Google Sheets](https://docs.google.com/spreadsheets/)`);
-    cleaned = cleaned.replace(/(?:🔗\s*|·\s*)?Abrir en Google Sheets(?!\s*\]|\s*\([^\s)]+\))/g, `[Abrir en Google Sheets](https://docs.google.com/spreadsheets/)`);
+    cleaned = cleaned.replace(/\[Abrir en Google Sheets\]\((?:null|undefined|\s*|\[Enlace no disponible[^)]*\])?\)/gi, `[Google Sheets](https://docs.google.com/spreadsheets/)`);
+    cleaned = cleaned.replace(/(?:🔗\s*|·\s*)?Abrir en Google Sheets(?!\s*\]|\s*\([^\s)]+\))/g, `[Google Sheets](https://docs.google.com/spreadsheets/)`);
   }
 
-  // C. Si hay "[Abrir en Google Calendar](...)" con URL vacía o neutralizada:
-  cleaned = cleaned.replace(/\[Abrir en Google Calendar\]\((?:null|undefined|\s*|\[Enlace no disponible[^)]*\])\)/gi, () => {
-    return verifiedCalendarUrl ? `[Abrir en Google Calendar](${verifiedCalendarUrl})` : `[Abrir en Google Calendar](https://calendar.google.com/calendar/u/0/)`;
+  // C. Reemplazar "[Abrir en Google Calendar](...)" o texto suelto "Abrir en Google Calendar" por [título](url_https_completa)
+  if (calendarFullMarkdown) {
+    cleaned = cleaned.replace(/\[(?:Abrir|Abrir en Google Calendar|Ver en Google Calendar|Ver evento)\]\([^)]*\)/gi, () => calendarFullMarkdown);
+    cleaned = cleaned.replace(/(?:🔗\s*|·\s*)?(?<!\[)Abrir en Google Calendar(?!\s*\]|\s*\([^\s)]+\))/gi, () => calendarFullMarkdown);
+  } else {
+    cleaned = cleaned.replace(/\[Abrir en Google Calendar\]\((?:null|undefined|\s*|\[Enlace no disponible[^)]*\])\)/gi, `[Google Calendar](https://calendar.google.com/calendar/u/0/)`);
+  }
+
+  // C.2. Reemplazar "[Abrir](url_gmail)" o "[Abrir en Gmail](...)" por [asunto](url_https_completa)
+  if (gmailFullMarkdown) {
+    cleaned = cleaned.replace(/\[(?:Abrir|Abrir en Gmail|Ver correo|Ver en Gmail)\]\([^)]*\)/gi, () => gmailFullMarkdown);
+    cleaned = cleaned.replace(/(?:🔗\s*|·\s*)?(?<!\[)Abrir en Gmail(?!\s*\]|\s*\([^\s)]+\))/gi, () => gmailFullMarkdown);
+  }
+
+  // D. Si hay "[Abrir]()", "[Abrir](null)", "[Abrir](undefined)", "[Abrir]([Enlace no disponible...])" o "[Abrir](url)":
+  cleaned = cleaned.replace(/\[Abrir\]\(([^)]*)\)/gi, (_match, href) => {
+    if (primaryFallbackMarkdown) return primaryFallbackMarkdown;
+    if (href && /^https?:\/\//i.test(href.trim())) return `[Enlace directo](${href.trim()})`;
+    return "";
   });
 
-  // D. Si hay "[Abrir]()", "[Abrir](null)", "[Abrir](undefined)", "[Abrir]([Enlace no disponible...])":
-  cleaned = cleaned.replace(/\[Abrir\]\((?:null|undefined|\s*|\[Enlace no disponible[^)]*\])\)/gi, () => {
-    return primaryFallbackUrl ? `[Abrir](${primaryFallbackUrl})` : "";
+  // E. Si hay "🔗 Abrir", "· Abrir", ": Abrir" o línea suelta "Abrir" sin formatear como enlace:
+  cleaned = cleaned.replace(/(?:🔗\s*|·\s*|:\s+)\bAbrir\b(?!\s*\]|\s*\([^\s)]+\))/gi, (prefix) => {
+    const lead = prefix.trim().startsWith(":") ? ": " : " ";
+    return primaryFallbackMarkdown ? `${lead}${primaryFallbackMarkdown}` : "";
   });
+  cleaned = cleaned.replace(/^\s*Abrir\s*$/gmi, () => primaryFallbackMarkdown || "");
 
-  // E. Si hay "🔗 Abrir" o "· Abrir" suelto que el modelo haya dejado sin formatear como enlace:
-  cleaned = cleaned.replace(/(?:🔗\s*|·\s*)Abrir(?!\s*\]|\s*\([^\s)]+\))/g, () => {
-    return primaryFallbackUrl ? `[Abrir](${primaryFallbackUrl})` : "";
-  });
+  // F. Garantizar que tras calendar_create o gmail_send en el turno actual SIEMPRE exista una línea con [título](url_https_completa)
+  if (turnCalendarMarkdown && verifiedCalendarUrl && !cleaned.includes(`](${verifiedCalendarUrl})`)) {
+    cleaned = `${cleaned.trim()}\n\n${turnCalendarMarkdown}`;
+  }
+  if (turnGmailMarkdown && verifiedGmailUrl && !cleaned.includes(`](${verifiedGmailUrl})`)) {
+    cleaned = `${cleaned.trim()}\n\n${turnGmailMarkdown}`;
+  }
+
+  // G. Regla de Noticias / web_search: cada titular listado debe llevar URL devuelta por tool; si no hay URL, omitir el ítem
+  if (cleaned.includes("[Enlace no disponible") || hasTurnNewsSearch) {
+    const lines = cleaned.split(/\r?\n/);
+    const filteredLines: string[] = [];
+    for (const line of lines) {
+      if (line.includes("[Enlace no disponible")) {
+        continue;
+      }
+      const bulletMatch = line.match(/^\s*(?:[-*•]|\d+[.)])\s+(.+)$/);
+      if (hasTurnNewsSearch && bulletMatch) {
+        const bulletBody = bulletMatch[1].trim();
+        const hasUrl = /https?:\/\/[^\s)]+/i.test(bulletBody);
+        if (!hasUrl) {
+          const normBullet = bulletBody.toLowerCase().replace(/[^a-záéíóúüñ0-9\s]/gi, " ");
+          const bulletWords = normBullet.split(/\s+/).filter(w => w.length >= 4);
+          let matchedItem: { title: string; url: string } | undefined;
+          let bestScore = 0;
+          for (const item of turnNewsItems) {
+            const normTitle = item.title.toLowerCase();
+            const hits = bulletWords.filter(w => normTitle.includes(w)).length;
+            if (hits >= 2 && hits > bestScore) {
+              bestScore = hits;
+              matchedItem = item;
+            }
+          }
+          if (matchedItem) {
+            const cleanText = bulletBody.replace(/^\*\*|\*\*$/g, "").trim();
+            filteredLines.push(`- [${cleanText}](${matchedItem.url})`);
+          }
+          continue;
+        }
+      }
+      filteredLines.push(line);
+    }
+    cleaned = filteredLines.join("\n").replace(/\n{3,}/g, "\n\n");
+  }
 
   // 5. Detectar si aún contiene simulaciones crudas residuales de tool calls
   const hasToolSimulations = /tools\.[a-zA-Z0-9_-]+\(/i.test(cleaned) || 
@@ -1309,14 +1672,17 @@ export function filterFinalOutput(text: string, history?: any[]): string {
     }
   }
 
-  // 6. Detectar patrones repetitivos infinitos (ej. secuencias de 8+ caracteres repetidas consecutivamente 4+ veces)
+  // 6. Detectar patrones repetitivos infinitos (ej. secuencias de 6+ caracteres repetidas consecutivamente 4+ veces)
   const cleanTrimmed = cleaned.trim();
-  for (let len = 8; len <= 30; len++) {
+  for (let len = 6; len <= 30; len++) {
     for (let i = 0; i <= cleanTrimmed.length - len * 4; i++) {
       const chunk = cleanTrimmed.substring(i, i + len);
       const rest = cleanTrimmed.substring(i + len);
       if (rest.startsWith(chunk + chunk + chunk) || rest.startsWith("-" + chunk + "-" + chunk + "-" + chunk)) {
-        console.warn(`🚨 [Output Filter] Detectada repetición infinita del chunk "${chunk}". Abortando respuesta.`);
+        console.warn(`🚨 [Output Filter] Detectada repetición infinita del chunk "${chunk}".`);
+        if (verifiedSheetsUrl) {
+          return `[${verifiedSheetsTitle || "Hoja de cálculo"}](${verifiedSheetsUrl})`;
+        }
         return "Error interno: se detuvo una generación inválida de ID/hoja. Reintenta la petición.";
       }
     }

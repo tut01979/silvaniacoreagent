@@ -429,34 +429,73 @@ export async function formatTallerPartesSheet(spreadsheetId: string, userId?: nu
 }
 
 function formatSheetsList(raw: any): string {
-  const sheets: any[] = raw.sheets || raw.spreadsheets || (Array.isArray(raw) ? raw : []);
-  if (!sheets || sheets.length === 0) return "📊 No se encontraron hojas de cálculo.";
+  const sheets: any[] = raw?.files || raw?.sheets || raw?.spreadsheets || (Array.isArray(raw) ? raw : []);
+  if (!sheets || sheets.length === 0) {
+    return "📊 No se encontraron hojas de cálculo en `silvania/` (bajo permisos `drive.file`, Silvania solo lista hojas creadas por la aplicación, no todo tu Google Drive).";
+  }
 
-  let out = `📊 **Hojas de Cálculo** (${sheets.length})\n${SEP}\n\n`;
+  let out = `📊 Hojas de cálculo de la app en silvania/ (${sheets.length} — alcance drive.file):\n\n`;
   for (const s of sheets) {
     if (!s || (!s.id && !s.spreadsheetId)) continue;
     const sId = s.id || s.spreadsheetId;
-    const sName = s.name || s.title || "Sin nombre";
+    const sName = s.name || s.title || "Hoja de cálculo";
     const link = `https://docs.google.com/spreadsheets/d/${sId}/edit`;
-    
-    out += `📄 **${sName}** · [Abrir en Google Sheets](${link})\n`;
-    out += `spreadsheetId: ${sId}\n\n`;
+
+    out += `[${sName}](${link})\n`;
+    out += `SPREADSHEET_ID=${sId}\n`;
+    out += `LINK=${link}\n\n`;
   }
-  return out;
+  return out.trim();
 }
 
 export const sheetsList = async (userId?: number) => {
+  const uId = userId || userContextStore.getStore()?.userId || 0;
   try {
-    const result = await runGog("drive search --raw-query \"mimeType = 'application/vnd.google-apps.spreadsheet'\" --json", userId);
+    let files: any[] = [];
     try {
-      const parsed = JSON.parse(result);
-      return formatSheetsList(parsed);
-    } catch {
-      return result;
+      const silvaniaFolderId = await folderCacheService.getOrCreateFolderPath(uId, "silvania");
+      if (silvaniaFolderId && silvaniaFolderId !== "root" && !isZombieFolder(silvaniaFolderId)) {
+        const folderRes = await runGog(
+          `drive search "'${silvaniaFolderId}' in parents and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false" --raw-query --json`,
+          uId
+        );
+        const parsedFolder = JSON.parse(folderRes);
+        files = parsedFolder?.files || parsedFolder?.sheets || (Array.isArray(parsedFolder) ? parsedFolder : []);
+      }
+    } catch {}
+
+    if (files.length === 0) {
+      const result = await runGog(
+        "drive search \"mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false\" --raw-query --json",
+        uId
+      );
+      try {
+        const parsed = JSON.parse(result);
+        files = parsed?.files || parsed?.sheets || parsed?.spreadsheets || (Array.isArray(parsed) ? parsed : []);
+      } catch {}
     }
+
+    // Incluir la última hoja activa de la sesión si aún no aparece indexada en Drive search
+    const lastActive = await dbService.getDriveFolder(uId, "sheet:LAST_ACTIVE");
+    if (lastActive) {
+      const [lastId, lastTitle] = lastActive.split("|");
+      if (lastId && isValidSpreadsheetId(lastId) && !files.some((f: any) => (f.id || f.spreadsheetId) === lastId)) {
+        files.unshift({ id: lastId, name: lastTitle || "Última hoja creada" });
+      }
+    }
+
+    return formatSheetsList({ files });
   } catch (err: any) {
     if (err.message?.includes("Tu sesión de Google expiró")) throw err;
-    return "📊 En el modo de permisos de producción, solo se pueden listar las hojas de cálculo creadas o compartidas con Silvania CoreAgent.";
+    const lastActive = await dbService.getDriveFolder(uId, "sheet:LAST_ACTIVE");
+    if (lastActive) {
+      const [lastId, lastTitle] = lastActive.split("|");
+      if (lastId && isValidSpreadsheetId(lastId)) {
+        const link = `https://docs.google.com/spreadsheets/d/${lastId}/edit`;
+        return `📊 Hojas de cálculo de la app (alcance drive.file):\n\n[${lastTitle || "Hoja de cálculo"}](${link})\nSPREADSHEET_ID=${lastId}\nLINK=${link}`;
+      }
+    }
+    return "📊 En el modo de permisos de producción (`drive.file`), solo se pueden consultar hojas creadas por Silvania CoreAgent en la carpeta `silvania/` (no el listado global de tu Google Drive).";
   }
 };
 
@@ -559,12 +598,12 @@ export const sheetsCreate = async (title: string, userId?: number) => {
       }
     }
     
-    return `✅ **HOJA DE CÁLCULO CREADA**\n${SEP}\n\n` +
-           `📊 **Documento:** [${cleanTitle}](${link}) · [Abrir en Google Sheets](${link})\n` +
-           `🆔 **ID:** \`${id}\`\n` +
-           `🆔 **spreadsheetId:** \`${id}\`\n` +
-           `🔗 **Enlace directo:** ${link}${moveInfo}${extraFormatNote}\n\n` +
-           `*Puedes escribir o añadir datos usando sheets_write o sheets_append.*`;
+    await dbService.saveDriveFolder(uId, "sheet:LAST_ACTIVE", `${id}|${cleanTitle}`);
+
+    return `SPREADSHEET_ID=${id}\n` +
+           `LINK=${link}\n` +
+           `MARKDOWN=[${cleanTitle}](${link})\n` +
+           `STATUS=HOJA_CREADA${moveInfo}${extraFormatNote}`;
   } catch (error: any) {
     return `❌ **Error al crear la hoja de cálculo:** ${error.message}`;
   }
@@ -606,6 +645,8 @@ function isTallerPartesHeaderRow(row: any[]): boolean {
 
 export function extractSpreadsheetIdFromCreateOutput(text: string): string | null {
   if (!text) return null;
+  const match0 = text.match(/SPREADSHEET_ID=([A-Za-z0-9_-]{20,80})/i);
+  if (match0 && isValidSpreadsheetId(match0[1])) return match0[1];
   const match1 = text.match(/(?:spreadsheetId|ID)\*?\*?:\*?\*?\s*`?([A-Za-z0-9_-]{20,80})`?/i);
   if (match1 && isValidSpreadsheetId(match1[1])) return match1[1];
   const match2 = text.match(/\/spreadsheets\/d\/([A-Za-z0-9_-]{20,80})/i);
@@ -849,34 +890,34 @@ export function buildInvoiceMatrix(opts?: { number?: string; date?: string; loca
 
 export const sheetsCreateInvoice = async (opts: { title: string; number?: string; date?: string; locale?: "es" | "en"; userId?: number }) => {
   const title = opts.title || "Factura";
-  const userId = opts.userId || userContextStore.getStore()?.userId;
+  const uId = opts.userId || userContextStore.getStore()?.userId || 0;
 
   try {
     // 1. Crear la hoja de cálculo (y moverla automáticamente a la carpeta canónica silvania/)
-    const createRes = await sheetsCreate(title, userId);
-    if (createRes.includes("Error al crear")) {
+    const createRes = await sheetsCreate(title, uId);
+    if (createRes.startsWith("❌") || createRes.includes("Error al crear")) {
       return createRes;
     }
 
-    // Extraer el spreadsheetId real de la respuesta de sheetsCreate (compatible con formato Markdown **ID:** `...`)
+    // Extraer el spreadsheetId real devuelto por gog/API
     const spreadsheetId = extractSpreadsheetIdFromCreateOutput(createRes);
     if (!spreadsheetId) {
-      return `❌ Error: No se pudo extraer el spreadsheetId de la hoja creada. Detalles: ${createRes}`;
+      return `❌ Error: No se pudo obtener un spreadsheetId válido al crear la hoja. Detalles: ${createRes}`;
     }
 
     // 2. Rellenar con la matriz 2D (18x4) en una sola escritura en A1 con USER_ENTERED (español por defecto)
     const baseLocale = opts.locale || "es";
     let matrix = buildInvoiceMatrix({ number: opts.number, date: opts.date, locale: baseLocale });
-    let writeRes = await sheetsWrite(spreadsheetId, "A1", matrix, userId);
+    let writeRes = await sheetsWrite(spreadsheetId, "A1", matrix, uId);
 
-    if (writeRes.includes("Error al escribir")) {
-      return `⚠️ Hoja creada pero falló la escritura de la matriz: ${writeRes}`;
+    if (writeRes.startsWith("❌") || writeRes.startsWith("⚠️") || writeRes.includes("Error al escribir")) {
+      return `❌ Error al volcar la estructura y fórmulas de la factura en la hoja (SPREADSHEET_ID=${spreadsheetId}): ${writeRes}`;
     }
 
     // 3. Verificar si falló por locale EN (p. ej. #NAME?, #VALUE!, #ERROR! en =HOY(), =SUMA(D12:D14) o =D16*0,21)
     let checkLocaleFailed = false;
     try {
-      const readRes = await sheetsRead(spreadsheetId, "D2:D18", userId);
+      const readRes = await sheetsRead(spreadsheetId, "D2:D18", uId);
       if (
         readRes.includes("#NAME?") ||
         readRes.includes("#VALUE!") ||
@@ -895,26 +936,25 @@ export const sheetsCreateInvoice = async (opts: { title: string; number?: string
     if (checkLocaleFailed && baseLocale === "es") {
       console.log("⚠️ Fórmulas con error de locale detectadas en español. Reintentando en A1 con locale inglés (SUM y 0.21)...");
       matrix = buildInvoiceMatrix({ number: opts.number, date: opts.date, locale: "en" });
-      const rewriteRes = await sheetsWrite(spreadsheetId, "A1", matrix, userId);
-      if (rewriteRes.includes("Error al escribir")) {
-        return `⚠️ Hoja creada pero falló el reintento de escritura en inglés: ${rewriteRes}`;
+      const rewriteRes = await sheetsWrite(spreadsheetId, "A1", matrix, uId);
+      if (rewriteRes.startsWith("❌") || rewriteRes.startsWith("⚠️") || rewriteRes.includes("Error al escribir")) {
+        return `❌ Error al reintentar la escritura de fórmulas en inglés (SPREADSHEET_ID=${spreadsheetId}): ${rewriteRes}`;
       }
     }
 
-    let moveNote = "\n📂 **Ubicación:** Guardada en la carpeta canónica `silvania/`";
-    if (createRes.includes("no se pudo mover")) {
-      moveNote = "\n⚠️ *Aviso: La factura fue creada en la raíz de Google Drive pero no se pudo mover a la carpeta silvania/.*";
-    }
+    // Guardar como última hoja/factura activa de la sesión para consultas inmediatas de enlace
+    await dbService.saveDriveFolder(uId, "sheet:LAST_ACTIVE", `${spreadsheetId}|${title}`);
+    await dbService.saveDriveFolder(uId, "sheet:LAST_INVOICE", `${spreadsheetId}|${title}`);
 
     const editLink = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
-    return `✅ **FACTURA CREADA Y CONFIGURADA CON ÉXITO**\n${SEP}\n\n` +
-           `📊 **Documento:** [${title}](${editLink}) · [Abrir en Google Sheets](${editLink})\n` +
-           `🆔 **ID:** \`${spreadsheetId}\`\n` +
-           `🆔 **spreadsheetId:** \`${spreadsheetId}\`${moveNote}\n` +
-           `🔗 **Enlace directo:** ${editLink}\n` +
-           `📍 **Rango inicial:** \`A1\` (matriz 2D 18×4 escrita de una sola vez con \`USER_ENTERED\`)\n\n` +
-           `*Se han volcado las fórmulas automáticas vivas de Importe (\`=B12*C12\`, \`=B13*C13\`, \`=B14*C14\`), Subtotal (\`=SUMA(D12:D14)\`), IVA 21% (\`=D16*0,21\`) y TOTAL (\`=D16+D17\`) de forma correcta.*`;
+    return (
+      `SPREADSHEET_ID=${spreadsheetId}\n` +
+      `LINK=${editLink}\n` +
+      `MARKDOWN=[${title}](${editLink})\n` +
+      `STATUS=OK (Factura creada en silvania/ con matriz 18x4 y fórmulas vivas en A1)\n` +
+      `RESPUESTA_OBLIGATORIA=[${title}](${editLink})`
+    );
   } catch (error: any) {
-    return `❌ **Error al crear la factura estructurada:** ${error.message}`;
+    return `❌ Error al crear la factura estructurada: ${error.message}`;
   }
 };

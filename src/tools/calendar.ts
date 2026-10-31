@@ -152,20 +152,22 @@ export const calendarCreate = async (
       timeZone: "Europe/Madrid", weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit"
     });
 
+    const eventTitle = (eventData.summary || summary || "Evento").replace(/[\[\]\r\n]+/g, " ").trim();
     const realLink = buildCanonicalCalendarLink(eventId, eventData.htmlLink || undefined);
-    const linkStr = formatEventLink(eventData.summary || summary, realLink);
+    const fullMarkdown = `[${eventTitle}](${realLink})`;
     const attendeesStr = hasAttendees
       ? `\n> 👥 **Invitados:** ${attendeeList.map(a => a.email).join(", ")} (notificación de invitación enviada por email)`
       : "";
 
     return `✅ **EVENTO PROGRAMADO CON ÉXITO**\n${SEP}\n\n` +
-           `${linkStr}\n` +
+           `CALENDAR_MARKDOWN=${fullMarkdown}\n` +
+           `${fullMarkdown}\n` +
            `> 🆔 **ID:** \`${eventId}\`\n` +
            `> ⏰ **Cuándo:** ${startStr}\n` +
            `> 📍 **Lugar:** ${eventData.location || "No especificado"}` +
            `${attendeesStr}\n` +
-           `> 🔗 **Enlace directo:** ${realLink}\n\n` +
-           `*Silvania CoreAgent ha agendado esto por ti.*`;
+           `> 🔗 **Enlace directo:** ${fullMarkdown}\n\n` +
+           `⚠️ OBLIGATORIO: En tu respuesta al usuario incluye SIEMPRE en una línea el Markdown completo: ${fullMarkdown} (prohibido dejar solo "Abrir" o el título sin URL).`;
   } catch (error: any) {
     console.error("Error en calendarCreate:", error);
     return `❌ **Error al crear el evento:** ${error.message}\n\n_Asegúrate de que las fechas estén en formato ISO (ej: 2026-10-26T10:00:00+02:00) o consulta las fechas relativas en el chat._`;

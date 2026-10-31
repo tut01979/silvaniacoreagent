@@ -324,11 +324,12 @@ export async function gmailSend(userId: number, to: string, subject: string, bod
 
     const id = result.data.threadId || result.data.id || "";
     const webLink = id ? generateGmailLink(id) : "https://mail.google.com/mail/u/0/#inbox";
-    const linkMarkdown = `[Abrir](${webLink})`;
+    const cleanSubject = (subject || "Correo enviado").replace(/[\[\]\r\n]+/g, " ").trim();
+    const fullMarkdown = `[${cleanSubject}](${webLink})`;
     const linkStr = id
-      ? `\n\n${formatEmailLink(subject, webLink)}\n> 🆔 **Message ID:** \`${id}\`\n> 🔗 **Enlace directo:** ${linkMarkdown} (${webLink})`
-      : `\n\n> 🔗 **Enlace directo:** ${linkMarkdown} (${webLink})`;
-    return `✅ **Email enviado correctamente**\n\n> 👤 **Para:** ${to}\n> 📌 **Asunto:** ${subject}${linkStr}`;
+      ? `\n\nGMAIL_MARKDOWN=${fullMarkdown}\n${fullMarkdown}\n> 🆔 **Message ID:** \`${id}\`\n> 🔗 **Enlace directo:** ${fullMarkdown}`
+      : `\n\nGMAIL_MARKDOWN=${fullMarkdown}\n> 🔗 **Enlace directo:** ${fullMarkdown}`;
+    return `✅ **Email enviado correctamente**\n\n> 👤 **Para:** ${to}\n> 📌 **Asunto:** ${cleanSubject}${linkStr}\n\n⚠️ OBLIGATORIO: En tu respuesta al usuario incluye SIEMPRE en una línea el Markdown completo: ${fullMarkdown} (prohibido dejar solo "Abrir" o el título sin URL).`;
   } catch (error: any) {
     return `❌ Error enviando email: ${error.message}`;
   }

@@ -251,8 +251,9 @@ export const tools = {
     return await youtubeGetTranscript(url, uId, save_to_drive);
   },
 
-  youtube_search: async ({ query, max_results }: { query: string; max_results?: number }) => {
-    return await youtubeSearch(query, max_results || 5);
+  youtube_search: async ({ query, max_results, userId }: { query: string; max_results?: number; userId?: number }) => {
+    const uId = userId || userContextStore.getStore()?.userId;
+    return await youtubeSearch(query, max_results || 5, uId);
   },
 
   google_workspace: async ({ command, userId }: { command: string; userId?: number }) => {

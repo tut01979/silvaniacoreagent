@@ -1,6 +1,7 @@
 import { YoutubeTranscript } from "youtube-transcript";
 import axios from "axios";
 import { formatVideoLink } from "../services/linkFormatter.js";
+import { userContextStore } from "../services/context.js";
 import fs from "fs";
 import path from "path";
 
@@ -168,14 +169,60 @@ export async function youtubeGetTranscript(urlOrId: string, userId?: number, sav
 }
 
 /**
+ * Si el idioma del usuario/config es 'es' (por defecto en Silvania) o el mensaje/consulta va en español,
+ * añade "en español" al query en la primera búsqueda para evitar devolver tutoriales en inglés salvo petición explícita.
+ */
+export function buildSpanishAwareYoutubeQuery(rawQuery: string, userId?: number, messageHint?: string): string {
+  const q = String(rawQuery || "").trim();
+  if (!q) return q;
+
+  // Si ya contiene español / castellano, mantener tal cual
+  if (/\b(español|espanol|castellano)\b/i.test(q)) {
+    return q;
+  }
+
+  // Si explícitamente pide otro idioma, respetar
+  const combinedText = `${q} ${messageHint || ""}`;
+  if (/\b(en\s+ingl[eé]s|in\s+english|english\s+only|en\s+franc[eé]s|in\s+french|en\s+alem[aá]n|en\s+portugu[eê]s|en\s+italiano)\b/i.test(combinedText)) {
+    return q;
+  }
+
+  let userLang = "es";
+  const effectiveUserId = userId || userContextStore.getStore()?.userId;
+  if (effectiveUserId) {
+    try {
+      const confPath = path.join(process.cwd(), "data", `user_${effectiveUserId}`, "config.json");
+      if (fs.existsSync(confPath)) {
+        const conf = JSON.parse(fs.readFileSync(confPath, "utf8"));
+        if (conf.language || conf.locale || conf.lang) {
+          userLang = String(conf.language || conf.locale || conf.lang).toLowerCase();
+        }
+      }
+    } catch {}
+  }
+
+  const isSpanishMessage =
+    /[áéíóúñ¿¡]/i.test(combinedText) ||
+    /\b(videos|vídeos|sobre|curso|tutorial|tutoriales| aprender|como|cómo|guia|guía|para|principiantes|buscar|ver|quiero|me\s+gustaria)\b/i.test(combinedText);
+
+  if (userLang.startsWith("es") || isSpanishMessage) {
+    return `${q} en español`;
+  }
+
+  return q;
+}
+
+/**
  * Busca videos en YouTube utilizando el scraper de la página de resultados.
  */
-export async function youtubeSearch(query: string, maxResults: number = 5): Promise<string> {
+export async function youtubeSearch(query: string, maxResults: number = 5, userId?: number): Promise<string> {
   try {
-    console.log(`🔍 Buscando videos en YouTube para: ${query}`);
+    const effectiveUserId = userId || userContextStore.getStore()?.userId;
+    const effectiveQuery = buildSpanishAwareYoutubeQuery(query, effectiveUserId);
+    console.log(`🔍 Buscando videos en YouTube para: "${effectiveQuery}" (original: "${query}")`);
     
     // Detectar si el usuario pide el último video o busca un canal/creador
-    const queryLower = query.toLowerCase();
+    const queryLower = effectiveQuery.toLowerCase();
     const sortByDate = queryLower.includes("ultimo") || 
                        queryLower.includes("último") || 
                        queryLower.includes("reciente") || 
@@ -184,7 +231,7 @@ export async function youtubeSearch(query: string, maxResults: number = 5): Prom
                        queryLower.includes("hoy") || 
                        queryLower.includes("canal");
 
-    const encodedQuery = encodeURIComponent(query);
+    const encodedQuery = encodeURIComponent(effectiveQuery);
     const url = `https://www.youtube.com/results?search_query=${encodedQuery}${sortByDate ? "&sp=CAI%253D" : ""}`;
 
     const { data: html } = await axios.get(url, {

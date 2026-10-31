@@ -165,11 +165,11 @@ export const llmService = {
         type: "function",
         function: {
           name: "youtube_search",
-          description: "Busca videos en YouTube por palabra clave o nombre de canal, devolviendo títulos, duraciones, y enlaces directos.",
+          description: "Busca videos en YouTube por palabra clave o nombre de canal, devolviendo títulos, duraciones y enlaces directos. Si el mensaje del usuario o su configuración está en español, incluye 'en español' en query desde la primera búsqueda.",
           parameters: {
             type: "object",
             properties: {
-              query: { type: "string", description: "Términos de búsqueda para encontrar los videos relevantes en YouTube (ej: 'alejavi rivera', 'antigravity artificial intelligence')" },
+              query: { type: "string", description: "Términos de búsqueda en YouTube. Si el usuario habla en español, añade 'en español' en la primera búsqueda (ej: 'Google Workspace tutorial en español')." },
               max_results: { type: "number", description: "Número de resultados de video a devolver (1-10)" }
             },
             required: ["query"]
@@ -399,7 +399,7 @@ export const llmService = {
         type: "function",
         function: {
           name: "sheets_list",
-          description: "Lista las hojas de cálculo recientes en Drive.",
+          description: "Lista las hojas de cálculo creadas por la aplicación dentro de silvania/ (bajo permisos acotados drive.file; no lista todo el Drive personal del usuario). IMPORTANTE: Si el usuario pide el enlace a una hoja o factura recién creada en la sesión actual, NO uses sheets_list; usa directamente el SPREADSHEET_ID y LINK del turno o sesión.",
           parameters: { type: "object", properties: {} }
         }
       },
@@ -488,7 +488,7 @@ export const llmService = {
         type: "function",
         function: {
           name: "sheets_create_invoice",
-          description: "HERRAMIENTA OBLIGATORIA Y ATÓMICA para crear facturas o plantillas de factura en Google Sheets. Crea la hoja, escribe de una sola vez en A1 la matriz 2D completa (18x4) con fórmulas vivas (=HOY(), =B12*C12, =SUMA(D12:D14), =D16*0,21, =D16+D17), la mueve a silvania/ y devuelve spreadsheetId + enlace directo. PROHIBIDO usar sheets_create vacío + sheets_write celda a celda para facturas.",
+          description: "HERRAMIENTA OBLIGATORIA Y ATÓMICA para crear facturas o plantillas de factura en Google Sheets. Crea la hoja, escribe de una sola vez en A1 la matriz 2D completa (18x4) con fórmulas vivas (=HOY(), =B12*C12, =SUMA(D12:D14), =D16*0,21, =D16+D17), la mueve a silvania/ y devuelve SPREADSHEET_ID=<id> y LINK=https://docs.google.com/spreadsheets/d/<id>/edit. Al responder al usuario incluye el enlace en una sola línea Markdown: [Nombre](https://docs.google.com/spreadsheets/d/ID/edit). PROHIBIDO inventar IDs o usar sheets_create vacío.",
           parameters: {
             type: "object",
             properties: {
