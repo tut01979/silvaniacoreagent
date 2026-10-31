@@ -604,6 +604,15 @@ function isTallerPartesHeaderRow(row: any[]): boolean {
   return false;
 }
 
+export function extractSpreadsheetIdFromCreateOutput(text: string): string | null {
+  if (!text) return null;
+  const match1 = text.match(/(?:spreadsheetId|ID)\*?\*?:\*?\*?\s*`?([A-Za-z0-9_-]{20,80})`?/i);
+  if (match1 && isValidSpreadsheetId(match1[1])) return match1[1];
+  const match2 = text.match(/\/spreadsheets\/d\/([A-Za-z0-9_-]{20,80})/i);
+  if (match2 && isValidSpreadsheetId(match2[1])) return match2[1];
+  return null;
+}
+
 export const sheetsWrite = async (spreadsheetId: string, range: string, values: string | any[][], userId?: number) => {
   if (!isValidSpreadsheetId(spreadsheetId)) {
     return `❌ Error: spreadsheet_id inválido o alucinado.`;
@@ -657,9 +666,34 @@ export const sheetsWrite = async (spreadsheetId: string, range: string, values: 
                `🔗 **Enlace directo:** ${editLink}\n\n` +
                `*Los datos han sido volcados en la hoja de cálculo (fallback de rango aplicado).*`;
       } catch (fallbackErr: any) {
-        return `❌ **Error al escribir en la hoja:** ${fallbackErr.message}`;
+        console.warn("⚠️ [Sheets Write] Fallback de rango en gog falló:", fallbackErr.message);
       }
     }
+
+    // Fallback directo vía googleapis si gog sheets update falla
+    try {
+      const authClient = await getGoogleAuthForUser(uId);
+      if (authClient) {
+        const sheets = google.sheets({ version: "v4", auth: authClient });
+        const apiRange = effectiveRange.includes("!") ? (effectiveRange.split("!").pop() || effectiveRange) : effectiveRange;
+        await sheets.spreadsheets.values.update({
+          spreadsheetId,
+          range: apiRange,
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values: matrix }
+        });
+        return `✅ **DATOS ACTUALIZADOS CORRECTAMENTE**\n${SEP}\n\n` +
+               `📊 **Documento:** [Abrir en Google Sheets](${editLink})\n` +
+               `🆔 **ID:** \`${spreadsheetId}\`\n` +
+               `🆔 **spreadsheetId:** \`${spreadsheetId}\`\n` +
+               `📍 **Rango:** ${apiRange}\n` +
+               `🔗 **Enlace directo:** ${editLink}\n\n` +
+               `*Los datos han sido volcados en la hoja de cálculo (vía API).*`;
+      }
+    } catch (apiErr: any) {
+      console.warn("⚠️ [Sheets Write] Fallback de googleapis falló:", apiErr.message);
+    }
+
     return `❌ **Error al escribir en la hoja:** ${error.message}`;
   }
 };
@@ -716,8 +750,7 @@ export const sheetsAppend = async (spreadsheetId: string, range: string, values:
 
       console.log(`🔄 [Sheets Append] Regenerando libro canónico 'Taller_Partes' para reintentar append...`);
       const createRes = await sheetsCreate("Taller_Partes", uId);
-      const newIdMatch = createRes.match(/(?:spreadsheetId|ID):\s*`?([A-Za-z0-9_-]{20,80})`?/i);
-      const newSpreadsheetId = newIdMatch ? newIdMatch[1] : null;
+      const newSpreadsheetId = extractSpreadsheetIdFromCreateOutput(createRes);
 
       if (newSpreadsheetId && newSpreadsheetId !== spreadsheetId) {
         const newEditLink = `https://docs.google.com/spreadsheets/d/${newSpreadsheetId}/edit`;
@@ -797,11 +830,11 @@ export function buildInvoiceMatrix(opts?: { number?: string; date?: string; loca
     ["Número de Factura:", invoiceNum, "Fecha:", invoiceDate],
     ["", "", "", ""],
     ["DATOS DEL EMISOR", "", "DATOS DEL CLIENTE", ""],
-    ["Nombre:", "", "Nombre:", ""],
-    ["NIF/CIF:", "", "NIF/CIF:", ""],
-    ["Dirección:", "", "Dirección:", ""],
-    ["Teléfono:", "", "Teléfono:", ""],
-    ["Email:", "", "Email:", ""],
+    ["Nombre:", "[Tu Empresa / Autónomo]", "Nombre:", "[Nombre del Cliente]"],
+    ["NIF/CIF:", "[B00000000]", "NIF/CIF:", "[00000000A]"],
+    ["Dirección:", "[Dirección Emisor]", "Dirección:", "[Dirección Cliente]"],
+    ["Teléfono:", "[+34 600 000 000]", "Teléfono:", "[+34 600 000 000]"],
+    ["Email:", "[emisor@empresa.com]", "Email:", "[cliente@empresa.com]"],
     ["", "", "", ""],
     ["Concepto", "Cantidad", "Precio unitario", "Importe"],
     ["Producto / Servicio 1", 1, 100, "=B12*C12"],
@@ -816,41 +849,41 @@ export function buildInvoiceMatrix(opts?: { number?: string; date?: string; loca
 
 export const sheetsCreateInvoice = async (opts: { title: string; number?: string; date?: string; locale?: "es" | "en"; userId?: number }) => {
   const title = opts.title || "Factura";
-  const userId = opts.userId;
+  const userId = opts.userId || userContextStore.getStore()?.userId;
 
   try {
-    // 1. Crear la hoja de cálculo
+    // 1. Crear la hoja de cálculo (y moverla automáticamente a la carpeta canónica silvania/)
     const createRes = await sheetsCreate(title, userId);
     if (createRes.includes("Error al crear")) {
       return createRes;
     }
 
-    // Extraer el ID de la respuesta
-    const idMatch = createRes.match(/(?:spreadsheetId|ID):\s*([A-Za-z0-9_-]{20,80})/i);
-    const spreadsheetId = idMatch ? idMatch[1] : null;
+    // Extraer el spreadsheetId real de la respuesta de sheetsCreate (compatible con formato Markdown **ID:** `...`)
+    const spreadsheetId = extractSpreadsheetIdFromCreateOutput(createRes);
     if (!spreadsheetId) {
       return `❌ Error: No se pudo extraer el spreadsheetId de la hoja creada. Detalles: ${createRes}`;
     }
 
-    // 2. Rellenar con la matriz fija en una sola escritura (español por defecto)
+    // 2. Rellenar con la matriz 2D (18x4) en una sola escritura en A1 con USER_ENTERED (español por defecto)
     const baseLocale = opts.locale || "es";
     let matrix = buildInvoiceMatrix({ number: opts.number, date: opts.date, locale: baseLocale });
     let writeRes = await sheetsWrite(spreadsheetId, "A1", matrix, userId);
 
     if (writeRes.includes("Error al escribir")) {
-      return `⚠️ Hoja creada pero falló la escritura: ${writeRes}`;
+      return `⚠️ Hoja creada pero falló la escritura de la matriz: ${writeRes}`;
     }
 
-    // 3. Verificar si falló (es decir, si el locale real es inglés y dio #NAME? / #VALUE!)
+    // 3. Verificar si falló por locale EN (p. ej. #NAME?, #VALUE!, #ERROR! en =HOY(), =SUMA(D12:D14) o =D16*0,21)
     let checkLocaleFailed = false;
     try {
-      const readRes = await sheetsRead(spreadsheetId, "D16:D17", userId);
+      const readRes = await sheetsRead(spreadsheetId, "D2:D18", userId);
       if (
         readRes.includes("#NAME?") ||
         readRes.includes("#VALUE!") ||
         readRes.includes("#NAME") ||
         readRes.includes("#VALOR") ||
-        readRes.includes("#ERROR!")
+        readRes.includes("#ERROR!") ||
+        readRes.includes("#¿NOMBRE?")
       ) {
         checkLocaleFailed = true;
       }
@@ -858,9 +891,9 @@ export const sheetsCreateInvoice = async (opts: { title: string; number?: string
       console.warn("⚠️ No se pudo verificar la validez de las fórmulas tras la escritura:", err);
     }
 
-    // Si falló, reintentar una vez con locale inglés
+    // Si falló el locale ES, reintentar una vez con locale inglés (=TODAY(), =SUM(D12:D14), =D16*0.21)
     if (checkLocaleFailed && baseLocale === "es") {
-      console.log("⚠️ Fórmulas rotas detectadas en español. Reintentando con locale inglés...");
+      console.log("⚠️ Fórmulas con error de locale detectadas en español. Reintentando en A1 con locale inglés (SUM y 0.21)...");
       matrix = buildInvoiceMatrix({ number: opts.number, date: opts.date, locale: "en" });
       const rewriteRes = await sheetsWrite(spreadsheetId, "A1", matrix, userId);
       if (rewriteRes.includes("Error al escribir")) {
@@ -879,8 +912,8 @@ export const sheetsCreateInvoice = async (opts: { title: string; number?: string
            `🆔 **ID:** \`${spreadsheetId}\`\n` +
            `🆔 **spreadsheetId:** \`${spreadsheetId}\`${moveNote}\n` +
            `🔗 **Enlace directo:** ${editLink}\n` +
-           `📍 **Rango inicial:** \`A1\` (matriz 2D escrita de una sola vez)\n\n` +
-           `*Se han volcado las fórmulas automáticas vivas de Importe (=B12*C12, etc.), Subtotal, IVA 21% y Total de forma correcta.*`;
+           `📍 **Rango inicial:** \`A1\` (matriz 2D 18×4 escrita de una sola vez con \`USER_ENTERED\`)\n\n` +
+           `*Se han volcado las fórmulas automáticas vivas de Importe (\`=B12*C12\`, \`=B13*C13\`, \`=B14*C14\`), Subtotal (\`=SUMA(D12:D14)\`), IVA 21% (\`=D16*0,21\`) y TOTAL (\`=D16+D17\`) de forma correcta.*`;
   } catch (error: any) {
     return `❌ **Error al crear la factura estructurada:** ${error.message}`;
   }

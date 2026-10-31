@@ -407,7 +407,7 @@ export const llmService = {
         type: "function",
         function: {
           name: "sheets_create",
-          description: "Crea una nueva hoja de cálculo en silvania/. Para 'Taller_Partes' aplica automáticamente el diseño corporativo oficial (banner en fila 1 y 15 cabeceras en fila 2). Tras crear Taller_Partes formateado, añadir partes solo con append/write en la siguiente fila vacía; no volver a escribir cabeceras.",
+          description: "Crea una nueva hoja de cálculo en silvania/ (EXCEPTO facturas: si el usuario pide una factura o plantilla de factura, es OBLIGATORIO usar sheets_create_invoice y está prohibido usar sheets_create). Para 'Taller_Partes' aplica automáticamente el diseño corporativo oficial (banner en fila 1 y 15 cabeceras en fila 2). Tras crear Taller_Partes formateado, añadir partes solo con append/write en la siguiente fila vacía; no volver a escribir cabeceras.",
           parameters: {
             type: "object",
             properties: {
@@ -488,13 +488,14 @@ export const llmService = {
         type: "function",
         function: {
           name: "sheets_create_invoice",
-          description: "Única herramienta permitida para crear facturas o plantillas de factura. No uses sheets_create + sheets_write manuales para facturas.",
+          description: "HERRAMIENTA OBLIGATORIA Y ATÓMICA para crear facturas o plantillas de factura en Google Sheets. Crea la hoja, escribe de una sola vez en A1 la matriz 2D completa (18x4) con fórmulas vivas (=HOY(), =B12*C12, =SUMA(D12:D14), =D16*0,21, =D16+D17), la mueve a silvania/ y devuelve spreadsheetId + enlace directo. PROHIBIDO usar sheets_create vacío + sheets_write celda a celda para facturas.",
           parameters: {
             type: "object",
             properties: {
               title: { type: "string", description: "Título de la hoja de cálculo de la factura (obligatorio)" },
               number: { type: "string", description: "Número de la factura (ej: '001', opcional)" },
-              date: { type: "string", description: "Fecha de la factura (ej: '2026-08-16', opcional)" }
+              date: { type: "string", description: "Fecha de la factura (ej: '2026-10-31', opcional; por defecto usa =HOY())" },
+              locale: { type: "string", enum: ["es", "en"], description: "Locale de fórmulas ('es' por defecto con SUMA/HOY y coma decimal; fallback automático a 'en' si falla)" }
             },
             required: ["title"]
           }

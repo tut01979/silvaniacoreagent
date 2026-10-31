@@ -511,7 +511,7 @@ Columnas:
 5. Subtotal (\`=SUMA(D12:D14)\` en español, o \`=SUM(D12:D14)\` en inglés).
 6. IVA (\`=D16*0,21\` en español, o \`=D16*0.21\` en inglés).
 7. Total (\`=D16+D17\`).
-*(Nota técnica: Para crear facturas es estrictamente OBLIGATORIO usar la herramienta \`sheets_create_invoice\`)*
+*(Nota técnica OBLIGATORIA: Si el usuario pide factura o plantilla de factura, es ESTRICTAMENTE OBLIGATORIO usar \`sheets_create_invoice\`, que crea la hoja en \`silvania/\` y escribe de una sola vez en \`A1\` la matriz 2D 18×4 completa con fórmulas \`USER_ENTERED\` vivas. Está PROHIBIDO usar \`sheets_create\` vacío + \`sheets_write\` celda a celda.)*
 
 ${gmailHandlingStr}
 

@@ -189,6 +189,10 @@ export const tools = {
   },
   sheets_create: async ({ title, userId }: { title: string; userId?: number }) => {
     const uId = userId || userContextStore.getStore()?.userId;
+    if (title && /\b(factura|facturas|invoice)\b/i.test(title)) {
+      console.log(`🔄 [Tools] Redirigiendo sheets_create("${title}") automáticamente a sheets_create_invoice atómico...`);
+      return await sheetsCreateInvoice({ title, userId: uId });
+    }
     return await sheetsCreate(title, uId);
   },
   sheets_read: async ({ spreadsheet_id, range, userId }: { spreadsheet_id: string; range: string; userId?: number }) => {
