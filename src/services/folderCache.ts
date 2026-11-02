@@ -319,11 +319,20 @@ export const folderCacheService = {
 
   /**
    * Permite invalidar o limpiar la caché si es necesario.
+   * Si se especifica userId, purga sus rutas tanto en memoria como en DB (drive_folders).
    */
   async clearCache(userId?: number): Promise<void> {
-    folderIdCache.clear();
     if (userId) {
+      for (const key of Array.from(folderIdCache.keys())) {
+        if (key.startsWith(`${userId}:`)) {
+          folderIdCache.delete(key);
+        }
+      }
       await dbService.clearDriveFolders(userId);
+      console.log(`🧹 [Folder Cache] Caché de carpetas en memoria y DB purgada para userId ${userId}.`);
+    } else {
+      folderIdCache.clear();
+      console.log(`🧹 [Folder Cache] Caché global de carpetas purgada.`);
     }
   }
 };

@@ -73,6 +73,9 @@ export const config = {
     cronHour: parseInt(process.env.MARKETING_CRON_HOUR || "11"),
     cronMinute: parseInt(process.env.MARKETING_CRON_MINUTE || "0")
   },
+  skills: {
+    seedBuiltin: process.env.SEED_BUILTIN_SKILLS !== "false"
+  },
   tempDir: "./temp"
 };
 

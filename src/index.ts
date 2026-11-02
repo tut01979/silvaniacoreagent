@@ -33,6 +33,7 @@ import { clearUserGogCredentials } from "./tools/gogWrapper.js";
 import { configManager } from "./services/configManager.js";
 import { morningRadarService } from "./services/morningRadar.js";
 import { folderCacheService } from "./services/folderCache.js";
+import { skillLoader } from "./services/skillLoader.js";
 import { startMarketingAdminCron } from "./marketing/cron.js";
 
 if (process.env.GOOGLE_CREDS_JSON) {
@@ -135,17 +136,22 @@ setAdminTelegramNotifier(async (message: string) => {
   }
 });
 
-// Configurar el receptor de alertas críticas de Silvania CoreAgent con fallback seguro
+// Configurar el receptor de alertas críticas de Silvania CoreAgent con fallback seguro (solo adminIds)
 criticalLogService.registerCallback(async (msg: string) => {
-  const adminId = 1572946817; // ID prioritario de Jesús
-  try {
-    await bot.api.sendMessage(adminId, msg, { parse_mode: "Markdown" });
-  } catch (err: any) {
-    // Fallback inmediato a texto plano para evitar Telegram 400 "can't parse entities"
+  const adminIds: number[] = (config.marketing?.adminIds && config.marketing.adminIds.length > 0)
+    ? config.marketing.adminIds
+    : [1572946817];
+
+  for (const adminId of adminIds) {
     try {
-      await bot.api.sendMessage(adminId, msg.replace(/[*_`\[\]()]/g, ""));
-    } catch (err2: any) {
-      console.error("❌ Falló el envío de alerta de Telegram de logs críticos al admin en texto plano:", err2.message);
+      await bot.api.sendMessage(adminId, msg, { parse_mode: "Markdown" });
+    } catch (err: any) {
+      // Fallback inmediato a texto plano para evitar Telegram 400 "can't parse entities"
+      try {
+        await bot.api.sendMessage(adminId, msg.replace(/[*_`\[\]()]/g, ""));
+      } catch (err2: any) {
+        console.error(`❌ Falló el envío de alerta de Telegram de logs críticos al admin ${adminId} en texto plano:`, err2.message);
+      }
     }
   }
 });
@@ -1547,7 +1553,34 @@ app.get("/auth/google/callback", rateLimiter(10, 60000), async (req: any, res: a
 
     console.log(`🔑 Vinculando usuario ${userId} [Tier: ${creds.tier}] con el correo ${email}...`);
 
-    // 3. Guardar el correo en la base de datos
+    // Detección de cambio de cuenta Google para el mismo Telegram userId
+    const previousEmail = await dbService.getUserEmail(userId);
+    const emailChanged = !!(previousEmail && previousEmail.trim().toLowerCase() !== email.trim().toLowerCase());
+
+    if (emailChanged) {
+      console.log(`🔄 [OAuth Callback] Cambio de cuenta Google detectado para userId ${userId}: ${previousEmail} -> ${email}`);
+      // a) Limpiar credenciales gog del email anterior y del nuevo
+      await clearUserGogCredentials(userId, previousEmail);
+      await clearUserGogCredentials(userId, email);
+      // b) Invalidar IDs canónicos viejos de Drive en DB y caché en memoria
+      await folderCacheService.clearCache(userId);
+      await dbService.clearDriveFolders(userId);
+      // c) Invalidar caché local de skills de ese userId (no re-subir skills del disco del admin al Drive del demo)
+      skillLoader.invalidateCache(userId);
+      const localSkillsDir = path.resolve("skills", userId.toString());
+      if (fs.existsSync(localSkillsDir)) {
+        try {
+          fs.rmSync(localSkillsDir, { recursive: true, force: true });
+          console.log(`🧹 [OAuth Callback] Directorio local de skills purgado para ${userId} tras cambio de cuenta.`);
+        } catch (rmErr: any) {
+          console.warn(`⚠️ [OAuth Callback] Error purgando directorio local de skills:`, rmErr.message);
+        }
+      }
+    } else {
+      await clearUserGogCredentials(userId, email);
+    }
+
+    // 3. Guardar el nuevo correo en la base de datos
     await dbService.setUserEmail(userId, email);
 
     // 4. Importar el refresh_token a gog CLI si se recibió
@@ -1570,9 +1603,6 @@ app.get("/auth/google/callback", rateLimiter(10, 60000), async (req: any, res: a
       if (!fs.existsSync(userAppdataPath)) {
         fs.mkdirSync(userAppdataPath, { recursive: true });
       }
-
-      // Limpiar credenciales y keyring previo del usuario para asegurar que no quede refresh_token viejo
-      await clearUserGogCredentials(userId, email);
 
       const executable = path.join(process.cwd(), "bin", process.platform === "win32" ? "gog.exe" : "gog");
       const customEnv = { 
@@ -1612,48 +1642,47 @@ app.get("/auth/google/callback", rateLimiter(10, 60000), async (req: any, res: a
 
       const importCmd = `"${executable}" auth tokens import "${tempTokenPath}"`;
       console.log(`🔧 [gog] Importando token: ${importCmd}`);
-      
-      const { exec } = await import("child_process");
-      exec(importCmd, { env: customEnv }, async (err, stdout, stderr) => {
+
+      try {
+        execSync(importCmd, { env: customEnv });
+        console.log(`✅ Token importado correctamente en gog para ${email} (tier: ${creds.tier})`);
+      } catch (importErr: any) {
+        console.error("❌ Error importando token en gog:", importErr.stderr?.toString() || importErr.message);
+      } finally {
         try { fs.unlinkSync(tempTokenPath); } catch {}
+      }
 
-        if (err) {
-          console.error("❌ Error importando token en gog:", stderr || err.message);
-          res.status(500).send("Error al registrar las credenciales en el sistema.");
-        } else {
-          console.log(`✅ Token importado correctamente en gog para ${email} (tier: ${creds.tier})`);
-          
-          // Bootstrap canónico de carpetas y reenlace de skills en segundo plano
-          bootstrapUserDriveFolders(userId).catch(bErr => {
-            console.error("❌ [OAuth Callback] Error en bootstrap de carpetas:", bErr.message);
-          });
-          
-          try {
-            await bot.api.sendMessage(userId, `✅ ¡Tu cuenta de Google (${email}) ha sido vinculada correctamente! Ya puedes utilizar todas mis herramientas.`);
-          } catch (tErr: any) {
-            console.error("Error enviando mensaje de éxito a Telegram:", tErr.message);
-          }
-
-          res.send(`
-            <html>
-              <head>
-                <title>Conexión SilvaniaCoreAgent</title>
-                <meta charset="utf-8">
-              </head>
-              <body style="font-family: -apple-system, sans-serif; text-align: center; padding: 50px; background-color: #0b0f19; color: #f3f4f6; margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center;">
-                <div style="background: rgba(17, 24, 39, 0.7); padding: 40px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: inline-block;">
-                  <h1 style="color: #10b981; margin-bottom: 20px; font-size: 2.2rem;">⚡ ¡Vínculo Completado!</h1>
-                  <p style="color: #9ca3af; font-size: 1.1rem; margin-bottom: 20px;">Has autorizado correctamente el acceso para <strong>${email}</strong>.</p>
-                  <p style="color: #6b7280; font-size: 0.95rem;">Ya puedes cerrar esta ventana y regresar a Telegram.</p>
-                </div>
-              </body>
-            </html>
-          `);
-        }
+      // Bootstrap canónico de carpetas en el Drive NUEVO en segundo plano (un solo bootstrap con el account correcto)
+      bootstrapUserDriveFolders(userId).catch(bErr => {
+        console.error("❌ [OAuth Callback] Error en bootstrap de carpetas:", bErr.message);
       });
+
+      try {
+        await bot.api.sendMessage(userId, `✅ ¡Tu cuenta de Google (${email}) ha sido vinculada correctamente! Ya puedes utilizar todas mis herramientas.`);
+      } catch (tErr: any) {
+        console.error("Error enviando mensaje de éxito a Telegram:", tErr.message);
+      }
+
+      res.send(`
+        <html>
+          <head>
+            <title>Conexión SilvaniaCoreAgent</title>
+            <meta charset="utf-8">
+          </head>
+          <body style="font-family: -apple-system, sans-serif; text-align: center; padding: 50px; background-color: #0b0f19; color: #f3f4f6; margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center;">
+            <div style="background: rgba(17, 24, 39, 0.7); padding: 40px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: inline-block;">
+              <h1 style="color: #10b981; margin-bottom: 20px; font-size: 2.2rem;">⚡ ¡Vínculo Completado!</h1>
+              <p style="color: #9ca3af; font-size: 1.1rem; margin-bottom: 20px;">Has autorizado correctamente el acceso para <strong>${email}</strong>.</p>
+              <p style="color: #6b7280; font-size: 0.95rem;">Ya puedes cerrar esta ventana y regresar a Telegram.</p>
+            </div>
+          </body>
+        </html>
+      `);
     } else {
-      // Asegurar bootstrap si ya estaba vinculado previamente
-      bootstrapUserDriveFolders(userId).catch(() => {});
+      // Asegurar bootstrap si ya estaba vinculado previamente (un solo bootstrap)
+      bootstrapUserDriveFolders(userId).catch(bErr => {
+        console.error("❌ [OAuth Callback] Error en bootstrap de carpetas:", bErr.message);
+      });
 
       try {
         await bot.api.sendMessage(userId, `✅ ¡Tu cuenta de Google (${email}) ya estaba vinculada! Si tienes problemas de acceso, ve a la configuración de seguridad de tu cuenta de Google, revoca el acceso a la aplicación de Silvania y vuelve a iniciar el proceso.`);
@@ -2000,8 +2029,8 @@ bot.command("start", async (ctx) => {
     const welcomeText = 
       `👋 **¡Hola! Te doy la bienvenida a Silvania CoreAgent.**\n\n` +
       `Soy tu asistente ejecutivo en Telegram, diseñado para ejecutar acciones reales en tu día a día integrado con **Google Workspace** mediante texto o notas de voz:\n\n` +
-      `📁 **Google Drive:** Búsqueda rápida, organización y consulta de documentos.\n` +
-      `✉️ **Gmail:** Redacción y envío seguro de correos bajo tu orden directa.\n` +
+      `📁 **Google Drive:** Archivos de la app organizados en tu carpeta \`silvania/\` (permiso acotado \`drive.file\`).\n` +
+      `✉️ **Gmail:** Envío de correos únicamente con tu confirmación (\`gmail.send\`, sin lectura de bandeja).\n` +
       `📅 **Google Calendar:** Creación de eventos, citas y gestión de agenda.\n` +
       `📊 **Google Sheets:** Registro de datos, facturación estructurada y tablas.\n` +
       `🌐 **Navegación Web:** Búsqueda e inspección de páginas y empresas en tiempo real.\n\n` +
@@ -2012,6 +2041,11 @@ bot.command("start", async (ctx) => {
       `\n🌐 Más información y documentación: https://silvania.ai/coreagent\n` +
       `💬 Tu feedback directo por privado es clave en esta fase. ¿Qué tarea te gustaría automatizar hoy?`;
 
+    const startUserId = ctx.from?.id;
+    if (startUserId) {
+      await dbService.addMessage(startUserId, "user", "/start");
+      await dbService.addMessage(startUserId, "assistant", welcomeText);
+    }
     await safeReply(ctx, welcomeText);
   } catch (err: any) {
     console.error("❌ Error en comando /start:", err.message);
@@ -2464,7 +2498,7 @@ bot.on("message:text", async (ctx) => {
     const hasLocal = dbService.hasLocalHistory(userId);
     if (!hasLocal) {
       const history = await dbService.getHistory(userId);
-      if (history.length === 0 && !text.startsWith("/")) {
+      if (false && history.length === 0 && !text.startsWith("/")) { // Desactivado: delegar primer mensaje a runAgent sin re-pitch de /start
         const welcome = `¡Hola! Soy Silvania CoreAgent, tu asistente ejecutivo integrado con Google Workspace.\n` +
           `Puedo ayudarte a gestionar tu agenda de Calendar, hojas de cálculo en Sheets, tus archivos en Drive y coordinar tareas ejecutivas con herramientas reales.\n\n` +
           `¿En qué te puedo ayudar hoy?`;

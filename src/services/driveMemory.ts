@@ -242,7 +242,17 @@ export const driveMemoryService = {
         }
       } catch (histRestoreErr: any) {
         const histMsg = histRestoreErr.message || "";
-        const isAuthErr = histMsg.includes("Tu sesión de Google expiró") || histMsg.includes("invalid_grant") || histMsg.includes("unauthorized_client");
+        const lowerHist = histMsg.toLowerCase();
+        const isAuthErr =
+          lowerHist.includes("401") ||
+          lowerHist.includes("unauthorized") ||
+          lowerHist.includes("unauthenticated") ||
+          lowerHist.includes("invalid_grant") ||
+          lowerHist.includes("unauthorized_client") ||
+          lowerHist.includes("access_denied") ||
+          lowerHist.includes("sesión de google expiró") ||
+          lowerHist.includes("expired") ||
+          lowerHist.includes("revoked");
         if (!isAuthErr) {
           await criticalLogService.logCritical(
             "Restauración Historial Fallida",
@@ -254,7 +264,17 @@ export const driveMemoryService = {
       }
     } catch (err: any) {
       const msg = err.message || "";
-      const isAuthErr = msg.includes("Tu sesión de Google expiró") || msg.includes("invalid_grant") || msg.includes("unauthorized_client");
+      const lowerMsg = msg.toLowerCase();
+      const isAuthErr =
+        lowerMsg.includes("401") ||
+        lowerMsg.includes("unauthorized") ||
+        lowerMsg.includes("unauthenticated") ||
+        lowerMsg.includes("invalid_grant") ||
+        lowerMsg.includes("unauthorized_client") ||
+        lowerMsg.includes("access_denied") ||
+        lowerMsg.includes("sesión de google expiró") ||
+        lowerMsg.includes("expired") ||
+        lowerMsg.includes("revoked");
       if (!isAuthErr) {
         await criticalLogService.logCritical(
           "Fallo Sincronización Inicial (syncFromDrive)",

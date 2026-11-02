@@ -1,5 +1,6 @@
 import { runGog } from "../tools/gogWrapper.js";
 import { configManager } from "./configManager.js";
+import { config } from "../config/config.js";
 import { criticalLogService } from "./criticalLog.js";
 import { uploadSkillToDrive } from "../tools/skills.js";
 import { dbService } from "../database/db.js";
@@ -131,23 +132,71 @@ export const skillLoader = {
         }
       }
 
-      // Si en la carpeta canónica no hay skills pero en el entorno local sí existen, re-subir a la canónica
+      // Seed post-bootstrap: si la carpeta canónica en Drive no tiene skills, seedear built-in mínimo (máx 3)
+      if (driveSkillsCount === 0 && config.skills?.seedBuiltin !== false) {
+        try {
+          const { seedBuiltinSkillsToDrive } = await import("./builtinSkills.js");
+          const seeded = await seedBuiltinSkillsToDrive(userId);
+          if (seeded > 0) {
+            driveSkillsCount += seeded;
+          }
+        } catch (seedErr: any) {
+          // Si falla seed -> log warning, 0 skills, sin alerta al usuario ni CRITICAL de producto
+          console.warn(`⚠️ [Skill Loader] Aviso al seedear skills built-in para usuario ${userId}:`, seedErr.message);
+        }
+      }
+
+      // Usuario nuevo o Drive sin skills: 0 o <= 3 built-in = OK. Log info, NO alerta crítica.
+      if (driveSkillsCount <= 3) {
+        console.log(`ℹ️ [Skill Loader] Usuario ${userId} con ${driveSkillsCount} habilidades activas (OK - usuario nuevo o catálogo mínimo built-in).`);
+      }
+
+      // Si en la carpeta canónica sigue habiendo 0 skills pero en el entorno local sí existen:
+      // REGLA: No re-enlazar skills de skills/1572946817/ al Drive de otra cuenta Google salvo que el email coincida con el owner esperado;
+      // tras cambio de cuenta, no copiar el catálogo de skills del admin al Gmail demo.
       if (driveSkillsCount === 0 && fs.existsSync(localSkillsDir)) {
+        const currentUserEmail = token?.email || (await dbService.getUserEmail(userId));
+        const expectedAdminEmail = process.env.PRIMARY_GOG_ACCOUNT || "eduardoqm573@gmail.com";
+        const isExpectedAdminOwner = userId === 1572946817 && currentUserEmail?.toLowerCase() === expectedAdminEmail.toLowerCase();
+
+        // Solo permitir re-subir catálogo local si es el owner esperado del admin
+        const canReupload = isExpectedAdminOwner;
+
+        if (canReupload) {
+          const localFolders = fs.readdirSync(localSkillsDir);
+          for (const f of localFolders) {
+            const localFolder = path.join(localSkillsDir, f);
+            try {
+              if (fs.statSync(localFolder).isDirectory()) {
+                const localSkillMd = path.join(localFolder, "SKILL.md");
+                if (fs.existsSync(localSkillMd)) {
+                  console.log(`ℹ️ [Skill Loader] Re-enlazando y subiendo skill '${f}' a la carpeta canónica en Drive...`);
+                  await uploadSkillToDrive(userId, f, localFolder);
+                  driveSkillsCount++;
+                  downloadCount++;
+                }
+              }
+            } catch (skillUploadErr: any) {
+              console.warn(`⚠️ [Skill Loader] Error al re-subir skill '${f}' a Drive:`, skillUploadErr.message);
+            }
+          }
+        } else {
+          console.log(`ℹ️ [Skill Loader] Omitiendo re-subida de skills locales para usuario ${userId} con cuenta ${currentUserEmail} (protección contra copia de catálogo admin a cuentas demo/ajenas).`);
+        }
+      }
+
+      // Asegurar que las skills presentes en disco local queden registradas en newSkillsMap para la caché
+      if (fs.existsSync(localSkillsDir)) {
         const localFolders = fs.readdirSync(localSkillsDir);
         for (const f of localFolders) {
-          const localFolder = path.join(localSkillsDir, f);
-          try {
-            if (fs.statSync(localFolder).isDirectory()) {
-              const localSkillMd = path.join(localFolder, "SKILL.md");
-              if (fs.existsSync(localSkillMd)) {
-                console.log(`ℹ️ [Skill Loader] Re-enlazando y subiendo skill '${f}' a la carpeta canónica en Drive...`);
-                await uploadSkillToDrive(userId, f, localFolder);
-                driveSkillsCount++;
-                downloadCount++;
-              }
+          if (!newSkillsMap.has(f)) {
+            const localSkillMd = path.join(localSkillsDir, f, "SKILL.md");
+            if (fs.existsSync(localSkillMd)) {
+              newSkillsMap.set(f, {
+                fileId: "local",
+                modifiedTime: ""
+              });
             }
-          } catch (skillUploadErr: any) {
-            console.warn(`⚠️ [Skill Loader] Error al re-subir skill '${f}' a Drive:`, skillUploadErr.message);
           }
         }
       }
@@ -161,14 +210,37 @@ export const skillLoader = {
       console.log(`✅ [Skill Loader] Sincronización de habilidades completada para usuario ${userId}: ${driveSkillsCount} skills activas (${downloadCount} descargas, ${omittedCount} omitidas por caché).`);
     } catch (err: any) {
       const msg = err.message || "";
-      const isAuthErr = msg.includes("Tu sesión de Google expiró") || msg.includes("invalid_grant") || msg.includes("unauthorized_client");
-      if (!isAuthErr) {
+      const lowerMsg = msg.toLowerCase();
+      const isAuthOrPermErr =
+        lowerMsg.includes("401") ||
+        lowerMsg.includes("unauthorized") ||
+        lowerMsg.includes("unauthenticated") ||
+        lowerMsg.includes("invalid_grant") ||
+        lowerMsg.includes("unauthorized_client") ||
+        lowerMsg.includes("token has been expired") ||
+        lowerMsg.includes("token has been revoked") ||
+        lowerMsg.includes("access_denied") ||
+        lowerMsg.includes("insufficient") ||
+        lowerMsg.includes("scope") ||
+        lowerMsg.includes("tu sesión de google expiró") ||
+        lowerMsg.includes("sesión de google expiró") ||
+        lowerMsg.includes("expired") ||
+        lowerMsg.includes("revoked");
+
+      if (isAuthOrPermErr) {
+        // Degradar en silencio (skills locales si existen; si no, vacío). Log info, NO alerta crítica.
+        console.warn(`ℹ️ [Skill Loader] Degradación silenciosa de habilidades para usuario ${userId} (${msg}). Conservando estado seguro.`);
+        return;
+      }
+
+      // Alerta crítica SOLO a MARKETING_ADMIN_IDS / admin, nunca al usuario final en el chat de producto
+      try {
         await criticalLogService.logCritical(
           "Fallo Sincronización Habilidades (syncSkillsFromDrive)",
-          `Error al intentar sincronizar las habilidades desde Drive para usuario ${userId}: ${msg}`
+          `Error inesperado al sincronizar habilidades para usuario ${userId}: ${msg}`
         );
-      } else {
-        console.warn(`⚠️ [Skill Loader] Sesión expirada para usuario ${userId}, omitiendo syncSkillsFromDrive.`);
+      } catch (logErr: any) {
+        console.warn(`⚠️ [Skill Loader] Error registrando alerta crítica al admin:`, logErr.message);
       }
     }
   }

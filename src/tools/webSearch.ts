@@ -372,6 +372,11 @@ export async function webSearch(query: string, searchType: string = "web", maxRe
       results = results.filter((v, i, a) => a.findIndex(t => t.url === v.url) === i);
     }
 
+    // Omitir estrictamente cualquier ítem o titular sin URL https/http válida devuelta por el motor
+    results = results.filter(
+      r => r && r.title && r.url && /^https?:\/\/\S+/i.test(r.url.trim()) && !r.url.includes("news.google.com/rss/articles")
+    );
+
     const manualLinks = `
 🚀 **ENLACES DE BÚSQUEDA ADICIONALES**
 ────────────────────────────
@@ -387,22 +392,22 @@ export async function webSearch(query: string, searchType: string = "web", maxRe
 
     let formatted = "";
     if (searchType === 'news') {
-      formatted = results.map((r, i) =>
+      formatted = results.map((r) =>
         `${formatNewsLink(r.title, r.url)}\n` +
         `> 📅 ${r.date || 'Reciente'}  |  🌐 ${r.source || 'Web'}\n` +
         `> 📝 ${r.snippet}`
       ).join('\n\n');
     } else {
-      formatted = results.map((r, i) => {
+      formatted = results.map((r) => {
         const isLocal = r.source?.includes('Local') || r.source?.includes('Maps');
-        const linkStr = isLocal ? `📍 ${r.title}  ·  [🔗 Abrir](${r.url})` : formatWebLink(r.title, r.url);
+        const linkStr = isLocal ? `📍 [${r.title}](${r.url})` : formatWebLink(r.title, r.url);
         return `${linkStr}\n` +
                `> 📝 ${r.snippet}`;
       }).join('\n\n');
     }
 
     const typeLabel = searchType === 'news' ? '📰 NOTICIAS' : searchType === 'local' ? '📍 NEGOCIOS LOCALES' : '🌐 RESULTADOS WEB';
-    const disclaimer = `\n\n${SEP}\n_⚠️ Datos en tiempo real. Si un dato específico no aparece, es posible que no esté indexado._\n_Encontrados ${results.length} resultados._`;
+    const disclaimer = `\n\n${SEP}\n_⚠️ REGLA OBLIGATORIA: Cada titular o resultado listado al usuario DEBE incluir su URL devuelta por la herramienta en formato Markdown [Titular](url_https_completa). Si un ítem no tiene URL, omítelo por completo._\n_Encontrados ${results.length} resultados._`;
 
     return `✨ **${typeLabel} PARA:** "${query}"\n${SEP}\n\n${formatted}\n\n${manualLinks}${disclaimer}`;
 

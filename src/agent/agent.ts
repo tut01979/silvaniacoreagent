@@ -645,7 +645,7 @@ Siempre que el usuario solicite una acción que involucre Google Workspace (Shee
 
 **Internet & Sistema:** \`web_search\`, \`read_url\`, \`execute_command\`, \`analyze_image\`, \`google_workspace\`, \`search_skills\`, \`get_skill\`, \`install_skill\`, \`create_skill\`, \`load_skills\`, \`generate_authorization_link\`
 
-**Skills Instaladas Actualmente (Tus Superpoderes):**
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${skillsSummary}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -696,7 +696,7 @@ Si detectas un error de red o de "Conflict", informa al usuario que estás reini
       let requiresTools = /crea|crear|agendar|apunta|apuntar|anota|anotar|lista|listar|busca|buscar|envia|envía|envias|envías|lee|leer|open|genera|generar|sube|subir|mueve|mover|borra|borrar|investiga|investigar|resume|resumir|transcribe|transcribir|factura|evento|correo|email|gmail|mensaje|recibido|bandeja|drive|carpeta|archivo|subir|descargar|mkdir|calendar|calendario|cita|reunion|reunión|agenda|programar|youtube|video|transcripcion|transcripción|sheets|excel|hoja|celda|fila|columna|web_search|read_url|noticia|noticias|memoria|historial|resumen|recordar|recuerdas|ayer|hablamos|primera|conversacion|conversación|dijiste|dije|skill|skills|habilidad|habilidades|entra|entrar|visita|visitar|accede|acceder|mira|mirar|consulta|consultar|url|urls|web|sitio|pagina|página|portal|internet|link|enlace|silvania|sylvania|https?:\/\/|[a-zA-Z0-9-]+\.(ai|com|es|org|net|io|co|dev|app)\b/i.test(userMessage);
 
       // Anti-fast-path regex para garantizar acceso a herramientas en investigación, enlaces y operaciones de Google
-      const antiFastPathRegex = /investig|protocolo|empresa|paleplast|maps|correo|gmail|drive|list|enlace|intent|ejecut|autoriz|gmail_list|drive_list|read_url|web_search/i;
+      const antiFastPathRegex = /factura|facturas|invoice|iva|investig|protocolo|empresa|paleplast|maps|correo|gmail|drive|list|enlace|intent|ejecut|autoriz|gmail_list|drive_list|read_url|web_search/i;
       if (antiFastPathRegex.test(userMessage)) {
         requiresTools = true;
       }

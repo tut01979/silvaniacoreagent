@@ -77,7 +77,10 @@ export async function runGogRaw(command: string, customEnv?: any): Promise<strin
       lowerOutput.includes("invalid_grant") ||
       lowerOutput.includes("unauthorized_client") ||
       lowerOutput.includes("token has been expired") ||
-      lowerOutput.includes("token has been revoked")
+      lowerOutput.includes("token has been revoked") ||
+      lowerOutput.includes("401") ||
+      lowerOutput.includes("unauthorized") ||
+      lowerOutput.includes("unauthenticated")
     ) {
       throw new Error(
         "Tu sesión de Google expiró o fue revocada. Usa /auth una vez."
@@ -209,20 +212,38 @@ export function preprocessWorkspaceCommand(command: string): string {
 
 /**
  * Asegura que el comando de gog incluya el parámetro --account con la cuenta correcta.
+ * Resuelve SIEMPRE el email del token actualmente activo del usuario en DB.
  */
 export async function ensureAccountParam(command: string, userId?: number): Promise<{ command: string; email: string }> {
   const uId = userId || userContextStore.getStore()?.userId || (config.telegram?.allowedUsers?.[0]) || 1572946817;
-  const primaryUserId = config.telegram?.allowedUsers?.[0] || 1572946817;
 
   let email: string | null = null;
-  if (uId === primaryUserId) {
-    email = "eduardoqm573@gmail.com";
-  } else {
-    email = await dbService.getUserEmail(uId);
+
+  // 1. Prioridad: email del token actualmente guardado en DB para este usuario
+  try {
+    const tokenObj = await dbService.getUserToken(uId);
+    if (tokenObj && tokenObj.email && typeof tokenObj.email === "string" && tokenObj.email.trim().length > 0) {
+      email = tokenObj.email.trim();
+    }
+  } catch (err: any) {
+    console.warn(`⚠️ [ensureAccountParam] Error consultando token para userId ${uId}:`, err.message);
   }
 
+  // 2. Si no hay email en el token, consultar user_accounts en DB
   if (!email) {
-    email = "eduardoqm573@gmail.com";
+    try {
+      const dbEmail = await dbService.getUserEmail(uId);
+      if (dbEmail && typeof dbEmail === "string" && dbEmail.trim().length > 0) {
+        email = dbEmail.trim();
+      }
+    } catch (err: any) {
+      console.warn(`⚠️ [ensureAccountParam] Error consultando email en DB para userId ${uId}:`, err.message);
+    }
+  }
+
+  // 3. Fallback de último recurso solo si el usuario no tiene ninguna cuenta vinculada registrada
+  if (!email) {
+    email = process.env.PRIMARY_GOG_ACCOUNT || "eduardoqm573@gmail.com";
   }
 
   let clean = command.trim();
@@ -236,7 +257,7 @@ export async function ensureAccountParam(command: string, userId?: number): Prom
 }
 /**
  * Limpia el keyring y las credenciales locales de gog para un usuario.
- * Obligatorio ante re-autenticación (/auth) o detección de invalid_grant.
+ * Obligatorio ante re-autenticación (/auth), cambio de cuenta o detección de invalid_grant.
  */
 export async function clearUserGogCredentials(userId: number, email?: string): Promise<void> {
   const userAppdataPath = path.join(process.cwd(), "data", `user_${userId}`);
@@ -250,10 +271,10 @@ export async function clearUserGogCredentials(userId: number, email?: string): P
   };
 
   // 1. Intentar gog auth remove si se conoce el email
-  if (email) {
+  if (email && typeof email === "string" && email.trim().length > 0) {
     try {
-      execSync(`"${executable}" auth remove "${email}" --force`, { env: customEnv, stdio: "ignore" });
-      console.log(`🧹 [GOG] gog auth remove ejecutado con éxito para ${email}`);
+      execSync(`"${executable}" auth remove "${email.trim()}" --force`, { env: customEnv, stdio: "ignore" });
+      console.log(`🧹 [GOG] gog auth remove ejecutado con éxito para ${email.trim()} (userId=${userId})`);
     } catch {}
   }
 
@@ -264,12 +285,23 @@ export async function clearUserGogCredentials(userId: number, email?: string): P
       const keyringDir = path.join(gogcliDir, "keyring");
       if (fs.existsSync(keyringDir)) {
         fs.rmSync(keyringDir, { recursive: true, force: true });
+        console.log(`🧹 [GOG] Keyring de gogcli purgado para userId ${userId}`);
       }
       const credsFiles = ["credentials.json", "credentials-prod.json", "credentials-beta.json"];
       for (const cf of credsFiles) {
         const p = path.join(gogcliDir, cf);
         if (fs.existsSync(p)) {
           try { fs.unlinkSync(p); } catch {}
+        }
+      }
+    }
+
+    // Purgar también cualquier token temporal residual en userAppdataPath
+    if (fs.existsSync(userAppdataPath)) {
+      const files = fs.readdirSync(userAppdataPath);
+      for (const f of files) {
+        if (f.startsWith("temp_token_") && f.endsWith(".json")) {
+          try { fs.unlinkSync(path.join(userAppdataPath, f)); } catch {}
         }
       }
     }
@@ -380,6 +412,9 @@ export async function runGog(command: string, userId?: number): Promise<string> 
       msg.includes("Tu sesión de Google expiró") ||
       lowerMsg.includes("invalid_grant") ||
       lowerMsg.includes("unauthorized_client") ||
+      lowerMsg.includes("401") ||
+      lowerMsg.includes("unauthorized") ||
+      lowerMsg.includes("unauthenticated") ||
       lowerMsg.includes("expired") ||
       lowerMsg.includes("revoked")
     ) {

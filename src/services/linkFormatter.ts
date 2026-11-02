@@ -13,37 +13,37 @@
 export function formatFolderLink(name: string, url: string): string {
   const cleanName = String(name || "Carpeta sin nombre").trim();
   const cleanUrl = String(url || "").trim();
-  return cleanUrl ? `📁 **${cleanName}** · [Abrir](${cleanUrl})` : `📁 **${cleanName}**`;
+  return cleanUrl ? `📁 [${cleanName}](${cleanUrl})` : `📁 **${cleanName}**`;
 }
 
 export function formatFileLink(name: string, url: string): string {
   const cleanName = String(name || "Archivo sin nombre").trim();
   const cleanUrl = String(url || "").trim();
-  return cleanUrl ? `📄 **${cleanName}** · [Abrir](${cleanUrl})` : `📄 **${cleanName}**`;
+  return cleanUrl ? `📄 [${cleanName}](${cleanUrl})` : `📄 **${cleanName}**`;
 }
 
 export function formatEmailLink(subject: string, url: string): string {
   const cleanSubject = String(subject || "(Sin asunto)").trim();
   const cleanUrl = String(url || "").trim();
-  return cleanUrl ? `📧 **${cleanSubject}** · [Abrir](${cleanUrl})` : `📧 **${cleanSubject}**`;
+  return cleanUrl ? `📧 [${cleanSubject}](${cleanUrl})` : `📧 **${cleanSubject}**`;
 }
 
 export function formatVideoLink(title: string, url: string): string {
   const cleanTitle = String(title || "Video sin título").trim();
   const cleanUrl = String(url || "").trim();
-  return cleanUrl ? `🎥 **${cleanTitle}** · [Ver](${cleanUrl})` : `🎥 **${cleanTitle}**`;
+  return cleanUrl ? `🎥 [${cleanTitle}](${cleanUrl})` : `🎥 **${cleanTitle}**`;
 }
 
 export function formatEventLink(name: string, url: string): string {
   const cleanName = String(name || "Evento sin título").trim();
   const cleanUrl = String(url || "").trim();
-  return cleanUrl ? `📅 **${cleanName}** · [Abrir](${cleanUrl})` : `📅 **${cleanName}**`;
+  return cleanUrl ? `📅 [${cleanName}](${cleanUrl})` : `📅 **${cleanName}**`;
 }
 
 export function formatNewsLink(title: string, url: string): string {
   const cleanTitle = String(title || "Noticia sin título").trim();
   const cleanUrl = String(url || "").trim();
-  return cleanUrl ? `📰 **${cleanTitle}** · [Abrir](${cleanUrl})` : `📰 **${cleanTitle}**`;
+  return cleanUrl ? `📰 [${cleanTitle}](${cleanUrl})` : "";
 }
 
 export function formatWebLink(title: string, url: string): string {

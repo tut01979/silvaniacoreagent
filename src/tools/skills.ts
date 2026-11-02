@@ -2,8 +2,10 @@ import fs from "fs";
 import path from "path";
 import { runGog } from "./gogWrapper.js";
 import { configManager } from "../services/configManager.js";
+import { isBuiltinSkill, getBuiltinSkill, getBuiltinSkillsPromptSection } from "../services/builtinSkills.js";
 
 const REPO_DIR = path.resolve("skills_repository");
+const BUILTIN_DIR = path.resolve("skills", "_builtin");
 
 export function getUserSkillsDir(userId: number): string {
   const dir = path.resolve("skills", userId.toString());
@@ -17,11 +19,17 @@ export async function searchSkills(query: string, userId: number, limit: number 
   const allSkills: any[] = [];
   const queryLower = (query || "").toLowerCase().trim();
 
-  // 1. Buscar en el repositorio de habilidades (la biblioteca)
-  if (fs.existsSync(REPO_DIR)) {
-    const files = fs.readdirSync(REPO_DIR);
+  // 1. Buscar en catálogo built-in y en el repositorio de habilidades (la biblioteca)
+  const sourceDirs = [
+    { dir: BUILTIN_DIR, source: "builtin" },
+    { dir: REPO_DIR, source: "repository" }
+  ];
+
+  for (const { dir, source } of sourceDirs) {
+    if (!fs.existsSync(dir)) continue;
+    const files = fs.readdirSync(dir);
     for (const file of files) {
-      const fullPath = path.join(REPO_DIR, file);
+      const fullPath = path.join(dir, file);
       let stats: fs.Stats;
       try { stats = fs.statSync(fullPath); } catch { continue; }
 
@@ -41,13 +49,13 @@ export async function searchSkills(query: string, userId: number, limit: number 
             || file.toLowerCase().includes(queryLower)
             || content.toLowerCase().includes(queryLower);
 
-          if (matches) {
+          if (matches && !allSkills.some(s => s.id.toLowerCase() === skillName.toLowerCase())) {
             allSkills.push({
               id: skillName,
               folder: file,
               title: skillName,
               description: skillDesc,
-              source: "repository",
+              source,
               type: "folder"
             });
           }
@@ -55,13 +63,13 @@ export async function searchSkills(query: string, userId: number, limit: number 
       } else if (file.endsWith(".zip")) {
         const skillId = file.replace(".zip", "");
         const matches = !queryLower || skillId.toLowerCase().includes(queryLower);
-        if (matches) {
+        if (matches && !allSkills.some(s => s.id.toLowerCase() === skillId.toLowerCase())) {
           allSkills.push({
             id: skillId,
             folder: file,
             title: skillId,
             description: "Habilidad empaquetada (ZIP). Usa install_skill para extraerla e instalarla.",
-            source: "repository",
+            source,
             type: "zip"
           });
         }
@@ -107,7 +115,7 @@ export async function searchSkills(query: string, userId: number, limit: number 
 
 export async function getSkill(id: string, userId: number) {
   const userSkillsDir = getUserSkillsDir(userId);
-  const searchDirs = [REPO_DIR, userSkillsDir];
+  const searchDirs = [BUILTIN_DIR, REPO_DIR, userSkillsDir];
   for (const dir of searchDirs) {
     if (!fs.existsSync(dir)) continue;
 
@@ -252,17 +260,26 @@ export async function createSkill(name: string, description: string, content: st
 
 export async function loadSkill(skillName: string, userId: number): Promise<string | null> {
   const folderName = skillName.trim().replace(/[^a-zA-Z0-9]/g, "-").toLowerCase();
+
+  // 1. Si es una habilidad built-in, cargarla inmediatamente desde memoria/disco local sin depender de Drive
+  if (isBuiltinSkill(folderName)) {
+    const builtin = getBuiltinSkill(folderName);
+    if (builtin) {
+      return builtin.content;
+    }
+  }
+
   const userSkillsDir = getUserSkillsDir(userId);
   const localSkillMdPath = path.join(userSkillsDir, folderName, "SKILL.md");
 
-  // 1. Intentar cargar desde caché local
+  // 2. Intentar cargar desde caché local
   if (fs.existsSync(localSkillMdPath)) {
     try {
       return fs.readFileSync(localSkillMdPath, "utf8");
     } catch {}
   }
 
-  // 2. Si no está local, intentar descargarlo desde Drive de forma dinámica (lazy)
+  // 3. Si no está local, intentar descargarlo desde Drive de forma dinámica (lazy)
   try {
     const skillDriveFolderId = await configManager.getOrCreateFolderPath(userId, ["silvania", "skills", folderName]);
     
@@ -330,10 +347,13 @@ export async function loadSkillsSummary(userId: number): Promise<string> {
     }
   }
 
-  let summary = "";
+  // Recopilar exclusivamente habilidades extra del usuario (omitir built-in para evitar duplicación)
+  let extraSkillsSummary = "";
   if (fs.existsSync(userSkillsDir)) {
     const folders = fs.readdirSync(userSkillsDir);
     for (const folder of folders) {
+      if (isBuiltinSkill(folder)) continue; // Omitir built-in aquí
+
       const folderPath = path.join(userSkillsDir, folder);
       let stats;
       try { stats = fs.statSync(folderPath); } catch { continue; }
@@ -348,18 +368,21 @@ export async function loadSkillsSummary(userId: number): Promise<string> {
           const descMatch = content.match(/description:\s*([^\n\r]+)/i);
           
           const name = nameMatch ? nameMatch[1].trim().replace(/['"]/g, "") : folder;
-          let desc = descMatch ? descMatch[1].trim().replace(/['"]/g, "") : "Habilidad sin descripción detallada.";
+          let desc = descMatch ? descMatch[1].trim().replace(/['"]/g, "") : "Habilidad personalizada del usuario.";
           
           if (desc.length > 150) desc = desc.substring(0, 147) + "...";
           
-          summary += `- **${name}** (ID: \`${folder}\`): ${desc}\n`;
+          extraSkillsSummary += `- **${name}** (ID: \`${folder}\`): ${desc}\n`;
         } catch (err: any) {
-          console.error(`⚠️ Error cargando resumen de skill en ${folder} para usuario ${userId}:`, err.message);
+          console.error(`⚠️ Error cargando resumen de skill extra en ${folder} para usuario ${userId}:`, err.message);
         }
       }
     }
   }
-  return summary || "No hay habilidades adicionales instaladas.";
+
+  // Devolver siempre la sección de capacidades built-in fijas inyectadas localmente,
+  // más las skills extra de usuario si existen en Drive.
+  return getBuiltinSkillsPromptSection(extraSkillsSummary);
 }
 
 /**
