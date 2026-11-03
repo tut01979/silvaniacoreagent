@@ -6,7 +6,7 @@ import { config } from "../config/config.js";
 import { driveList, driveSearch, driveMkdir, driveMove, driveUpload, driveRemove, driveReadFile, resolveOrCreateParentId } from "./drive.js";
 import { calendarList, calendarCreate, calendarDelete, calendarUpdate } from "./calendar.js";
 import { userContextStore } from "../services/context.js";
-import { sheetsList, sheetsCreate, sheetsRead, sheetsWrite, sheetsAppend, sheetsCreateInvoice } from "./sheets.js";
+import { sheetsList, sheetsCreate, sheetsRead, sheetsWrite, sheetsAppend, sheetsCreateInvoice, sheetsCreateBudget } from "./sheets.js";
 import { runGog } from "./gogWrapper.js";
 import { searchSkills, getSkill, installSkill, createSkill, loadSkills, loadSkillsSummary, loadSkill } from "./skills.js";
 import { webSearch, readUrl } from "./webSearch.js";
@@ -193,6 +193,10 @@ export const tools = {
       console.log(`🔄 [Tools] Redirigiendo sheets_create("${title}") automáticamente a sheets_create_invoice atómico...`);
       return await sheetsCreateInvoice({ title, userId: uId });
     }
+    if (title && /\b(presupuesto|presupuestos|proforma|proformas|cotizacion|cotizaciones|budget)\b/i.test(title)) {
+      console.log(`🔄 [Tools] Redirigiendo sheets_create("${title}") automáticamente a sheets_create_budget atómico...`);
+      return await sheetsCreateBudget({ title, userId: uId });
+    }
     return await sheetsCreate(title, uId);
   },
   sheets_read: async ({ spreadsheet_id, range, userId }: { spreadsheet_id: string; range: string; userId?: number }) => {
@@ -210,6 +214,40 @@ export const tools = {
   sheets_create_invoice: async ({ title, number, date, locale, userId }: { title: string; number?: string; date?: string; locale?: "es" | "en"; userId?: number }) => {
     const uId = userId || userContextStore.getStore()?.userId;
     return await sheetsCreateInvoice({ title, number, date, locale, userId: uId });
+  },
+  sheets_create_budget: async (params: {
+    title?: string;
+    company?: string;
+    number?: string;
+    date?: string;
+    client?: string;
+    vehicle?: string;
+    plate?: string;
+    phone?: string;
+    km?: string | number;
+    items?: Array<{ unit?: number | string; description: string; total: number | string }>;
+    note?: string;
+    include_iva?: boolean;
+    locale?: "es" | "en";
+    userId?: number;
+  }) => {
+    const uId = params.userId || userContextStore.getStore()?.userId;
+    return await sheetsCreateBudget({
+      title: params.title,
+      company: params.company,
+      number: params.number,
+      date: params.date,
+      client: params.client,
+      vehicle: params.vehicle,
+      plate: params.plate,
+      phone: params.phone,
+      km: params.km,
+      items: params.items,
+      note: params.note,
+      includeIva: params.include_iva,
+      locale: params.locale,
+      userId: uId
+    });
   },
 
   // ─── SKILLS ───

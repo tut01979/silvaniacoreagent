@@ -503,6 +503,43 @@ export const llmService = {
           }
         }
       },
+      {
+        type: "function",
+        function: {
+          name: "sheets_create_budget",
+          description: "HERRAMIENTA OBLIGATORIA Y ATÓMICA para crear presupuestos o proformas en Google Sheets con cálculo automático de totales (=SUMA(...) / =SUM(...)). Modela la estructura completa: Empresa/Taller, Fecha, Proforma Nº, Ficha de Cliente (Cliente, Vehículo, Matrícula, Teléfono, KM), tabla de partidas (Unidad | Descripción | Total) y cálculo de totales vivo con fórmulas reales. Al responder entrega el enlace Markdown [Nombre](https://docs.google.com/spreadsheets/d/ID/edit).",
+          parameters: {
+            type: "object",
+            properties: {
+              title: { type: "string", description: "Título de la hoja (ej: 'Presupuesto_0142_Taller')" },
+              company: { type: "string", description: "Nombre de la empresa o taller emisor (ej: 'TALLER HNOS LEONCIO')" },
+              number: { type: "string", description: "Número de proforma o presupuesto (ej: '0142')" },
+              date: { type: "string", description: "Fecha del presupuesto (ej: '21/10/2026')" },
+              client: { type: "string", description: "Nombre del cliente" },
+              vehicle: { type: "string", description: "Vehículo o modelo (ej: 'PEUGEOT SCOOTER')" },
+              plate: { type: "string", description: "Matrícula del vehículo" },
+              phone: { type: "string", description: "Teléfono de contacto" },
+              km: { type: "string", description: "Kilometraje del vehículo" },
+              items: {
+                type: "array",
+                description: "Lista de partidas o conceptos del presupuesto",
+                items: {
+                  type: "object",
+                  properties: {
+                    unit: { type: "string", description: "Unidades o cantidad" },
+                    description: { type: "string", description: "Descripción de la pieza o trabajo" },
+                    total: { type: "number", description: "Importe total de la partida en euros" }
+                  },
+                  required: ["description", "total"]
+                }
+              },
+              note: { type: "string", description: "Nota explicativa de pie (ej: 'Nota: Esta proforma no incluye IVA')" },
+              include_iva: { type: "boolean", description: "Indica si se desglosa Subtotal, IVA 21% y Total con IVA (por defecto false si la proforma es sin IVA)" },
+              locale: { type: "string", enum: ["es", "en"], description: "Locale para fórmulas de Sheets ('es' para SUMA, 'en' para SUM)" }
+            }
+          }
+        }
+      },
       // ─── SKILLS ───
       {
         type: "function",

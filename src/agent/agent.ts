@@ -317,8 +317,8 @@ export async function runAgent(userId: number, userMessage: string) {
     const { calendarText, offsetStr, todayIso: isoLocal, nowStr } = getMadridRelativeCalendar(now);
 
     const googleToolsStr = userTier === "prod"
-      ? `\`gmail_send\`, \`drive_list\`, \`drive_search\`, \`drive_mkdir\`, \`drive_move\`, \`drive_upload\`, \`drive_remove\`, \`drive_create_text_file\`, \`drive_read_file\`, \`calendar_list\`, \`calendar_create\`, \`calendar_delete\`, \`calendar_update\`, \`sheets_list\`, \`sheets_create\`, \`sheets_read\`, \`sheets_write\`, \`sheets_append\`, \`sheets_create_invoice\``
-      : `\`gmail_list\`, \`gmail_search\`, \`gmail_thread\`, \`gmail_send\`, \`drive_list\`, \`drive_search\`, \`drive_mkdir\`, \`drive_move\`, \`drive_upload\`, \`drive_remove\`, \`drive_create_text_file\`, \`drive_read_file\`, \`calendar_list\`, \`calendar_create\`, \`calendar_delete\`, \`calendar_update\`, \`sheets_list\`, \`sheets_create\`, \`sheets_read\`, \`sheets_write\`, \`sheets_append\`, \`sheets_create_invoice\`, \`google_workspace\``;
+      ? `\`gmail_send\`, \`drive_list\`, \`drive_search\`, \`drive_mkdir\`, \`drive_move\`, \`drive_upload\`, \`drive_remove\`, \`drive_create_text_file\`, \`drive_read_file\`, \`calendar_list\`, \`calendar_create\`, \`calendar_delete\`, \`calendar_update\`, \`sheets_list\`, \`sheets_create\`, \`sheets_read\`, \`sheets_write\`, \`sheets_append\`, \`sheets_create_invoice\`, \`sheets_create_budget\``
+      : `\`gmail_list\`, \`gmail_search\`, \`gmail_thread\`, \`gmail_send\`, \`drive_list\`, \`drive_search\`, \`drive_mkdir\`, \`drive_move\`, \`drive_upload\`, \`drive_remove\`, \`drive_create_text_file\`, \`drive_read_file\`, \`calendar_list\`, \`calendar_create\`, \`calendar_delete\`, \`calendar_update\`, \`sheets_list\`, \`sheets_create\`, \`sheets_read\`, \`sheets_write\`, \`sheets_append\`, \`sheets_create_invoice\`, \`sheets_create_budget\`, \`google_workspace\``;
 
     const gmailHandlingStr = userTier === "prod"
       ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -565,6 +565,17 @@ Columnas:
 7. Total (\`=D16+D17\`).
 *(Nota técnica OBLIGATORIA: Si el usuario pide factura o plantilla de factura, es ESTRICTAMENTE OBLIGATORIO usar \`sheets_create_invoice\`. La herramienta devuelve \`SPREADSHEET_ID=<id>\` y \`LINK=https://docs.google.com/spreadsheets/d/<id>/edit\`. Si la escritura falla y la herramienta devuelve \`❌ Error\`, informa del error claramente y NUNCA digas que la factura fue creada con IVA. Si tiene éxito, entrega al usuario el enlace en una sola línea Markdown limpia: \`[Nombre](https://docs.google.com/spreadsheets/d/ID/edit)\` sin repetir el ID en texto suelto. Si el usuario pide después el enlace a la hoja/factura, usa ese mismo \`SPREADSHEET_ID\` del turno/sesión y NUNCA llames a \`sheets_list\`.)*
 
+**Plantilla de presupuesto / proforma (ej. talleres, servicios o comercio):**
+- Si el usuario pide un presupuesto, proforma o cotización, es OBLIGATORIO usar sheets_create_budget (o sheets_create con título que contenga presupuesto/proforma, que redirige automáticamente).
+- Estructura profesional (como en proformas físicas de taller):
+  1. Cabecera: Empresa / Taller, Fecha (=HOY() o fecha explícita), Proforma / Presupuesto Nº.
+  2. Ficha de cliente/vehículo: Cliente, Vehículo, Matrícula, Teléfono, KM.
+  3. Tabla de partidas: Unidad | Descripción | Total (€).
+  4. Cálculo automático con fórmula viva =SUMA(...) en español (o =SUM(...) en inglés).
+  5. Nota de IVA al pie ('Nota: Esta proforma no incluye IVA' o desglose de Subtotal + IVA + Total si aplica).
+- Al responder, proporciona siempre el enlace Markdown: [Nombre](https://docs.google.com/spreadsheets/d/ID/edit).
+
+
 ${gmailHandlingStr}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -694,7 +705,7 @@ Si detectas un error de red o de "Conflict", informa al usuario que estás reini
 
     if (tasks.length <= 1) {
       // Usar chat sin herramientas si la consulta no menciona palabras clave de herramientas, búsqueda, navegación o memoria
-      let requiresTools = /crea|crear|agendar|apunta|apuntar|anota|anotar|lista|listar|busca|buscar|envia|envía|envias|envías|lee|leer|open|genera|generar|sube|subir|mueve|mover|borra|borrar|investiga|investigar|resume|resumir|transcribe|transcribir|factura|evento|correo|email|gmail|mensaje|recibido|bandeja|drive|carpeta|archivo|subir|descargar|mkdir|calendar|calendario|cita|reunion|reunión|agenda|programar|youtube|video|transcripcion|transcripción|sheets|excel|hoja|celda|fila|columna|web_search|read_url|noticia|noticias|memoria|historial|resumen|recordar|recuerdas|ayer|hablamos|primera|conversacion|conversación|dijiste|dije|skill|skills|habilidad|habilidades|entra|entrar|visita|visitar|accede|acceder|mira|mirar|consulta|consultar|url|urls|web|sitio|pagina|página|portal|internet|link|enlace|silvania|sylvania|https?:\/\/|[a-zA-Z0-9-]+\.(ai|com|es|org|net|io|co|dev|app)\b/i.test(userMessage);
+      let requiresTools = /crea|crear|agendar|apunta|apuntar|anota|anotar|lista|listar|busca|buscar|envia|envía|envias|envías|lee|leer|open|genera|generar|sube|subir|mueve|mover|borra|borrar|investiga|investigar|resume|resumir|transcribe|transcribir|factura|presupuesto|presupuestos|proforma|proformas|cotizacion|cotizaciones|evento|correo|email|gmail|mensaje|recibido|bandeja|drive|carpeta|archivo|subir|descargar|mkdir|calendar|calendario|cita|reunion|reunión|agenda|programar|youtube|video|transcripcion|transcripción|sheets|excel|hoja|celda|fila|columna|web_search|read_url|noticia|noticias|memoria|historial|resumen|recordar|recuerdas|ayer|hablamos|primera|conversacion|conversación|dijiste|dije|skill|skills|habilidad|habilidades|entra|entrar|visita|visitar|accede|acceder|mira|mirar|consulta|consultar|url|urls|web|sitio|pagina|página|portal|internet|link|enlace|silvania|sylvania|https?:\/\/|[a-zA-Z0-9-]+\.(ai|com|es|org|net|io|co|dev|app)\b/i.test(userMessage);
 
       // Anti-fast-path regex para garantizar acceso a herramientas en investigación, enlaces y operaciones de Google
       const antiFastPathRegex = /factura|facturas|invoice|iva|investig|protocolo|empresa|paleplast|maps|correo|gmail|drive|list|enlace|intent|ejecut|autoriz|gmail_list|drive_list|read_url|web_search/i;
@@ -1210,7 +1221,7 @@ export function hasTaskOrQuestionIntent(text: string): boolean {
   if (!text) return false;
   const clean = text.trim();
   if (
-    /\b(crea|crear|agendar|agenda|programa|programar|apunta|apuntar|anota|anotar|pon|poner|evento|eventos|cita|citas|reuni[oó]n|reuniones|recordatorio|calendar|calendario|factura|facturas|presupuesto|hoja|hojas|sheet|sheets|excel|tabla|parte|taller|correo|correos|email|emails|gmail|env[ií]a|enviar|manda|mandar|redacta|redactar|drive|carpeta|archivo|archivos|documento|documentos|pdf|sube|subir|descarga|descargar|busca|buscar|investiga|investigar|lista|listar|lee|leer|analiza|analizar|resumen|resume|resumir|borra|borrar|elimina|eliminar|mueve|mover|actualiza|actualizar|modifica|modificar|cambia|cambiar|skill|skills|habilidad|web|url|link|enlace|auth|vincular|conectar|transcribe|transcribir|youtube|video|noticias|ayer|mañana|manana|pasado\s+mañana|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\b/i.test(clean)
+    /\b(crea|crear|agendar|agenda|programa|programar|apunta|apuntar|anota|anotar|pon|poner|evento|eventos|cita|citas|reuni[oó]n|reuniones|recordatorio|calendar|calendario|factura|facturas|presupuesto|presupuestos|proforma|proformas|cotizacion|cotizaciones|budget|hoja|hojas|sheet|sheets|excel|tabla|parte|taller|correo|correos|email|emails|gmail|env[ií]a|enviar|manda|mandar|redacta|redactar|drive|carpeta|archivo|archivos|documento|documentos|pdf|sube|subir|descarga|descargar|busca|buscar|investiga|investigar|lista|listar|lee|leer|analiza|analizar|resumen|resume|resumir|borra|borrar|elimina|eliminar|mueve|mover|actualiza|actualizar|modifica|modificar|cambia|cambiar|skill|skills|habilidad|web|url|link|enlace|auth|vincular|conectar|transcribe|transcribir|youtube|video|noticias|ayer|mañana|manana|pasado\s+mañana|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\b/i.test(clean)
   ) {
     return true;
   }

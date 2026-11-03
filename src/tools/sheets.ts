@@ -958,3 +958,175 @@ export const sheetsCreateInvoice = async (opts: { title: string; number?: string
     return `❌ Error al crear la factura estructurada: ${error.message}`;
   }
 };
+
+export interface BudgetItem {
+  unit?: number | string;
+  description: string;
+  total: number | string;
+}
+
+export interface BudgetOptions {
+  title?: string;
+  company?: string;
+  number?: string;
+  date?: string;
+  client?: string;
+  vehicle?: string;
+  plate?: string;
+  phone?: string;
+  km?: string | number;
+  items?: BudgetItem[];
+  note?: string;
+  includeIva?: boolean;
+  locale?: "es" | "en";
+  userId?: number;
+}
+
+export function buildBudgetMatrix(opts?: BudgetOptions): (string | number)[][] {
+  const isEn = opts?.locale === "en";
+  const company = opts?.company || "TALLER HNOS LEONCIO";
+  const budgetNum = opts?.number || "0142";
+  const budgetDate = opts?.date || (isEn ? "=TODAY()" : "=HOY()");
+  const client = opts?.client || "JESUS EDUARDO MARTINEZ";
+  const vehicle = opts?.vehicle || "PEUGEOT SCOOTER";
+  const plate = opts?.plate || "8189 NRD";
+  const phone = opts?.phone || "602166780";
+  const km = opts?.km !== undefined ? String(opts.km) : "4.705";
+
+  const defaultItems: BudgetItem[] = [
+    { unit: 1, description: "JUEGO FAROS DELANTERO", total: 280 },
+    { unit: 1, description: "JUEGO INTERMITENTE DELANTERO", total: 86 },
+    { unit: 1, description: "HORQUILLA DELANTERA", total: 250 },
+    { unit: 1, description: "ENCARENADO PEUGEOT SCOOTER 125", total: 280 },
+    { unit: 1, description: "GUARDABARRO DELANTERO", total: 80 },
+    { unit: "", description: "CUADRO DE LUCES", total: 120 },
+    { unit: "", description: "MANILLA DELANTERO 40X2", total: 80 },
+    { unit: 1, description: "PROTECTOR PANTALLA DELANTERA", total: 60 },
+    { unit: 1, description: "RETROVISOR DERECHO", total: 52 },
+    { unit: "", description: "RETROVISOR IZQUIERDO", total: 52 },
+    { unit: "", description: "NEUMATICO DELANTERO", total: 72 },
+    { unit: "", description: "LLANTA DE ALUMINIO DELANTERA", total: 138 },
+    { unit: "", description: "MANO DE OBRA", total: 350 }
+  ];
+
+  const itemsToUse = (opts?.items && opts.items.length > 0) ? opts.items : defaultItems;
+
+  const matrix: (string | number)[][] = [
+    [company, "", ""],
+    ["FECHA:", budgetDate, ""],
+    [`PROFORMA ${budgetNum}`, "", ""],
+    ["", "", ""],
+    ["CLIENTE:", client, ""],
+    ["VEHICULO:", vehicle, `MATRICULA: ${plate}`],
+    ["TELEFONO:", phone, `KM: ${km}`],
+    ["", "", ""],
+    ["UNIDAD", "DESCRIPCION", "TOTAL (€)"]
+  ];
+
+  const firstItemRow = matrix.length + 1; // fila 10 en base 1
+
+  for (const item of itemsToUse) {
+    const rawVal = item.total;
+    let parsedVal: number | string = rawVal;
+    if (typeof rawVal === "string") {
+      const cleaned = rawVal.replace(/[€\s]/g, "").replace(",", ".");
+      const n = parseFloat(cleaned);
+      if (!isNaN(n)) parsedVal = n;
+    }
+    matrix.push([
+      item.unit !== undefined ? item.unit : 1,
+      item.description || "",
+      parsedVal
+    ]);
+  }
+
+  const lastItemRow = matrix.length; // última fila de partidas
+
+  matrix.push(["", "", ""]); // fila en blanco
+
+  if (opts?.includeIva) {
+    const subtotalRow = matrix.length + 1;
+    const ivaRow = matrix.length + 2;
+    matrix.push(["", "Subtotal", isEn ? `=SUM(C${firstItemRow}:C${lastItemRow})` : `=SUMA(C${firstItemRow}:C${lastItemRow})`]);
+    matrix.push(["", "IVA 21%", isEn ? `=C${subtotalRow}*0.21` : `=C${subtotalRow}*0,21`]);
+    matrix.push(["", "TOTAL CON IVA", `=C${subtotalRow}+C${ivaRow}`]);
+  } else {
+    const note = opts?.note || "Nota: Esta proforma no incluye IVA";
+    matrix.push([
+      note,
+      "TOTAL",
+      isEn ? `=SUM(C${firstItemRow}:C${lastItemRow})` : `=SUMA(C${firstItemRow}:C${lastItemRow})`
+    ]);
+  }
+
+  return matrix;
+}
+
+export const sheetsCreateBudget = async (opts: BudgetOptions) => {
+  const title = opts.title || (opts.number ? `Presupuesto_${opts.number}` : "Presupuesto_Proforma");
+  const uId = opts.userId || userContextStore.getStore()?.userId || 0;
+
+  try {
+    // 1. Crear la hoja de cálculo en silvania/
+    const createRes = await sheetsCreate(title, uId);
+    if (createRes.startsWith("❌") || createRes.includes("Error al crear")) {
+      return createRes;
+    }
+
+    const spreadsheetId = extractSpreadsheetIdFromCreateOutput(createRes);
+    if (!spreadsheetId) {
+      return `❌ Error: No se pudo obtener un spreadsheetId válido al crear la hoja. Detalles: ${createRes}`;
+    }
+
+    // 2. Rellenar con la matriz de presupuesto y fórmulas vivas en A1 (español por defecto)
+    const baseLocale = opts.locale || "es";
+    let matrix = buildBudgetMatrix({ ...opts, locale: baseLocale });
+    let writeRes = await sheetsWrite(spreadsheetId, "A1", matrix, uId);
+
+    if (writeRes.startsWith("❌") || writeRes.startsWith("⚠️") || writeRes.includes("Error al escribir")) {
+      return `❌ Error al volcar la estructura y fórmulas del presupuesto en la hoja (SPREADSHEET_ID=${spreadsheetId}): ${writeRes}`;
+    }
+
+    // 3. Verificar si falló por locale EN (p. ej. #NAME?, #VALUE!, #¿NOMBRE?)
+    let checkLocaleFailed = false;
+    try {
+      const readRes = await sheetsRead(spreadsheetId, `C${matrix.length - 2}:C${matrix.length}`, uId);
+      if (
+        readRes.includes("#NAME?") ||
+        readRes.includes("#VALUE!") ||
+        readRes.includes("#NAME") ||
+        readRes.includes("#VALOR") ||
+        readRes.includes("#ERROR!") ||
+        readRes.includes("#¿NOMBRE?")
+      ) {
+        checkLocaleFailed = true;
+      }
+    } catch (err) {
+      console.warn("⚠️ No se pudo verificar la validez de las fórmulas tras la escritura del presupuesto:", err);
+    }
+
+    if (checkLocaleFailed && baseLocale === "es") {
+      console.log("⚠️ Fórmulas con error de locale detectadas en presupuesto. Reintentando con locale inglés (SUM)...");
+      matrix = buildBudgetMatrix({ ...opts, locale: "en" });
+      const rewriteRes = await sheetsWrite(spreadsheetId, "A1", matrix, uId);
+      if (rewriteRes.startsWith("❌") || rewriteRes.startsWith("⚠️") || rewriteRes.includes("Error al escribir")) {
+        return `❌ Error al reintentar la escritura de fórmulas en inglés (SPREADSHEET_ID=${spreadsheetId}): ${rewriteRes}`;
+      }
+    }
+
+    // Guardar como última hoja/presupuesto activa de la sesión
+    await dbService.saveDriveFolder(uId, "sheet:LAST_ACTIVE", `${spreadsheetId}|${title}`);
+    await dbService.saveDriveFolder(uId, "sheet:LAST_BUDGET", `${spreadsheetId}|${title}`);
+
+    const editLink = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
+    return (
+      `SPREADSHEET_ID=${spreadsheetId}\n` +
+      `LINK=${editLink}\n` +
+      `MARKDOWN=[${title}](${editLink})\n` +
+      `STATUS=OK (Presupuesto/Proforma creado en silvania/ con cálculo automático de totales en A1)\n` +
+      `RESPUESTA_OBLIGATORIA=[${title}](${editLink})`
+    );
+  } catch (error: any) {
+    return `❌ Error al crear el presupuesto estructurado: ${error.message}`;
+  }
+};
