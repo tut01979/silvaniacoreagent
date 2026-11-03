@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Silvania CoreAgent | Tu Oficina Ejecutiva en Telegram</title>
-  <meta name="description" content="Asistente de productividad en Telegram integrado con Google Workspace: Calendar, Sheets, Drive acotado y envío de correo a tu petición.">
+  <title>Silvania CoreAgent | Oficina Ejecutiva Inteligente en Telegram</title>
+  <meta name="description" content="Oficina ejecutiva inteligente para autónomos, comerciales y pymes. Opera Calendar, Sheets y Drive desde Telegram sobre el Google Workspace que ya usas. Verificado por Google · permisos mínimos.">
   
   <!-- Open Graph -->
   <meta property="og:title" content="Silvania CoreAgent | Tu Oficina Ejecutiva en Telegram">
-  <meta property="og:description" content="Gestiona reuniones, hojas de cálculo, archivos y correos desde Telegram con lenguaje natural.">
+  <meta property="og:description" content="Para autónomos, comerciales y pymes que viven en Telegram y Google Workspace. Sin saltar todo el día entre Calendar, hojas de cálculo y el correo.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://silvania.ai/coreagent">
   
@@ -86,88 +86,135 @@
       left: -200px;
     }
 
-    /* Header */
+    /* Header — 3 bloques SaaS limpios (Marca · Nav central · Acciones) */
     header {
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      background-color: rgba(3, 7, 18, 0.75);
+      background-color: rgba(3, 7, 18, 0.82);
       border-bottom: 1px solid var(--card-border);
       position: fixed;
       width: 100%;
       top: 0;
       left: 0;
       z-index: 100;
-      padding: 1rem 2rem;
+      padding: 0.85rem 2rem;
     }
 
     .header-container {
-      max-width: 1200px;
+      max-width: 1240px;
       margin: 0 auto;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 1.5rem;
     }
 
     .logo {
       font-family: var(--font-title);
       font-weight: 800;
-      font-size: 1.4rem;
+      font-size: 1.25rem;
       color: var(--text-main);
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 0.6rem;
       text-decoration: none;
-    }
-
-    .logo-badge {
-      font-size: 0.75rem;
-      background: rgba(16, 185, 129, 0.15);
-      color: #10b981;
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      padding: 2px 8px;
-      border-radius: 20px;
-      font-weight: 700;
+      white-space: nowrap;
+      flex-shrink: 0;
+      letter-spacing: -0.3px;
     }
 
     nav {
       display: flex;
       align-items: center;
-      gap: 1.8rem;
+      justify-content: space-between;
+      flex: 1;
+      gap: 1.5rem;
     }
 
-    nav a {
+    .nav-center {
+      display: flex;
+      align-items: center;
+      gap: 1.6rem;
+      margin: 0 auto;
+    }
+
+    .nav-center a {
       color: var(--text-muted);
       text-decoration: none;
       font-size: 0.92rem;
       font-weight: 500;
-      transition: all 0.2s ease;
+      white-space: nowrap;
+      transition: color 0.2s ease;
     }
 
-    nav a:hover {
+    .nav-center a:hover {
       color: var(--text-main);
     }
 
-    .nav-hub {
-      color: #60a5fa !important;
+    .nav-right {
       display: flex;
       align-items: center;
+      gap: 1rem;
+      flex-shrink: 0;
+    }
+
+    .nav-hub {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
       gap: 0.4rem;
+      white-space: nowrap;
+      padding: 0.45rem 0.85rem;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.03);
+      transition: all 0.2s ease;
+    }
+
+    .nav-hub:hover {
+      color: var(--text-main);
+      border-color: rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.07);
     }
 
     .nav-btn {
       background: linear-gradient(135deg, var(--primary), #059669);
       color: white !important;
-      padding: 0.6rem 1.4rem;
+      text-decoration: none;
+      padding: 0.55rem 1.25rem;
       border-radius: 50px;
       font-weight: 700;
       font-size: 0.88rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      white-space: nowrap;
       box-shadow: 0 4px 15px var(--primary-glow);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      transition: all 0.2s ease;
     }
 
     .nav-btn:hover {
-      transform: translateY(-2px);
+      transform: translateY(-1px);
       box-shadow: 0 8px 25px rgba(16, 185, 129, 0.35);
+    }
+
+    .mobile-menu-toggle {
+      display: none;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      cursor: pointer;
+      flex-shrink: 0;
     }
 
     /* Hero Section */
@@ -634,7 +681,24 @@
     .video-playlist {
       display: flex;
       flex-direction: column;
-      gap: 0.85rem;
+      gap: 0.6rem;
+      max-height: 620px;
+      overflow-y: auto;
+      padding-right: 0.35rem;
+    }
+
+    .video-playlist::-webkit-scrollbar {
+      width: 5px;
+    }
+
+    .video-playlist::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.4);
+      border-radius: 8px;
+    }
+
+    .video-playlist::-webkit-scrollbar-thumb {
+      background: rgba(16, 185, 129, 0.35);
+      border-radius: 8px;
     }
 
     .playlist-header {
@@ -644,7 +708,7 @@
       color: #9ca3af;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      margin-bottom: 0.3rem;
+      margin-bottom: 0.2rem;
       display: flex;
       align-items: center;
       gap: 0.5rem;
@@ -653,11 +717,11 @@
     .playlist-item {
       display: flex;
       align-items: center;
-      gap: 1rem;
+      gap: 0.85rem;
       background: rgba(17, 24, 39, 0.45);
       border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 18px;
-      padding: 1rem 1.15rem;
+      border-radius: 16px;
+      padding: 0.78rem 1rem;
       text-align: left;
       cursor: pointer;
       color: var(--text-main);
@@ -665,6 +729,7 @@
       position: relative;
       overflow: hidden;
       width: 100%;
+      flex-shrink: 0;
     }
 
     .playlist-item:hover {
@@ -1201,6 +1266,12 @@
     .social-facebook .social-icon { color: #1877f2; background: rgba(24, 119, 242, 0.15); }
     .social-facebook:hover { border-color: rgba(24, 119, 242, 0.6); box-shadow: 0 10px 25px rgba(24, 119, 242, 0.2); }
 
+    @media (max-width: 1024px) {
+      header { padding: 0.75rem 1.25rem; }
+      .nav-center { gap: 1.1rem; }
+      .nav-center a { font-size: 0.86rem; }
+    }
+
     @media (max-width: 900px) {
       .hero {
         grid-template-columns: 1fr;
@@ -1219,7 +1290,40 @@
       .oauth-trust-box { margin: 2rem auto 0 auto; text-align: left; }
       .steps-grid { grid-template-columns: 1fr; }
       .transparency-box { grid-template-columns: 1fr; }
-      nav { display: none; }
+      .mobile-menu-toggle { display: inline-flex; }
+      nav {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background: rgba(3, 7, 18, 0.96);
+        border-bottom: 1px solid var(--card-border);
+        padding: 1.25rem 1.5rem;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+        backdrop-filter: blur(20px);
+      }
+      nav.open {
+        display: flex;
+      }
+      .nav-center {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.85rem;
+        margin: 0;
+      }
+      .nav-right {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--card-border);
+      }
+      .nav-hub, .nav-btn {
+        justify-content: center;
+      }
     }
   </style>
 </head>
@@ -1233,20 +1337,24 @@
     <div class="header-container">
       <a href="/" class="logo">
         <img src="/logo_core_emblem.png" alt="Silvania CoreAgent Logo">
-        Silvania CoreAgent
-        <span class="logo-badge">Telegram + Google</span>
+        <span>Silvania CoreAgent</span>
       </a>
-      <nav>
-        <a href="/" class="nav-hub"><i class="fa-solid fa-arrow-left"></i> Ecosistema Hub</a>
-        <a href="#tutoriales"><i class="fa-solid fa-play"></i> Vídeos Demos</a>
-        <a href="#como-funciona">Cómo Funciona</a>
-        <a href="#herramientas">Herramientas</a>
-        <a href="#seguridad">Seguridad</a>
-        <a href="#faq">FAQ</a>
-        <a href="/eva-landing" style="color: #c084fc;"><i class="fa-solid fa-face-smile"></i> Conocer Eva</a>
-        <a href="https://t.me/{{BOT_USERNAME}}" target="_blank" class="nav-btn">
-          <i class="fa-brands fa-telegram"></i> Probar en Telegram
-        </a>
+      <button type="button" class="mobile-menu-toggle" aria-label="Abrir menú" onclick="document.getElementById('core-nav').classList.toggle('open')">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+      <nav id="core-nav">
+        <div class="nav-center">
+          <a href="#como-funciona">Cómo funciona</a>
+          <a href="#herramientas">Herramientas</a>
+          <a href="#seguridad">Seguridad</a>
+          <a href="#faq">FAQ</a>
+        </div>
+        <div class="nav-right">
+          <a href="/" class="nav-hub"><i class="fa-solid fa-arrow-left"></i> Hub</a>
+          <a href="https://t.me/Silvania_Core_Agent_Bot" target="_blank" rel="noopener noreferrer" class="nav-btn">
+            <i class="fa-brands fa-telegram"></i> Probar en Telegram
+          </a>
+        </div>
       </nav>
     </div>
   </header>
@@ -1259,15 +1367,16 @@
         <img src="/logo_core_emblem.png" alt="">
       </div>
 
-      <span class="hero-tag"><i class="fa-solid fa-shield-halved"></i> Integración Segura Google Workspace</span>
+      <span class="hero-tag"><i class="fa-solid fa-shield-halved"></i> Verificado por Google · Permisos mínimos</span>
       <h1>Tu oficina ejecutiva en <span>Telegram</span></h1>
-      <p>Calendar, Sheets, archivos en Drive y envío de correos cuando tú lo pides. Todo mediante lenguaje natural, comandos de voz y sin cambiar de aplicación.</p>
+      <p style="color: #e2e8f0; font-weight: 600; margin-bottom: 0.75rem;">Para autónomos, comerciales y pymes que viven en Telegram y Google Workspace.</p>
+      <p>Sin saltar todo el día entre Calendar, hojas de cálculo y el correo. Opera Calendar, Sheets y Drive desde Telegram — sobre el Google Workspace que ya usas, y envía correos solo con tu confirmación.</p>
       <div class="cta-container">
         <a href="https://t.me/{{BOT_USERNAME}}" target="_blank" class="btn-main">
           <i class="fa-brands fa-telegram"></i> Iniciar en Telegram
         </a>
-        <a href="#tutoriales" class="btn-secondary">
-          <i class="fa-solid fa-circle-play"></i> Ver Vídeos Demos
+        <a href="#como-funciona" class="btn-secondary">
+          <i class="fa-solid fa-arrow-down"></i> Cómo funciona
         </a>
       </div>
 
@@ -1317,82 +1426,7 @@
     </div>
   </section>
 
-  <!-- Sección de Vídeos / Tutoriales en Píldoras -->
-  <section class="section-container" id="tutoriales">
-    <div class="section-title">
-      <span class="video-section-badge"><i class="fa-solid fa-circle-play"></i> Demostraciones Reales</span>
-      <h2>Aprende a Usar CoreAgent en <span>Píldoras Rápidas</span></h2>
-      <p>Mira demostraciones paso a paso de cada funcionalidad clave grabadas directamente sobre el producto real.</p>
-    </div>
 
-    <div class="video-showcase-grid">
-      <!-- Reproductor Principal -->
-      <div class="video-player-container">
-        <div class="video-frame">
-          <video id="pildora-video" controls playsinline preload="metadata" poster="/robot.png">
-            <source id="video-source" src="/videos/coreagent_pildora_1.mp4" type="video/mp4">
-            Tu navegador no soporta la reproducción de video HTML5.
-          </video>
-          <div class="video-overlay-badge" id="video-current-badge">
-            <i class="fa-solid fa-bolt"></i> Píldora 1: Tu Oficina en Telegram
-          </div>
-        </div>
-        <div class="video-info-box">
-          <h3 id="video-title">Píldora 1: Tu Oficina Ejecutiva en Telegram</h3>
-          <p id="video-desc">Descubre qué es Silvania CoreAgent, qué herramientas controla y cómo opera dentro de Telegram sin necesidad de instalar apps pesadas.</p>
-          <div class="video-actions">
-            <a href="https://t.me/{{BOT_USERNAME}}" target="_blank" class="btn-main" style="padding: 0.7rem 1.4rem; font-size: 0.9rem;">
-              <i class="fa-brands fa-telegram"></i> Probar esto en Telegram
-            </a>
-            <span class="video-meta-time" id="video-duration-text"><i class="fa-regular fa-clock"></i> ~30 seg</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Lista de Reproducción Interactiva -->
-      <div class="video-playlist">
-        <div class="playlist-header">
-          <i class="fa-solid fa-list-ol"></i> Serie de Demostraciones
-        </div>
-
-        <button type="button" class="playlist-item active" onclick="switchPildora(1, this)">
-          <div class="playlist-item-num">1</div>
-          <div class="playlist-item-info">
-            <h4>Tu Oficina en Telegram</h4>
-            <p>Qué es CoreAgent y Google Workspace</p>
-          </div>
-          <span class="playlist-time">0:30</span>
-        </button>
-
-        <button type="button" class="playlist-item" onclick="switchPildora(2, this)">
-          <div class="playlist-item-num">2</div>
-          <div class="playlist-item-info">
-            <h4>Conexión Segura en 3 Clics</h4>
-            <p>Vinculación OAuth y permisos mínimos</p>
-          </div>
-          <span class="playlist-time">0:28</span>
-        </button>
-
-        <button type="button" class="playlist-item" onclick="switchPildora(3, this)">
-          <div class="playlist-item-num">3</div>
-          <div class="playlist-item-info">
-            <h4>Google Calendar al Instante</h4>
-            <p>Agenda citas en lenguaje natural</p>
-          </div>
-          <span class="playlist-time">0:26</span>
-        </button>
-
-        <button type="button" class="playlist-item" onclick="switchPildora(4, this)">
-          <div class="playlist-item-num">4</div>
-          <div class="playlist-item-info">
-            <h4>Hojas de Cálculo & Drive</h4>
-            <p>Facturas con IVA 21% automáticas</p>
-          </div>
-          <span class="playlist-time">0:26</span>
-        </button>
-      </div>
-    </div>
-  </section>
 
   <!-- Herramientas Reales (Sin Inventar) -->
   <section class="section-container" id="herramientas">
@@ -1460,19 +1494,20 @@
     </div>
   </div>
 
-  <!-- Sección del Cerebro Ejecutivo: Robot en la Oficina -->
+  <!-- Sección de Operativa Diaria: Robot en la Oficina -->
   <section class="section-container" id="cerebro" style="padding-top: 1rem;">
     <div class="brain-card-grid">
       <div class="brain-text">
         <span class="badge-pill" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: var(--primary); margin-bottom: 1rem; display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.9rem; border-radius: 50px; font-size: 0.82rem; font-weight: 700; text-transform: uppercase;">
-          <i class="fa-solid fa-brain"></i> Inteligencia Autónoma
+          <i class="fa-solid fa-check-double"></i> Ejecución Bajo Petición
         </span>
-        <h2>El Cerebro Ejecutivo detrás de <span>tu Asistente</span></h2>
-        <p>Silvania CoreAgent combina modelos de lenguaje avanzados con herramientas de ejecución en tiempo real sobre Google Workspace. No es solo un chatbot de respuestas: es un agente que comprende tus prioridades, consulta tus documentos y ejecuta acciones de oficina con precisión milimétrica.</p>
+        <h2>Tu secretaría operativa en <span>Google Workspace</span></h2>
+        <p style="color: #e2e8f0; font-weight: 600; margin-bottom: 0.75rem;">«No te pedimos otro workspace. Trabajamos donde ya estás: el chat y Google.»</p>
+        <p>Silvania CoreAgent traduce tus mensajes de voz o texto en acciones concretas dentro de las herramientas que ya utilizas. No necesitas aprender un nuevo panel ni cambiar tu forma de trabajar: pides una tarea en el chat y el asistente la ejecuta directamente en tu cuenta bajo tus permisos.</p>
         <ul class="check-list" style="margin-top: 1.5rem;">
-          <li><i class="fa-solid fa-check"></i> <strong>Procesamiento Multimodal:</strong> Entiende notas de voz, videonotas y documentos adjuntos.</li>
-          <li><i class="fa-solid fa-check"></i> <strong>Aislamiento y Soberanía:</strong> Tus datos se gestionan en tu propio Google Workspace.</li>
-          <li><i class="fa-solid fa-check"></i> <strong>Disponibilidad Continua:</strong> Listo 24/7 desde cualquier dispositivo a través de Telegram.</li>
+          <li><i class="fa-solid fa-check"></i> <strong>Voz, texto y archivos:</strong> Envía una nota de voz entre reuniones o la foto de un recibo para registrarlo.</li>
+          <li><i class="fa-solid fa-check"></i> <strong>En tu propio Google Workspace:</strong> Los eventos, hojas y carpetas viven en tu cuenta, sin plataformas intermedias.</li>
+          <li><i class="fa-solid fa-check"></i> <strong>Control humano siempre:</strong> Las acciones sensibles, como el envío de un correo, requieren tu confirmación expresa.</li>
         </ul>
         <div style="margin-top: 2rem;">
           <a href="https://t.me/{{BOT_USERNAME}}" target="_blank" class="btn-main">
@@ -1524,8 +1559,8 @@
 
   <!-- CTA Inferior -->
   <div class="bottom-cta">
-    <h2>¿Listo para organizar tu oficina desde Telegram?</h2>
-    <p>Empieza a delegar la gestión de tu calendario, hojas de cálculo y recordatorios hoy mismo.</p>
+    <h2>Organiza la semana, anota en Sheets, envía el aviso — desde el chat.</h2>
+    <p>Para autónomos, comerciales y pymes que quieren resolver su operativa diaria en Google Workspace sin salir de Telegram.</p>
     <a href="https://t.me/{{BOT_USERNAME}}" target="_blank" class="btn-main">
       <i class="fa-brands fa-telegram"></i> Abrir @{{BOT_USERNAME}} en Telegram
     </a>
@@ -1607,70 +1642,6 @@
   </footer>
 
   <script>
-    // ─── PLAYLIST DE PÍLDORAS EN VÍDEO ───
-    const pildorasData = {
-      1: {
-        title: "Píldora 1: Tu Oficina Ejecutiva en Telegram",
-        badge: "Píldora 1: Tu Oficina en Telegram",
-        icon: "fa-bolt",
-        desc: "Descubre qué es Silvania CoreAgent, qué herramientas controla y cómo opera dentro de Telegram sin necesidad de instalar apps pesadas.",
-        duration: "~30 seg",
-        src: "/videos/coreagent_pildora_1.mp4"
-      },
-      2: {
-        title: "Píldora 2: Conexión Segura en 3 Clics",
-        badge: "Píldora 2: Google OAuth 2.0",
-        icon: "fa-shield-halved",
-        desc: "Aprende cómo funciona el comando /auth, la pantalla oficial de Google OAuth 2.0 y la estricta política de permisos mínimos para proteger tu privacidad.",
-        duration: "~28 seg",
-        src: "/videos/coreagent_pildora_2.mp4"
-      },
-      3: {
-        title: "Píldora 3: Google Calendar en Lenguaje Natural",
-        badge: "Píldora 3: Google Calendar",
-        icon: "fa-calendar-days",
-        desc: "Agenda citas y reuniones complejas con fecha, hora y lugar solo con un mensaje de voz o texto. El bot te entrega el enlace directo al evento al instante.",
-        duration: "~26 seg",
-        src: "/videos/coreagent_pildora_3.mp4"
-      },
-      4: {
-        title: "Píldora 4: Automatización de Sheets y Drive",
-        badge: "Píldora 4: Sheets & Drive",
-        icon: "fa-table",
-        desc: "Pide la creación de hojas de cálculo complejas como plantillas de facturación con IVA al 21% y tenlas archivadas y organizadas en tu carpeta de Google Drive.",
-        duration: "~26 seg",
-        src: "/videos/coreagent_pildora_4.mp4"
-      }
-    };
-
-    function switchPildora(id, btnElement) {
-      const data = pildorasData[id];
-      if (!data) return;
-
-      // Actualizar botones de lista
-      document.querySelectorAll('.playlist-item').forEach(el => el.classList.remove('active'));
-      if (btnElement) btnElement.classList.add('active');
-
-      // Actualizar reproductor
-      const video = document.getElementById('pildora-video');
-      const source = document.getElementById('video-source');
-      const badge = document.getElementById('video-current-badge');
-      const title = document.getElementById('video-title');
-      const desc = document.getElementById('video-desc');
-      const duration = document.getElementById('video-duration-text');
-
-      if (badge) badge.innerHTML = `<i class="fa-solid ${data.icon}"></i> ${data.badge}`;
-      if (title) title.innerText = data.title;
-      if (desc) desc.innerText = data.desc;
-      if (duration) duration.innerHTML = `<i class="fa-regular fa-clock"></i> ${data.duration}`;
-
-      if (video && source) {
-        source.src = data.src;
-        video.load();
-        video.play().catch(() => {});
-      }
-    }
-
     // ─── EFECTO 3D TILT CON EL RATÓN (SUAVE Y ALINEADO) ───
     const card = document.getElementById('interactive-robot');
     if (card) {

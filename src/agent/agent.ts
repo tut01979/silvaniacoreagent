@@ -773,19 +773,38 @@ Si detectas un error de red o de "Conflict", informa al usuario que estás reini
         
         // Si no quiere usar herramientas, comprobamos guardias antes de terminar
         if (!response.tool_calls || response.tool_calls.length === 0) {
+          // Detectar si el mensaje es una subida automática de imagen (la descripción visual ya fue generada y está en el prompt)
+          const isPhotoMessage = /El usuario ha enviado una imagen que ya he subido/i.test(userMessage) ||
+                                 /descripci[oó]n visual de lo que hay en la imagen/i.test(userMessage);
+          const isImageFile = /\.(jpg|jpeg|png|webp|gif|bmp)\b/i.test(userMessage);
+
           // Si el usuario proporcionó un ID de archivo de Drive y el modelo intentó responder en la primera iteración sin llamar a la herramienta de lectura:
-          const driveIdMatch = userMessage.match(/\b([a-zA-Z0-9_-]{25,65})\b/);
+          const explicitIdMatch = userMessage.match(/\b(?:ID:\s*|id:\s*|file_id:\s*)([a-zA-Z0-9_-]{25,65})\b/i);
+          const driveIdMatch = explicitIdMatch || (!isPhotoMessage ? userMessage.match(/\b([a-zA-Z0-9_-]{28,65})\b/) : null);
           const asksReading = /\b(lee|leer|analiza|analizar|resumen|resume|muestra|ver|contenido|archivo|documento|pdf)\b/i.test(userMessage);
-          if (iterations === 0 && driveIdMatch && asksReading) {
+
+          // Si es subida de foto, no forzar lectura: la descripción ya está en el contexto
+          if (iterations === 0 && driveIdMatch && asksReading && !isPhotoMessage) {
             const fileId = driveIdMatch[1];
-            console.log(`📄 [Agent Guard] Usuario solicita lectura del archivo Drive ${fileId}. Forzando lectura.`);
-            history.push(response);
-            history.push({
-              role: "user" as const,
-              content: `⚠️ ACCIÓN OBLIGATORIA: Para responder sobre el archivo ${fileId}, DEBES ejecutar obligatoriamente la herramienta analyze_document (o drive_read_file) con file_id: "${fileId}". No respondas sin haber leído el archivo real.`
-            });
-            iterations++;
-            continue;
+            if (isImageFile) {
+              console.log(`🖼️ [Agent Guard] Usuario solicita análisis de imagen Drive ${fileId}. Forzando analyze_image.`);
+              history.push(response);
+              history.push({
+                role: "user" as const,
+                content: `⚠️ ACCIÓN OBLIGATORIA: Para responder sobre la imagen ${fileId}, DEBES ejecutar obligatoriamente la herramienta analyze_image con file_id: "${fileId}". No respondas sin haber analizado la imagen real.`
+              });
+              iterations++;
+              continue;
+            } else {
+              console.log(`📄 [Agent Guard] Usuario solicita lectura del archivo Drive ${fileId}. Forzando lectura.`);
+              history.push(response);
+              history.push({
+                role: "user" as const,
+                content: `⚠️ ACCIÓN OBLIGATORIA: Para responder sobre el archivo ${fileId}, DEBES ejecutar obligatoriamente la herramienta analyze_document (o drive_read_file) con file_id: "${fileId}". No respondas sin haber leído el archivo real.`
+              });
+              iterations++;
+              continue;
+            }
           }
 
           let rawContent = response.content || "No tengo una respuesta en este momento.";
