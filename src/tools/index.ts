@@ -166,20 +166,20 @@ export const tools = {
     if (!uId) return "❌ Error: Usuario no identificado.";
     return await calendarList(uId, days_ahead, start_date);
   },
-  calendar_create: async ({ summary, start, end, description, attendees, userId }: { summary: string; start: string; end: string; description?: string; attendees?: string[] | string; userId?: number }) => {
+  calendar_create: async ({ summary, start, end, description, attendees, location, userId }: { summary: string; start: string; end: string; description?: string; attendees?: string[] | string; location?: string; userId?: number }) => {
     const uId = userId || userContextStore.getStore()?.userId;
     if (!uId) return "❌ Error: Usuario no identificado.";
-    return await calendarCreate(uId, summary, start, end, description, attendees);
+    return await calendarCreate(uId, summary, start, end, description, attendees, location);
   },
   calendar_delete: async ({ event_id, userId }: { event_id: string; userId?: number }) => {
     const uId = userId || userContextStore.getStore()?.userId;
     if (!uId) return "❌ Error: Usuario no identificado.";
     return await calendarDelete(uId, event_id);
   },
-  calendar_update: async ({ event_id, summary, start, end, description, attendees, send_updates, userId }: { event_id: string; summary?: string; start?: string; end?: string; description?: string; attendees?: string[] | string; send_updates?: string; userId?: number }) => {
+  calendar_update: async ({ event_id, summary, start, end, description, attendees, send_updates, location, userId }: { event_id: string; summary?: string; start?: string; end?: string; description?: string; attendees?: string[] | string; send_updates?: string; location?: string; userId?: number }) => {
     const uId = userId || userContextStore.getStore()?.userId;
     if (!uId) return "❌ Error: Usuario no identificado.";
-    return await calendarUpdate(uId, event_id, summary, start, end, description, attendees, send_updates);
+    return await calendarUpdate(uId, event_id, summary, start, end, description, attendees, send_updates, location);
   },
 
   // ─── SHEETS ───

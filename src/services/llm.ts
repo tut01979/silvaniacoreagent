@@ -342,6 +342,7 @@ export const llmService = {
               start: { type: "string", description: "Fecha y hora de inicio en formato ISO (ej: 2026-10-26T10:00:00+02:00)" },
               end: { type: "string", description: "Fecha y hora de fin en formato ISO (ej: 2026-10-26T11:00:00+02:00)" },
               description: { type: "string", description: "Descripción o notas del evento (opcional)" },
+              location: { type: "string", description: "Lugar, dirección física o enlace de reunión del evento (ej: Palacio de Congresos de Valencia, Calle Gran Vía 12, Google Meet) (opcional)" },
               attendees: {
                 type: "array",
                 items: { type: "string" },
@@ -370,7 +371,7 @@ export const llmService = {
         type: "function",
         function: {
           name: "calendar_update",
-          description: "Actualiza un evento existente en Google Calendar. Permite cambiar título, horarios, descripción o INVITAR/AÑADIR ASISTENTES (emails) enviando invitaciones por correo electrónico.",
+          description: "Actualiza un evento existente en Google Calendar. Permite cambiar título, horarios, descripción, lugar o INVITAR/AÑADIR ASISTENTES (emails) enviando invitaciones por correo electrónico.",
           parameters: {
             type: "object",
             properties: {
@@ -379,6 +380,7 @@ export const llmService = {
               start: { type: "string", description: "Nuevo inicio en formato ISO (opcional)" },
               end: { type: "string", description: "Nuevo fin en formato ISO (opcional)" },
               description: { type: "string", description: "Nueva descripción (opcional)" },
+              location: { type: "string", description: "Nuevo lugar o ubicación del evento (opcional)" },
               attendees: {
                 type: "array",
                 items: { type: "string" },

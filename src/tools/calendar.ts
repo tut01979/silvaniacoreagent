@@ -120,7 +120,8 @@ export const calendarCreate = async (
   start: string,
   end: string,
   description?: string,
-  attendees?: string[] | string
+  attendees?: string[] | string,
+  location?: string
 ) => {
   try {
     const auth = await getGoogleAuthForUser(userId);
@@ -137,6 +138,7 @@ export const calendarCreate = async (
       description: description || "",
       start: { dateTime: start, timeZone: "Europe/Madrid" },
       end: { dateTime: end, timeZone: "Europe/Madrid" },
+      ...(location ? { location } : {}),
       ...(hasAttendees ? { attendees: attendeeList } : {})
     };
 
@@ -210,7 +212,8 @@ export const calendarUpdate = async (
   end?: string,
   description?: string,
   attendees?: string[] | string,
-  sendUpdates?: string
+  sendUpdates?: string,
+  location?: string
 ) => {
   try {
     const auth = await getGoogleAuthForUser(userId);
@@ -227,6 +230,7 @@ export const calendarUpdate = async (
     const patchBody: any = {};
     if (summary !== undefined) patchBody.summary = summary;
     if (description !== undefined) patchBody.description = description;
+    if (location !== undefined) patchBody.location = location;
     if (start) {
       patchBody.start = { dateTime: start, timeZone: eventData.start?.timeZone || "Europe/Madrid" };
     }

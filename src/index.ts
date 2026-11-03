@@ -2637,9 +2637,10 @@ bot.on("message:photo", async (ctx) => {
     const response = await runAgent(userId, agentContext);
     await safeReply(ctx, response);
   } catch (error) {
-    clearInterval(typingInterval);
     console.error("Error procesando foto:", error);
     await ctx.reply("❌ No pude procesar o subir la imagen.");
+  } finally {
+    clearInterval(typingInterval);
   }
 });
 
@@ -2679,9 +2680,10 @@ bot.on("message:document", async (ctx) => {
     
     await safeReply(ctx, response);
   } catch (error) {
-    clearInterval(typingInterval);
     console.error("Error procesando documento:", error);
     await ctx.reply("❌ No pude procesar o subir el documento.");
+  } finally {
+    clearInterval(typingInterval);
   }
 });
 
@@ -2693,12 +2695,14 @@ bot.on("message:voice", async (ctx) => {
   const typingInterval = setInterval(() => {
     ctx.replyWithChatAction("typing").catch(() => {});
   }, 4000);
-
-  const file = await ctx.api.getFile(ctx.message.voice.file_id);
-  const fileUrl = `https://api.telegram.org/file/bot${config.telegram.token}/${file.file_path}`;
-  const fileName = `voice_${userId}_${Date.now()}.ogg`;
+  const safetyTimeout = setTimeout(() => {
+    clearInterval(typingInterval);
+  }, 90000);
 
   try {
+    const file = await ctx.api.getFile(ctx.message.voice.file_id);
+    const fileUrl = `https://api.telegram.org/file/bot${config.telegram.token}/${file.file_path}`;
+    const fileName = `voice_${userId}_${Date.now()}.ogg`;
     // 1. Transcribir
     const rawTranscribedText = await audioService.downloadAndTranscribe(fileUrl, fileName);
     const transcribedText = correctTranscription(rawTranscribedText);
@@ -2757,10 +2761,17 @@ bot.on("message:voice", async (ctx) => {
         }
       }
     }
-  } catch (error) {
-    clearInterval(typingInterval);
+  } catch (error: any) {
     console.error("Error procesando audio:", error);
-    await ctx.reply("❌ No pude procesar tu mensaje de voz.");
+    const isTimeout = error?.message?.includes("504") || error?.description?.includes("Timeout");
+    if (isTimeout) {
+      await ctx.reply("❌ Los servidores de Telegram tardaron demasiado en entregar el mensaje de voz (504 Timeout). Por favor, prueba a enviarlo de nuevo.");
+    } else {
+      await ctx.reply("❌ No pude procesar tu mensaje de voz.");
+    }
+  } finally {
+    clearInterval(typingInterval);
+    clearTimeout(safetyTimeout);
   }
 });
 
@@ -2833,9 +2844,10 @@ bot.on("message:video_note", async (ctx) => {
       }
     }
   } catch (error) {
-    clearInterval(typingInterval);
     console.error("Error procesando videonota:", error);
     await ctx.reply("❌ No pude transcribir tu videonota.");
+  } finally {
+    clearInterval(typingInterval);
   }
 });
 
@@ -2874,9 +2886,10 @@ bot.on("message:video", async (ctx) => {
     // 3. Responder con texto
     await safeReply(ctx, response);
   } catch (error) {
-    clearInterval(typingInterval);
     console.error("Error procesando video:", error);
     await ctx.reply("❌ No pude transcribir el audio del video.");
+  } finally {
+    clearInterval(typingInterval);
   }
 });
 
