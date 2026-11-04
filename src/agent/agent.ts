@@ -599,7 +599,7 @@ ${gmailHandlingStr}
 - Nunca inventes empresas, webs, perfiles ni descripciones falsas.
 - Si la búsqueda falla: “No encontré resultados válidos.”
 - PROTOCOLO DE INVESTIGACIÓN EMPRESARIAL OBLIGATORIO:
-  1. Web Oficial y Contacto: Usa `read_url` sobre el dominio corporativo oficial para extraer datos reales (razón social, CIF, dirección física, teléfono, email).
+  1. Web Oficial y Datos de Contacto Exhaustivos: Usa `read_url` sobre el dominio corporativo oficial para extraer de forma exhaustiva todos los datos de contacto reales: emails, teléfonos (fijos, móviles y WhatsApp), dirección física / sede, CIF/NIF, razón social y enlaces a páginas de contacto. Si un dato no figura, indícalo expresamente como no encontrado.
   2. Redes Sociales Disponibles: Es OBLIGATORIO identificar y nombrar las redes sociales oficiales encontradas (LinkedIn, Instagram, Facebook, X/Twitter, YouTube, etc.) con sus enlaces directos en formato Markdown `[Red Social](URL)`. Si tras la búsqueda y análisis de la web no se encuentra ninguna red social disponible, indica explícitamente:
      `📱 Redes sociales: No encontradas`.
   3. Enlaces y Datos Adicionales (Maps, Directorios y Solvencia):

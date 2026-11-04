@@ -17,14 +17,20 @@ Esta habilidad establece el protocolo operativo obligatorio para investigar empr
 
 ## Reglas Críticas Anti-Alucinación y de Transparencia (OBLIGATORIAS)
 1. **PROHIBIDO inventar URLs o datos:** Nunca crees enlaces de Google Maps (tipo `/place/...`), Páginas Amarillas, Informa o perfiles sociales si no han sido devueltos directamente por `web_search` o extraídos con `read_url`.
-2. **Redes Sociales Obligatorias:** Es obligatorio buscar, identificar y listar las redes sociales disponibles de la empresa (LinkedIn, Instagram, Facebook, Twitter/X, YouTube, etc.) con sus enlaces Markdown directos. Si no se encuentra ninguna red social oficial en la web ni en la búsqueda, debes indicar explícitamente:
+2. **Extracción Exhaustiva de Datos de Contacto:** Es obligatorio recopilar y listar todos los datos de contacto verificados:
+   - Email(s) corporativos o de atención al cliente.
+   - Teléfono(s) fijos, móviles y WhatsApp directo.
+   - Dirección física, sede o polígono industrial y código postal.
+   - Razón social y CIF/NIF (si es público o accesible).
+   - Enlace directo a la página de contacto oficial (si existe).
+3. **Redes Sociales Obligatorias:** Es obligatorio buscar, identificar y listar las redes sociales disponibles de la empresa (LinkedIn, Instagram, Facebook, Twitter/X, YouTube, etc.) con sus enlaces Markdown directos. Si no se encuentra ninguna red social oficial en la web ni en la búsqueda, debes indicar explícitamente:
    `📱 Redes sociales: No encontradas`.
-3. **Enlaces y Datos Adicionales (Maps, Directorios y Solvencia):**
+4. **Enlaces y Datos Adicionales (Maps, Directorios y Solvencia):**
    - Si se localizan las fichas directas reales (localización en Google Maps, ficha en Páginas Amarillas, informe de solvencia en Informa/Registro Mercantil), deben incluirse obligatoriamente.
    - Si NO se encuentran estas fichas o datos directos, es OBLIGATORIO indicar:
      `⚠️ Enlaces adicionales no encontrados` (o detallar individualmente: `📍 Google Maps: Ficha directa no encontrada`, `📒 Páginas Amarillas: Ficha directa no encontrada`, `🏢 Solvencia / Informa: Ficha directa no encontrada`, adjuntando los enlaces de consulta de directorios correspondientes).
-4. **Secciones de Verdad:** Debes estructurar el informe separando claramente:
-   - **✅ DATOS CORPORATIVOS VERIFICADOS (con fuente real)**
+5. **Secciones de Verdad:** Debes estructurar el informe separando claramente:
+   - **✅ DATOS CORPORATIVOS Y DE CONTACTO VERIFICADOS (con fuente real)**
    - **📱 REDES SOCIALES DISPONIBLES (o "Redes sociales no encontradas")**
    - **🚀 ENLACES Y DATOS ADICIONALES (o "Enlaces adicionales no encontrados")**
    - **⚠️ NO ENCONTRADO / PENDIENTE DE CONFIRMAR**
