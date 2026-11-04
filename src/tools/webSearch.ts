@@ -378,12 +378,12 @@ export async function webSearch(query: string, searchType: string = "web", maxRe
     );
 
     const manualLinks = `
-🚀 **ENLACES DE BÚSQUEDA ADICIONALES**
+🚀 **ENLACES ADICIONALES (DIRECTORIOS, MAPS Y SOLVENCIA)**
 ────────────────────────────
 📍 **Google Maps:** https://www.google.com/maps/search/${encodeURIComponent(query)}
 📒 **Páginas Amarillas:** https://www.paginasamarillas.es/resultados.html?what=${encodeURIComponent(query)}
-💼 **LinkedIn:** https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(query)}
-🏢 **Informa (Empresas):** https://www.informa.es/buscador?q=${encodeURIComponent(query)}
+💼 **LinkedIn (Empresas):** https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(query)}
+🏢 **Informe de Solvencia / Registro (Informa):** https://www.informa.es/buscador?q=${encodeURIComponent(query)}
 `;
 
     if (results.length === 0) {
@@ -444,6 +444,56 @@ export async function readUrl(rawUrl: string): Promise<string> {
 
     const $ = cheerio.load(html);
 
+    // Extraer redes sociales y contactos directos antes de eliminar elementos
+    const socialLinks: Record<string, string> = {};
+    const directContacts: { emails: string[]; phones: string[] } = { emails: [], phones: [] };
+
+    $("a[href]").each((_, el) => {
+      const href = $(el).attr("href")?.trim();
+      if (!href) return;
+
+      if (href.startsWith("mailto:")) {
+        const email = href.replace(/^mailto:/i, "").split("?")[0].trim();
+        if (email && !directContacts.emails.includes(email) && directContacts.emails.length < 5) {
+          directContacts.emails.push(email);
+        }
+        return;
+      }
+
+      if (href.startsWith("tel:")) {
+        const phone = href.replace(/^tel:/i, "").split("?")[0].trim();
+        if (phone && !directContacts.phones.includes(phone) && directContacts.phones.length < 5) {
+          directContacts.phones.push(phone);
+        }
+        return;
+      }
+
+      let fullUrl = href;
+      if (href.startsWith("//")) fullUrl = "https:" + href;
+      else if (href.startsWith("/")) {
+        try {
+          const u = new URL(targetUrl);
+          fullUrl = `${u.origin}${href}`;
+        } catch {}
+      }
+
+      if (/linkedin\.com\/(?:company|in)\/[^/?#\s]+/i.test(fullUrl) && !socialLinks.LinkedIn) {
+        socialLinks.LinkedIn = fullUrl;
+      } else if (/instagram\.com\/[^/?#\s]+/i.test(fullUrl) && !socialLinks.Instagram && !fullUrl.includes("/p/") && !fullUrl.includes("/explore/")) {
+        socialLinks.Instagram = fullUrl;
+      } else if (/(?:twitter\.com|x\.com)\/[^/?#\s]+/i.test(fullUrl) && !socialLinks["Twitter/X"] && !fullUrl.includes("/status/")) {
+        socialLinks["Twitter/X"] = fullUrl;
+      } else if (/facebook\.com\/[^/?#\s]+/i.test(fullUrl) && !socialLinks.Facebook && !fullUrl.includes("/sharer")) {
+        socialLinks.Facebook = fullUrl;
+      } else if (/youtube\.com\/(?:c\/|channel\/|user\/|@)[^/?#\s]+/i.test(fullUrl) && !socialLinks.YouTube) {
+        socialLinks.YouTube = fullUrl;
+      } else if (/tiktok\.com\/@[^/?#\s]+/i.test(fullUrl) && !socialLinks.TikTok) {
+        socialLinks.TikTok = fullUrl;
+      } else if (/(?:wa\.me|api\.whatsapp\.com\/send)/i.test(fullUrl) && !socialLinks.WhatsApp) {
+        socialLinks.WhatsApp = fullUrl;
+      }
+    });
+
     // Extraer metadatos clave
     const title = $("title").text().trim() || $("meta[property='og:title']").attr("content") || "Página Web";
     const description = $("meta[name='description']").attr("content") || $("meta[property='og:description']").attr("content") || "";
@@ -467,6 +517,18 @@ export async function readUrl(rawUrl: string): Promise<string> {
     let output = `🌐 **CONTENIDO DE LA PÁGINA:** [${title}](${targetUrl})\n${SEP}\n\n`;
     if (description) {
       output += `📝 **Descripción:** ${description}\n\n`;
+    }
+    if (directContacts.emails.length > 0 || directContacts.phones.length > 0) {
+      output += `📞 **Contactos Directos Extraídos:**\n`;
+      if (directContacts.emails.length > 0) output += `• **Email(s):** ${directContacts.emails.join(", ")}\n`;
+      if (directContacts.phones.length > 0) output += `• **Teléfono(s):** ${directContacts.phones.join(", ")}\n`;
+      output += `\n`;
+    }
+    if (Object.keys(socialLinks).length > 0) {
+      output += `📱 **Redes Sociales Encontradas:**\n` +
+        Object.entries(socialLinks).map(([net, url]) => `• **${net}:** [${net}](${url})`).join("\n") + `\n\n`;
+    } else {
+      output += `📱 **Redes Sociales:** No se encontraron perfiles de redes sociales en el código de esta página web.\n\n`;
     }
     if (headings.length > 0) {
       output += `📌 **Estructura y Secciones Clave:**\n${headings.join("\n")}\n\n`;

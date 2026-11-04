@@ -1,6 +1,6 @@
 ---
 name: investigacion-empresarial
-description: Protocolo riguroso de investigación y prospección empresarial en tiempo real sin alucinaciones.
+description: Protocolo riguroso de investigación corporativa y prospección en tiempo real usando web_search y read_url sin URLs inventadas, con redes sociales y enlaces adicionales verificados.
 ---
 
 # Protocolo de Investigación Empresarial Real (Silvania CoreAgent)
@@ -15,49 +15,25 @@ Esta habilidad establece el protocolo operativo obligatorio para investigar empr
 - "Busca datos de contacto, web o dirección de X"
 - "Prospección o informe corporativo de X"
 
-## Reglas Críticas Anti-Alucinación (OBLIGATORIAS)
-1. **PROHIBIDO inventar URLs o datos:** Nunca crees enlaces de Google Maps (tipo `/place/...`), Páginas Amarillas, Informa o sitios web si no han sido devueltos directamente por `web_search` o leídos con `read_url`.
-2. **Enlaces de Directorios:** Solo puedes usar los enlaces oficiales de búsqueda genérica con el término codificado:
-   - Google Maps Search: `https://www.google.com/maps/search/<termino_codificado>`
-   - Páginas Amarillas Search: `https://www.paginasamarillas.es/resultados.html?what=<termino_codificado>`
-   - Informa Search: `https://www.informa.es/buscador?q=<termino_codificado>`
-3. **Secciones de Verdad:** Debes separar estrictamente los datos en dos bloques:
-   - **✅ DATOS VERIFICADOS (con fuente real)**
+## Reglas Críticas Anti-Alucinación y de Transparencia (OBLIGATORIAS)
+1. **PROHIBIDO inventar URLs o datos:** Nunca crees enlaces de Google Maps (tipo `/place/...`), Páginas Amarillas, Informa o perfiles sociales si no han sido devueltos directamente por `web_search` o extraídos con `read_url`.
+2. **Redes Sociales Obligatorias:** Es obligatorio buscar, identificar y listar las redes sociales disponibles de la empresa (LinkedIn, Instagram, Facebook, Twitter/X, YouTube, etc.) con sus enlaces Markdown directos. Si no se encuentra ninguna red social oficial en la web ni en la búsqueda, debes indicar explícitamente:
+   `📱 Redes sociales: No encontradas`.
+3. **Enlaces y Datos Adicionales (Maps, Directorios y Solvencia):**
+   - Si se localizan las fichas directas reales (localización en Google Maps, ficha en Páginas Amarillas, informe de solvencia en Informa/Registro Mercantil), deben incluirse obligatoriamente.
+   - Si NO se encuentran estas fichas o datos directos, es OBLIGATORIO indicar:
+     `⚠️ Enlaces adicionales no encontrados` (o detallar individualmente: `📍 Google Maps: Ficha directa no encontrada`, `📒 Páginas Amarillas: Ficha directa no encontrada`, `🏢 Solvencia / Informa: Ficha directa no encontrada`, adjuntando los enlaces de consulta de directorios correspondientes).
+4. **Secciones de Verdad:** Debes estructurar el informe separando claramente:
+   - **✅ DATOS CORPORATIVOS VERIFICADOS (con fuente real)**
+   - **📱 REDES SOCIALES DISPONIBLES (o "Redes sociales no encontradas")**
+   - **🚀 ENLACES Y DATOS ADICIONALES (o "Enlaces adicionales no encontrados")**
    - **⚠️ NO ENCONTRADO / PENDIENTE DE CONFIRMAR**
 
 ## Pasos de Ejecución para el Agente
+1. **Búsqueda Web Inicial:** Ejecuta `web_search` con la consulta: `"<nombre_empresa> web oficial espana"` o la ubicación relevante.
+2. **Lectura Directa de la Web Oficial:** Si localizas el dominio oficial de la empresa, ejecuta `read_url` sobre esa URL. Extrae razón social, CIF si figura, dirección física real, teléfono, correo electrónico y **redes sociales oficiales**.
+3. **Informe Estructurado:** Devuelve el informe separando claramente los datos verificados, redes sociales encontradas (o no encontradas) y enlaces adicionales encontrados (o no encontrados).
 
-### Paso 1: Búsqueda Web Inicial
-- Ejecuta `web_search` con la consulta: `"<nombre_empresa> web oficial espana"` o la ubicación relevante.
-- Si no hay resultados claros, haz una segunda búsqueda con `search_type: "local"` o términos adicionales de su sector.
+## Entregables
+Informe empresarial contrastado con fuentes reales entregado en el chat y/o guardado en Drive.
 
-### Paso 2: Lectura Directa de la Web Oficial
-- Si localizas el dominio oficial de la empresa (o una página de contacto clave), ejecuta `read_url` sobre esa URL.
-- Extrae de la web real:
-  - Nombre fiscal o denominación comercial.
-  - Dirección física real.
-  - Teléfono(s) y correo(s) de contacto.
-  - Servicios o productos principales.
-
-### Paso 3: Elaboración del Informe Estructurado
-Devuelve el informe al usuario con este formato exacto:
-
-🏢 **INFORME EMPRESARIAL: <Nombre de la Empresa>**
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-✅ **DATOS VERIFICADOS:**
-• **Sitio Web Oficial:** [Enlace real devuelto por la tool] (o "No encontrado")
-• **Razón Social / CIF:** [Dato extraído] (o "No disponible en web pública")
-• **Dirección / Sede:** [Dirección extraída] (o "No especificada")
-• **Teléfono de Contacto:** [Teléfono real extraído]
-• **Email de Contacto:** [Email real extraído]
-• **Actividad Principal:** [Resumen fiel de lo que ofrece]
-
-⚠️ **NO ENCONTRADO / POR CONFIRMAR:**
-• [Detallar qué datos no pudieron ser contrastados fehacientemente]
-
-🔗 **ENLACES DE BÚSQUEDA ADICIONALES (Directorio):**
-• 📍 **Google Maps:** https://www.google.com/maps/search/<nombre_codificado>
-• 📒 **Páginas Amarillas:** https://www.paginasamarillas.es/resultados.html?what=<nombre_codificado>
-• 🏢 **Informa:** https://www.informa.es/buscador?q=<nombre_codificado>
-• 💼 **LinkedIn:** https://www.linkedin.com/search/results/all/?keywords=<nombre_codificado>
