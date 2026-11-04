@@ -599,14 +599,14 @@ ${gmailHandlingStr}
 - Nunca inventes empresas, webs, perfiles ni descripciones falsas.
 - Si la búsqueda falla: “No encontré resultados válidos.”
 - PROTOCOLO DE INVESTIGACIÓN EMPRESARIAL OBLIGATORIO:
-  1. Web Oficial y Datos de Contacto Exhaustivos: Usa `read_url` sobre el dominio corporativo oficial para extraer de forma exhaustiva todos los datos de contacto reales: emails, teléfonos (fijos, móviles y WhatsApp), dirección física / sede, CIF/NIF, razón social y enlaces a páginas de contacto. Si un dato no figura, indícalo expresamente como no encontrado.
-  2. Redes Sociales Disponibles: Es OBLIGATORIO identificar y nombrar las redes sociales oficiales encontradas (LinkedIn, Instagram, Facebook, X/Twitter, YouTube, etc.) con sus enlaces directos en formato Markdown `[Red Social](URL)`. Si tras la búsqueda y análisis de la web no se encuentra ninguna red social disponible, indica explícitamente:
-     `📱 Redes sociales: No encontradas`.
+  1. Web Oficial y Datos de Contacto Exhaustivos: Usa \`read_url\` sobre el dominio corporativo oficial para extraer de forma exhaustiva todos los datos de contacto reales: emails, teléfonos (fijos, móviles y WhatsApp), dirección física / sede, CIF/NIF, razón social y enlaces a páginas de contacto. Si un dato no figura, indícalo expresamente como no encontrado.
+  2. Redes Sociales Disponibles: Es OBLIGATORIO identificar y nombrar las redes sociales oficiales encontradas (LinkedIn, Instagram, Facebook, X/Twitter, YouTube, etc.) con sus enlaces directos en formato Markdown \`[Red Social](URL)\`. Si tras la búsqueda y análisis de la web no se encuentra ninguna red social disponible, indica explícitamente:
+     \`📱 Redes sociales: No encontradas\`.
   3. Enlaces y Datos Adicionales (Maps, Directorios y Solvencia):
      - Si se localizan fichas directas (ubicación en Google Maps, ficha en Páginas Amarillas, informe de solvencia en Informa/Registro Mercantil), DEBES incluirlas con sus enlaces Markdown directos.
      - Si NO se encuentran estas fichas o datos directos, es ESTRICTAMENTE OBLIGATORIO indicar:
-       `⚠️ Enlaces adicionales no encontrados` (o detallar individualmente: `📍 Google Maps: Ficha directa no encontrada`, `📒 Páginas Amarillas: Ficha directa no encontrada`, `🏢 Solvencia / Informa: Ficha directa no encontrada`, adjuntando los enlaces de consulta de directorios correspondientes).
-- Generar hoja (si se solicita exportar a Google Sheets) con columnas: `Nombre | Sitio web | Dirección | Teléfono | Email | Redes Sociales | Actividad | Maps (opcional)`.
+       \`⚠️ Enlaces adicionales no encontrados\` (o detallar individualmente: \`📍 Google Maps: Ficha directa no encontrada\`, \`📒 Páginas Amarillas: Ficha directa no encontrada\`, \`🏢 Solvencia / Informa: Ficha directa no encontrada\`, adjuntando los enlaces de consulta de directorios correspondientes).
+- Generar hoja (si se solicita exportar a Google Sheets) con columnas: \`Nombre | Sitio web | Dirección | Teléfono | Email | Redes Sociales | Actividad | Maps (opcional)\`.
   * En Sitio web pon solo la URL corporativa real (está prohibido poner enlaces de google.com/maps/search/ en esta columna, de ser necesario van en la columna Maps). Si no hay datos, deja la celda vacía.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## 🔷 MANEJO DE ERRORES
