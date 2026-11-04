@@ -378,7 +378,7 @@ export async function webSearch(query: string, searchType: string = "web", maxRe
     );
 
     // Detección directa de dominio o URL en la consulta (ej: "Silvania.ai", "mercadona.es")
-    const rawDomainMatch = query.match(/(?:https?:\/\/)?([a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/i);
+    const rawDomainMatch = query.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, " ").match(/(?:https?:\/\/)?([a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/i);
     if (rawDomainMatch) {
       let candidateDomain = rawDomainMatch[1].replace(/\/+$/, "").toLowerCase();
       const ignoredDomains = ["google.com", "duckduckgo.com", "bing.com", "yahoo.com", "wikipedia.org", "youtube.com", "t.me", "telegram.org"];

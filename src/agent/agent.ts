@@ -424,11 +424,13 @@ ${userTier === "prod" ? `
    - Si la consulta del usuario menciona un dominio o URL (ej: "Silvania.ai", "mercadona.es"), ejecuta \`read_url\` sobre ese dominio oficial ("https://silvania.ai").
    - Toda investigación empresarial DEBE incluir obligatoriamente un **ANÁLISIS Y RESUMEN EMPRESARIAL** detallando a qué se dedica la empresa, qué productos o servicios ofrece y su modelo de negocio, extraído directamente de la lectura de su web oficial.
    - Divide la respuesta obligatoriamente en:
-     * **Análisis y Resumen Empresarial**: Actividad principal, sector, productos/servicios y modelo de negocio extraído de su web oficial.
-     * **Datos Corporativos y de Contacto Verificados**: solo lo confirmado por las herramientas (web, dirección física, CIF, teléfonos, emails).
-     * **Redes Sociales Oficiales**: enlaces Markdown directos o "📱 Redes sociales: No encontradas".
-     * **Enlaces y Directorios Adicionales**: Maps, Páginas Amarillas, Solvencia o "⚠️ Enlaces adicionales no encontrados".
-     * **No Encontrado / Pendiente de Verificación**: aspectos que no pudieron verificarse de manera fidedigna. Jamás inventes datos.
+     * **🏢 ANÁLISIS Y RESUMEN EMPRESARIAL**: Actividad principal, sector, productos/servicios y modelo de negocio extraído de su web oficial.
+     * **✅ DATOS CORPORATIVOS Y DE CONTACTO VERIFICADOS**: solo lo confirmado por las herramientas (🌐 web, 📍 dirección, 🧾 CIF, 📞 teléfonos, ✉️ emails).
+     * **📱 REDES SOCIALES OFICIALES**: una por línea como \`• [LinkedIn](url)\` o "📱 Redes sociales: No encontradas".
+     * **🚀 ENLACES Y DIRECTORIOS ADICIONALES**: 📍 Maps, 📒 Páginas Amarillas, 🏢 Solvencia o "⚠️ Enlaces adicionales no encontrados".
+     * **⚠️ NO ENCONTRADO / PENDIENTE DE VERIFICACIÓN**: aspectos que no pudieron verificarse de manera fidedigna. Jamás inventes datos.
+   - FORMATO: usa siempre estos encabezados en negrita con su emoji, viñetas (•) y separadores ━━━━━━━━━━━━ entre bloques. Respuesta limpia, escaneable y profesional.
+   - Si un mensaje contiene una dirección de correo (ej: nombre.apellido@gmail.com), es un DESTINATARIO, nunca una web a investigar. Si además pide "envía/manda", ejecuta \`gmail_send\`.
 7. Si el usuario pide explícitamente "enlace de autorización", "vincular Google", "conectar cuenta", "cambiar de cuenta" o "/auth": DEBES llamar obligatoriamente a la herramienta \`generate_authorization_link\`. NUNCA inventes enlaces de autorización ni utilices otros client_id ajenos al sistema.
 8. Si el usuario ya vinculó su cuenta o te indica frases como "ya lo vinculé", "inténtalo ahora", "prueba ahora", "reintenta", o solicita una acción ejecutiva (ej. "crea la reunión", "lista mis eventos", "envía el correo"): ESTÁ ESTRICTAMENTE PROHIBIDO volver a llamar a \`generate_authorization_link\` o pedir autorización. Debes proceder INMEDIATAMENTE a ejecutar la acción solicitada llamando a la herramienta correspondiente (\`calendar_create\`, \`gmail_send\`, \`drive_list\`, etc.). Solo si una herramienta devuelve expresamente un error de sesión expirada ('invalid_grant', 'unauthorized_client'), ofrecerás reconectar.
 9. CONFIRMACIÓN Y ENLACES DE GMAIL (\`gmail_send\`):
@@ -714,6 +716,7 @@ Si detectas un error de red o de "Conflict", informa al usuario que estás reini
       { role: "system", content: systemPrompt + customPromptStr + drivePromptsStr },
       ...(await dbService.getHistory(userId))
     ];
+    const turnStartIdx = history.length; // Inicio del turno actual (para guards acotados al turno)
 
     if (tasks.length <= 1) {
       // Usar chat sin herramientas si la consulta no menciona palabras clave de herramientas, búsqueda, navegación o memoria
@@ -832,18 +835,29 @@ Si detectas un error de red o de "Conflict", informa al usuario que estás reini
           }
 
           // Guardia de investigación empresarial: si se solicita investigar una empresa/sitio y aún no se ha ejecutado read_url
-          const isInvestigationReq = /\b(investig|analiz|informe corporativo|datos de contacto de|a qu[eé] se dedica|quien es|qui[eé]nes son)\b/i.test(userMessage) ||
-                                     /(?:https?:\/\/)?([a-zA-Z0-9-]+\.[a-zA-Z]{2,})/i.test(userMessage);
+          // Eliminar direcciones de correo antes de detectar dominios (evita confundir "x.demo@gmail.com" con la web "x.demo")
+          const msgWithoutEmails = userMessage.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, " ");
+          // Intención de envío/acción de Workspace: el guard de investigación NUNCA debe interceptarla
+          const hasEmailAddress = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(userMessage);
+          const isSendOrWorkspaceIntent = hasEmailAddress ||
+            /\b(env[ií]a\w*|enviar|manda\w*|mánda\w*|reenv[ií]a\w*|correo|e-?mail|gmail|calendar|evento|reuni[oó]n|cita|agenda|hoja|sheets|factura|presupuesto|drive|carpeta)\b/i.test(userMessage);
 
+          const isInvestigationReq = !isSendOrWorkspaceIntent && (
+            /\b(investig\w*|analiz\w*|informe corporativo|datos de contacto de|a qu[eé] se dedica|qui[eé]n es|qui[eé]nes son)\b/i.test(msgWithoutEmails) ||
+            /(?:https?:\/\/)?([a-zA-Z0-9-]+\.[a-zA-Z]{2,})/i.test(msgWithoutEmails)
+          );
+
+          // Cuenta cualquier ejecución de read_url en el turno, incluidas las fallidas (ENOTFOUND, 403...), para no reintentar en bucle
           const hasCalledReadUrlInTurn = history.some(m => m.role === "tool" && (
             String(m.content).includes("CONTENIDO DE LA PÁGINA") ||
             String(m.content).includes("[readUrl]") ||
-            String(m.content).includes("DATOS DE CONTACTO EXTRAÍDOS")
-          ));
+            String(m.content).includes("DATOS DE CONTACTO EXTRAÍDOS") ||
+            String(m.content).includes("No se pudo leer el contenido de")
+          )) || history.some(m => Array.isArray((m as any).tool_calls) && (m as any).tool_calls.some((tc: any) => tc?.function?.name === "read_url"));
 
-          if (iterations <= 1 && isInvestigationReq && !hasCalledReadUrlInTurn) {
+          if (iterations === 0 && isInvestigationReq && !hasCalledReadUrlInTurn) {
             let targetSiteUrl = "";
-            const domainInUser = userMessage.match(/(?:https?:\/\/)?([a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/i);
+            const domainInUser = msgWithoutEmails.match(/(?:https?:\/\/)?([a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/i);
             const ignoredDomains = ["google.com", "duckduckgo.com", "bing.com", "wikipedia.org", "youtube.com", "t.me", "telegram.org", "openrouter.ai"];
             
             if (domainInUser && !ignoredDomains.some(d => domainInUser[1].toLowerCase().includes(d))) {
@@ -887,6 +901,28 @@ No respondas al usuario sin haber ejecutado read_url sobre su web oficial.`
               continue;
             }
           }
+
+          // Guard de envío de correo: si el usuario pidió enviar a una dirección y el modelo no ejecutó gmail_send en este turno,
+          // se fuerza la ejecución real (evita respuestas tipo "ya ha sido enviado" sin envío efectivo).
+          const sendVerbInMsg = /\b(env[ií]a\w*|enviar|manda\w*|mánda\w*|reenv[ií]a\w*)\b/i.test(userMessage);
+          const emailTargetMatch = userMessage.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+          const turnMsgs = history.slice(turnStartIdx);
+          const gmailSentInTurn = turnMsgs.some(m => Array.isArray((m as any).tool_calls) && (m as any).tool_calls.some((tc: any) => tc?.function?.name === "gmail_send"));
+          const asksConfirmation = /\?\s*$|¿/.test(String(response.content || "").trim());
+          if (iterations <= 1 && sendVerbInMsg && emailTargetMatch && !gmailSentInTurn && !asksConfirmation) {
+            const to = emailTargetMatch[0];
+            console.log(`✉️ [Agent Guard] Petición de envío a ${to} sin gmail_send en el turno. Forzando envío real.`);
+            history.push(response);
+            history.push({
+              role: "user" as const,
+              content: `⚠️ ACCIÓN OBLIGATORIA DE ENVÍO: El usuario ha pedido ENVIAR un correo a "${to}". NO es una búsqueda web ni una URL: es una dirección de correo electrónico.
+Ejecuta AHORA la herramienta gmail_send con to: "${to}", un asunto descriptivo y como cuerpo la información solicitada (si se refiere a "la información", usa el último informe/resultado que entregaste en esta conversación, con formato limpio y estructurado).
+No afirmes que el correo se ha enviado sin haber ejecutado gmail_send en este turno.`
+            });
+            iterations++;
+            continue;
+          }
+
 
           let rawContent = response.content || "No tengo una respuesta en este momento.";
 
