@@ -1,0 +1,42 @@
+[
+  {
+    "id": 1,
+    "title": "Conexión Segura en 3 Clics (OAuth 2.0)",
+    "badge": "Google OAuth 2.0",
+    "icon": "fa-shield-halved",
+    "desc": "Vinculación oficial con scopes mínimos: Calendar, Sheets, Drive y Gmail acotado.",
+    "file": "/videos/coreagent_pildora_1.mp4"
+  },
+  {
+    "id": 2,
+    "title": "Google Calendar por Voz en Tiempo Real",
+    "badge": "Google Calendar",
+    "icon": "fa-calendar-check",
+    "desc": "Agendamiento instantáneo de citas y reuniones con fecha, hora y lugar por nota de voz.",
+    "file": "/videos/coreagent_pildora_2.mp4"
+  },
+  {
+    "id": 3,
+    "title": "Investigación Web y Envío Directo por Gmail",
+    "badge": "Gmail & Web",
+    "icon": "fa-paper-plane",
+    "desc": "Inspección de empresas en tiempo real y redacción con envío de informes por Gmail.",
+    "file": "/videos/coreagent_pildora_3.mp4"
+  },
+  {
+    "id": 4,
+    "title": "Hojas de Cálculo y Facturación en Sheets",
+    "badge": "Google Sheets & Drive",
+    "icon": "fa-file-invoice-dollar",
+    "desc": "Generación de plantillas contables con cálculo de subtotales, IVA 21% y guardado en Drive.",
+    "file": "/videos/coreagent_pildora_4.mp4"
+  },
+  {
+    "id": 5,
+    "title": "Transcripción de YouTube y Visión en Drive",
+    "badge": "YouTube & Visión IA",
+    "icon": "fa-eye",
+    "desc": "Resúmenes inteligentes de vídeos largos en Drive y análisis visual de documentos.",
+    "file": "/videos/coreagent_pildora_5.mp4"
+  }
+]
