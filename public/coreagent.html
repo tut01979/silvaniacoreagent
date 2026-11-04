@@ -1345,6 +1345,7 @@
       <nav id="core-nav">
         <div class="nav-center">
           <a href="#como-funciona">Cómo funciona</a>
+          <a href="#demo-video">Vídeo Demo</a>
           <a href="#herramientas">Herramientas</a>
           <a href="#seguridad">Seguridad</a>
           <a href="#faq">FAQ</a>
@@ -1493,6 +1494,202 @@
       </div>
     </div>
   </div>
+
+  <!-- Sección: Vídeo Demo Completo con Capítulos y Píldoras -->
+  <section class="section-container" id="demo-video">
+    <div style="text-align: center; max-width: 800px; margin: 0 auto 3.5rem auto;">
+      <div class="video-section-badge">
+        <i class="fa-solid fa-circle-play"></i> Demostración Interactiva en Vivo
+      </div>
+      <h2 style="font-family: var(--font-title); font-size: clamp(2rem, 3.5vw, 2.8rem); font-weight: 800; line-height: 1.2; margin-bottom: 1rem; color: #fff;">
+        Silvania CoreAgent <span style="background: linear-gradient(135deg, #10b981, #6366f1); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">en Acción Real</span>
+      </h2>
+      <p style="color: var(--text-muted); font-size: 1.05rem; line-height: 1.7;">
+        Recorrido guiado paso a paso con los 16 casos de uso operativos: Google Workspace, investigación web, visión OCR y gestión documental. 
+        <strong>Haz clic en cualquier capítulo para saltar directamente a ese caso de uso.</strong>
+      </p>
+    </div>
+
+    <div class="video-showcase-grid">
+      <!-- Reproductor Principal -->
+      <div class="video-player-container">
+        <div class="video-frame">
+          <video id="main-demo-player" controls preload="metadata" playsinline poster="/robot.png" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+            <source src="/videos/coreagent_demo_completa.mp4" type="video/mp4">
+            Tu navegador no soporta el formato de vídeo MP4.
+          </video>
+          <div class="video-overlay-badge" id="video-chapter-badge">
+            <i class="fa-solid fa-play"></i> <span id="chapter-badge-text">Silvania CoreAgent</span>
+          </div>
+        </div>
+
+        <div class="video-info-box">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
+            <span id="current-chapter-badge" style="background: rgba(16, 185, 129, 0.12); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 0.25rem 0.75rem; border-radius: 50px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">
+              Visión General
+            </span>
+            <span class="video-meta-time" id="current-chapter-timestamp">
+              <i class="fa-regular fa-clock"></i> Salto: 00:05 / 12:48
+            </span>
+          </div>
+          <h3 id="current-chapter-title">Silvania CoreAgent (Visión General)</h3>
+          <p id="current-chapter-desc">
+            Asistente ejecutivo integrado en Telegram con Google Workspace: cómo centraliza tu oficina sin paneles externos.
+          </p>
+
+          <div class="video-actions">
+            <button type="button" class="btn-main" onclick="restartDemoVideo()" style="padding: 0.65rem 1.25rem; font-size: 0.9rem; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #fff; box-shadow: none;">
+              <i class="fa-solid fa-arrow-rotate-left"></i> Reiniciar vídeo
+            </button>
+            <a href="https://t.me/Silvania_Core_Agent_Bot" target="_blank" rel="noopener noreferrer" class="btn-main" style="padding: 0.65rem 1.4rem; font-size: 0.9rem;">
+              <i class="fa-brands fa-telegram"></i> Probar en Telegram
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Playlist de Capítulos / Píldoras -->
+      <div style="display: flex; flex-direction: column;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem; padding: 0 0.5rem;">
+          <span class="playlist-header">
+            <i class="fa-solid fa-list-ul" style="color: #10b981;"></i> Capítulos de la Demo
+          </span>
+          <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 600;">16 casos de uso</span>
+        </div>
+
+        <div class="video-playlist" id="demo-chapters-list">
+          <div class="playlist-item active" data-seconds="5" onclick="jumpToChapter(5, this)">
+            <div class="playlist-item-num">1</div>
+            <div class="playlist-item-info">
+              <h4><i class="fa-solid fa-sparkles" style="color: #10b981; margin-right: 6px;"></i> Silvania CoreAgent</h4>
+              <p>Oficina ejecutiva inteligente para autónomos y pymes.</p>
+            </div>
+            <span class="playlist-time">00:05</span>
+          </div>
+          <div class="playlist-item" data-seconds="55" onclick="jumpToChapter(55, this)">
+            <div class="playlist-item-num">2</div>
+            <div class="playlist-item-info">
+              <h4><i class="fa-solid fa-circle-nodes" style="color: #10b981; margin-right: 6px;"></i> Cómo funciona</h4>
+              <p>Ejecución directa en tus aplicaciones sin paneles externos.</p>
+            </div>
+            <span class="playlist-time">00:55</span>
+          </div>
+          <div class="playlist-item" data-seconds="63" onclick="jumpToChapter(63, this)">
+            <div class="playlist-item-num">3</div>
+            <div class="playlist-item-info">
+              <h4><i class="fa-solid fa-paper-plane" style="color: #10b981; margin-right: 6px;"></i> Inicio en Telegram (/start)</h4>
+              <p>Presentación de capacidades y herramientas integradas.</p>
+            </div>
+            <span class="playlist-time">01:03</span>
+          </div>
+          <div class="playlist-item" data-seconds="81" onclick="jumpToChapter(81, this)">
+            <div class="playlist-item-num">4</div>
+            <div class="playlist-item-info">
+              <h4><i class="fa-solid fa-key" style="color: #10b981; margin-right: 6px;"></i> Enlace seguro (/auth)</h4>
+              <p>Generación de enlace oficial de Google OAuth 2.0.</p>
+            </div>
+            <span class="playlist-time">01:21</span>
+          </div>
+          <div class="playlist-item" data-seconds="92" onclick="jumpToChapter(92, this)">
+            <div class="playlist-item-num">5</div>
+            <div class="playlist-item-info">
+              <h4><i class="fa-solid fa-shield-halved" style="color: #10b981; margin-right: 6px;"></i> Permisos acotados</h4>
+              <p>Scopes mínimos: Calendar, Sheets, Drive y Gmail acotado.</p>
+            </div>
+            <span class="playlist-time">01:32</span>
+          </div>
+          <div class="playlist-item" data-seconds="102" onclick="jumpToChapter(102, this)">
+            <div class="playlist-item-num">6</div>
+            <div class="playlist-item-info">
+              <h4><i class="fa-solid fa-circle-check" style="color: #10b981; margin-right: 6px;"></i> Cuenta vinculada</h4>
+              <p>Conexión transparente lista para operar.</p>
+            </div>
+            <span class="playlist-time">01:42</span>
+          </div>
+          <div class="playlist-item" data-seconds="121" onclick="jumpToChapter(121, this)">
+            <div class="playlist-item-num">7</div>
+            <div class="playlist-item-info">
+              <h4><i class="fa-solid fa-calendar-check" style="color: #10b981; margin-right: 6px;"></i> Google Calendar por voz</h4>
+              <p>Agendado de reuniones instantáneo con fecha y lugar.</p>
+            </div>
+            <span class="playlist-time">02:01</span>
+          </div>
+          <div class="playlist-item" data-seconds="162" onclick="jumpToChapter(162, this)">
+            <div class="playlist-item-num">8</div>
+            <div class="playlist-item-info">
+              <h4><i class="fa-solid fa-magnifying-glass-chart" style="color: #10b981; margin-right: 6px;"></i> Investigación web y empresarial</h4>
+              <p>Inspección corporativa en vivo con datos verificados.</p>
+            </div>
+            <span class="playlist-time">02:42</span>
+          </div>
+          <div class="playlist-item" data-seconds="240" onclick="jumpToChapter(240, this)">
+            <div class="playlist-item-num">9</div>
+            <div class="playlist-item-info">
+              <h4><i class="fa-solid fa-envelope-circle-check" style="color: #10b981; margin-right: 6px;"></i> Envío de correos por Gmail</h4>
+              <p>Redacción y envío de informe por correo previa confirmación.</p>
+            </div>
+            <span class="playlist-time">04:00</span>
+          </div>
+          <div class="playlist-item" data-seconds="303" onclick="jumpToChapter(303, this)">
+            <div class="playlist-item-num">10</div>
+            <div class="playlist-item-info">
+              <h4><i class="fa-solid fa-folder-plus" style="color: #10b981; margin-right: 6px;"></i> Creación de carpetas en Drive</h4>
+              <p>Estructuración de directorios de empresa en tu nube.</p>
+            </div>
+            <span class="playlist-time">05:03</span>
+          </div>
+          <div class="playlist-item" data-seconds="360" onclick="jumpToChapter(360, this)">
+            <div class="playlist-item-num">11</div>
+            <div class="playlist-item-info">
+              <h4><i class="fa-solid fa-file-invoice-dollar" style="color: #10b981; margin-right: 6px;"></i> Plantillas contables en Sheets</h4>
+              <p>Facturas con fórmulas dinámicas, subtotales e IVA 21%.</p>
+            </div>
+            <span class="playlist-time">06:00</span>
+          </div>
+          <div class="playlist-item" data-seconds="410" onclick="jumpToChapter(410, this)">
+            <div class="playlist-item-num">12</div>
+            <div class="playlist-item-info">
+              <h4><i class="fa-solid fa-newspaper" style="color: #10b981; margin-right: 6px;"></i> Noticias en tiempo real</h4>
+              <p>Rastreo y resumen de prensa con fuentes oficiales.</p>
+            </div>
+            <span class="playlist-time">06:50</span>
+          </div>
+          <div class="playlist-item" data-seconds="490" onclick="jumpToChapter(490, this)">
+            <div class="playlist-item-num">13</div>
+            <div class="playlist-item-info">
+              <h4><i class="fa-solid fa-video" style="color: #10b981; margin-right: 6px;"></i> Búsqueda en YouTube</h4>
+              <p>Localización de contenidos audiovisuales y formación.</p>
+            </div>
+            <span class="playlist-time">08:10</span>
+          </div>
+          <div class="playlist-item" data-seconds="550" onclick="jumpToChapter(550, this)">
+            <div class="playlist-item-num">14</div>
+            <div class="playlist-item-info">
+              <h4><i class="fa-solid fa-file-lines" style="color: #10b981; margin-right: 6px;"></i> Transcripción de vídeos a Drive</h4>
+              <p>Extracción de transcripciones completas y puntos clave.</p>
+            </div>
+            <span class="playlist-time">09:10</span>
+          </div>
+          <div class="playlist-item" data-seconds="663" onclick="jumpToChapter(663, this)">
+            <div class="playlist-item-num">15</div>
+            <div class="playlist-item-info">
+              <h4><i class="fa-solid fa-eye" style="color: #10b981; margin-right: 6px;"></i> Visión OCR y análisis de imágenes</h4>
+              <p>Inspección inteligente de fotografías y capturas.</p>
+            </div>
+            <span class="playlist-time">11:03</span>
+          </div>
+          <div class="playlist-item" data-seconds="713" onclick="jumpToChapter(713, this)">
+            <div class="playlist-item-num">16</div>
+            <div class="playlist-item-info">
+              <h4><i class="fa-solid fa-file-pdf" style="color: #10b981; margin-right: 6px;"></i> Análisis inteligente de documentos</h4>
+              <p>Extracción y análisis de manuales técnicos en PDF.</p>
+            </div>
+            <span class="playlist-time">11:53</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <!-- Sección de Operativa Diaria: Robot en la Oficina -->
   <section class="section-container" id="cerebro" style="padding-top: 1rem;">
@@ -1664,5 +1861,226 @@
       });
     }
   </script>
+
+  <script>
+    // ─── LÓGICA DE CAPÍTULOS Y REPRODUCTOR INTERACTIVO ───
+    const demoChapters = [
+  {
+    "id": "01_intro",
+    "seconds": 5,
+    "timeLabel": "00:05",
+    "title": "Silvania CoreAgent",
+    "badge": "Visión General",
+    "icon": "fa-sparkles",
+    "desc": "Oficina ejecutiva inteligente para autónomos y pymes."
+  },
+  {
+    "id": "02_como_funciona",
+    "seconds": 55,
+    "timeLabel": "00:55",
+    "title": "Cómo funciona",
+    "badge": "Ecosistema",
+    "icon": "fa-circle-nodes",
+    "desc": "Ejecución directa en tus aplicaciones sin paneles externos."
+  },
+  {
+    "id": "03_start",
+    "seconds": 63,
+    "timeLabel": "01:03",
+    "title": "Inicio en Telegram (/start)",
+    "badge": "Telegram Bot",
+    "icon": "fa-paper-plane",
+    "desc": "Presentación de capacidades y herramientas integradas."
+  },
+  {
+    "id": "04_auth",
+    "seconds": 81,
+    "timeLabel": "01:21",
+    "title": "Enlace seguro (/auth)",
+    "badge": "Seguridad",
+    "icon": "fa-key",
+    "desc": "Generación de enlace oficial de Google OAuth 2.0."
+  },
+  {
+    "id": "05_permisos",
+    "seconds": 92,
+    "timeLabel": "01:32",
+    "title": "Permisos acotados",
+    "badge": "Privacidad Oficial",
+    "icon": "fa-shield-halved",
+    "desc": "Scopes mínimos: Calendar, Sheets, Drive y Gmail acotado."
+  },
+  {
+    "id": "06_cuenta_vinculada",
+    "seconds": 102,
+    "timeLabel": "01:42",
+    "title": "Cuenta vinculada",
+    "badge": "Google Workspace",
+    "icon": "fa-circle-check",
+    "desc": "Conexión transparente lista para operar."
+  },
+  {
+    "id": "07_programa_eventos",
+    "seconds": 121,
+    "timeLabel": "02:01",
+    "title": "Google Calendar por voz",
+    "badge": "Google Calendar",
+    "icon": "fa-calendar-check",
+    "desc": "Agendado de reuniones instantáneo con fecha y lugar."
+  },
+  {
+    "id": "08_investigacion",
+    "seconds": 162,
+    "timeLabel": "02:42",
+    "title": "Investigación web y empresarial",
+    "badge": "Navegación Web",
+    "icon": "fa-magnifying-glass-chart",
+    "desc": "Inspección corporativa en vivo con datos verificados."
+  },
+  {
+    "id": "09_envio_correos",
+    "seconds": 240,
+    "timeLabel": "04:00",
+    "title": "Envío de correos por Gmail",
+    "badge": "Gmail Oficial",
+    "icon": "fa-envelope-circle-check",
+    "desc": "Redacción y envío de informe por correo previa confirmación."
+  },
+  {
+    "id": "10_carpetas_drive",
+    "seconds": 303,
+    "timeLabel": "05:03",
+    "title": "Creación de carpetas en Drive",
+    "badge": "Google Drive",
+    "icon": "fa-folder-plus",
+    "desc": "Estructuración de directorios de empresa en tu nube."
+  },
+  {
+    "id": "11_plantillas_sheets",
+    "seconds": 360,
+    "timeLabel": "06:00",
+    "title": "Plantillas contables en Sheets",
+    "badge": "Google Sheets",
+    "icon": "fa-file-invoice-dollar",
+    "desc": "Facturas con fórmulas dinámicas, subtotales e IVA 21%."
+  },
+  {
+    "id": "12_noticias",
+    "seconds": 410,
+    "timeLabel": "06:50",
+    "title": "Noticias en tiempo real",
+    "badge": "Actualidad",
+    "icon": "fa-newspaper",
+    "desc": "Rastreo y resumen de prensa con fuentes oficiales."
+  },
+  {
+    "id": "13_buscar_youtube",
+    "seconds": 490,
+    "timeLabel": "08:10",
+    "title": "Búsqueda en YouTube",
+    "badge": "YouTube",
+    "icon": "fa-video",
+    "desc": "Localización de contenidos audiovisuales y formación."
+  },
+  {
+    "id": "14_transcripciones",
+    "seconds": 550,
+    "timeLabel": "09:10",
+    "title": "Transcripción de vídeos a Drive",
+    "badge": "Drive & YouTube",
+    "icon": "fa-file-lines",
+    "desc": "Extracción de transcripciones completas y puntos clave."
+  },
+  {
+    "id": "15_vision_ocr",
+    "seconds": 663,
+    "timeLabel": "11:03",
+    "title": "Visión OCR y análisis de imágenes",
+    "badge": "Visión IA",
+    "icon": "fa-eye",
+    "desc": "Inspección inteligente de fotografías y capturas."
+  },
+  {
+    "id": "16_analisis_documentos",
+    "seconds": 713,
+    "timeLabel": "11:53",
+    "title": "Análisis inteligente de documentos",
+    "badge": "Documentos & PDF",
+    "icon": "fa-file-pdf",
+    "desc": "Extracción y análisis de manuales técnicos en PDF."
+  }
+];
+
+    const demoPlayer = document.getElementById('main-demo-player');
+    const badgeText = document.getElementById('chapter-badge-text');
+    const badgeTag = document.getElementById('current-chapter-badge');
+    const titleEl = document.getElementById('current-chapter-title');
+    const descEl = document.getElementById('current-chapter-desc');
+    const timeEl = document.getElementById('current-chapter-timestamp');
+    const playlistEl = document.getElementById('demo-chapters-list');
+
+    function jumpToChapter(sec, el) {
+      if (!demoPlayer) return;
+      demoPlayer.currentTime = sec;
+      demoPlayer.play().catch(() => {});
+      updateActiveChapterUI(sec);
+    }
+
+    function restartDemoVideo() {
+      if (!demoPlayer) return;
+      demoPlayer.currentTime = 0;
+      demoPlayer.play().catch(() => {});
+      if (demoChapters.length > 0) {
+        updateActiveChapterUI(demoChapters[0].seconds);
+      }
+    }
+
+    function updateActiveChapterUI(currentSec) {
+      // Find matching chapter (last one with seconds <= currentSec)
+      let activeChapter = demoChapters[0];
+      let activeIdx = 0;
+      for (let i = 0; i < demoChapters.length; i++) {
+        if (currentSec >= demoChapters[i].seconds) {
+          activeChapter = demoChapters[i];
+          activeIdx = i;
+        } else {
+          break;
+        }
+      }
+
+      if (!activeChapter) return;
+
+      if (badgeText) badgeText.textContent = activeChapter.title;
+      if (badgeTag) badgeTag.textContent = activeChapter.badge || 'Caso de Uso';
+      if (titleEl) titleEl.textContent = (activeIdx + 1) + '. ' + activeChapter.title;
+      if (descEl) descEl.textContent = activeChapter.desc;
+      if (timeEl) timeEl.innerHTML = '<i class="fa-regular fa-clock"></i> Salto: ' + activeChapter.timeLabel + ' / 12:48';
+
+      // Update active class in playlist
+      if (playlistEl) {
+        const items = playlistEl.querySelectorAll('.playlist-item');
+        items.forEach((item, idx) => {
+          if (idx === activeIdx) {
+            item.classList.add('active');
+            item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          } else {
+            item.classList.remove('active');
+          }
+        });
+      }
+    }
+
+    if (demoPlayer) {
+      let lastSec = -1;
+      demoPlayer.addEventListener('timeupdate', () => {
+        const cur = Math.floor(demoPlayer.currentTime);
+        if (cur !== lastSec) {
+          lastSec = cur;
+          updateActiveChapterUI(cur);
+        }
+      });
+    }
+  </script>
+
 </body>
 </html>

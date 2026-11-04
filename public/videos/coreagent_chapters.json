@@ -1,0 +1,146 @@
+[
+  {
+    "id": "01_intro",
+    "seconds": 5,
+    "timeLabel": "00:05",
+    "title": "Silvania CoreAgent",
+    "badge": "Visión General",
+    "icon": "fa-sparkles",
+    "desc": "Oficina ejecutiva inteligente para autónomos y pymes."
+  },
+  {
+    "id": "02_como_funciona",
+    "seconds": 55,
+    "timeLabel": "00:55",
+    "title": "Cómo funciona",
+    "badge": "Ecosistema",
+    "icon": "fa-circle-nodes",
+    "desc": "Ejecución directa en tus aplicaciones sin paneles externos."
+  },
+  {
+    "id": "03_start",
+    "seconds": 63,
+    "timeLabel": "01:03",
+    "title": "Inicio en Telegram (/start)",
+    "badge": "Telegram Bot",
+    "icon": "fa-paper-plane",
+    "desc": "Presentación de capacidades y herramientas integradas."
+  },
+  {
+    "id": "04_auth",
+    "seconds": 81,
+    "timeLabel": "01:21",
+    "title": "Enlace seguro (/auth)",
+    "badge": "Seguridad",
+    "icon": "fa-key",
+    "desc": "Generación de enlace oficial de Google OAuth 2.0."
+  },
+  {
+    "id": "05_permisos",
+    "seconds": 92,
+    "timeLabel": "01:32",
+    "title": "Permisos acotados",
+    "badge": "Privacidad Oficial",
+    "icon": "fa-shield-halved",
+    "desc": "Scopes mínimos: Calendar, Sheets, Drive y Gmail acotado."
+  },
+  {
+    "id": "06_cuenta_vinculada",
+    "seconds": 102,
+    "timeLabel": "01:42",
+    "title": "Cuenta vinculada",
+    "badge": "Google Workspace",
+    "icon": "fa-circle-check",
+    "desc": "Conexión transparente lista para operar."
+  },
+  {
+    "id": "07_programa_eventos",
+    "seconds": 121,
+    "timeLabel": "02:01",
+    "title": "Google Calendar por voz",
+    "badge": "Google Calendar",
+    "icon": "fa-calendar-check",
+    "desc": "Agendado de reuniones instantáneo con fecha y lugar."
+  },
+  {
+    "id": "08_investigacion",
+    "seconds": 162,
+    "timeLabel": "02:42",
+    "title": "Investigación web y empresarial",
+    "badge": "Navegación Web",
+    "icon": "fa-magnifying-glass-chart",
+    "desc": "Inspección corporativa en vivo con datos verificados."
+  },
+  {
+    "id": "09_envio_correos",
+    "seconds": 240,
+    "timeLabel": "04:00",
+    "title": "Envío de correos por Gmail",
+    "badge": "Gmail Oficial",
+    "icon": "fa-envelope-circle-check",
+    "desc": "Redacción y envío de informe por correo previa confirmación."
+  },
+  {
+    "id": "10_carpetas_drive",
+    "seconds": 303,
+    "timeLabel": "05:03",
+    "title": "Creación de carpetas en Drive",
+    "badge": "Google Drive",
+    "icon": "fa-folder-plus",
+    "desc": "Estructuración de directorios de empresa en tu nube."
+  },
+  {
+    "id": "11_plantillas_sheets",
+    "seconds": 360,
+    "timeLabel": "06:00",
+    "title": "Plantillas contables en Sheets",
+    "badge": "Google Sheets",
+    "icon": "fa-file-invoice-dollar",
+    "desc": "Facturas con fórmulas dinámicas, subtotales e IVA 21%."
+  },
+  {
+    "id": "12_noticias",
+    "seconds": 410,
+    "timeLabel": "06:50",
+    "title": "Noticias en tiempo real",
+    "badge": "Actualidad",
+    "icon": "fa-newspaper",
+    "desc": "Rastreo y resumen de prensa con fuentes oficiales."
+  },
+  {
+    "id": "13_buscar_youtube",
+    "seconds": 490,
+    "timeLabel": "08:10",
+    "title": "Búsqueda en YouTube",
+    "badge": "YouTube",
+    "icon": "fa-video",
+    "desc": "Localización de contenidos audiovisuales y formación."
+  },
+  {
+    "id": "14_transcripciones",
+    "seconds": 550,
+    "timeLabel": "09:10",
+    "title": "Transcripción de vídeos a Drive",
+    "badge": "Drive & YouTube",
+    "icon": "fa-file-lines",
+    "desc": "Extracción de transcripciones completas y puntos clave."
+  },
+  {
+    "id": "15_vision_ocr",
+    "seconds": 663,
+    "timeLabel": "11:03",
+    "title": "Visión OCR y análisis de imágenes",
+    "badge": "Visión IA",
+    "icon": "fa-eye",
+    "desc": "Inspección inteligente de fotografías y capturas."
+  },
+  {
+    "id": "16_analisis_documentos",
+    "seconds": 713,
+    "timeLabel": "11:53",
+    "title": "Análisis inteligente de documentos",
+    "badge": "Documentos & PDF",
+    "icon": "fa-file-pdf",
+    "desc": "Extracción y análisis de manuales técnicos en PDF."
+  }
+]
