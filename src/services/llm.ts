@@ -136,11 +136,11 @@ export const llmService = {
         type: "function",
         function: {
           name: "read_url",
-          description: "Lee el contenido de una página web a partir de su URL",
+          description: "Lee e inspecciona en profundidad el contenido completo de una página web, dominio o portal (ej: 'https://silvania.ai', 'silvania.ai', 'https://www.mercadona.es'). Esencial para investigar empresas, redactar su resumen corporativo, actividad, servicios, productos, razón social, contactos y redes sociales oficiales directamente desde su web.",
           parameters: {
             type: "object",
             properties: {
-              url: { type: "string", description: "URL de la página" }
+              url: { type: "string", description: "URL o dominio de la página a leer (ej: https://silvania.ai, silvania.ai, www.mercadona.es)" }
             },
             required: ["url"]
           }

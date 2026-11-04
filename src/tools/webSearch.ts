@@ -377,6 +377,26 @@ export async function webSearch(query: string, searchType: string = "web", maxRe
       r => r && r.title && r.url && /^https?:\/\/\S+/i.test(r.url.trim()) && !r.url.includes("news.google.com/rss/articles")
     );
 
+    // Detección directa de dominio o URL en la consulta (ej: "Silvania.ai", "mercadona.es")
+    const rawDomainMatch = query.match(/(?:https?:\/\/)?([a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/i);
+    if (rawDomainMatch) {
+      let candidateDomain = rawDomainMatch[1].replace(/\/+$/, "").toLowerCase();
+      const ignoredDomains = ["google.com", "duckduckgo.com", "bing.com", "yahoo.com", "wikipedia.org", "youtube.com", "t.me", "telegram.org"];
+      const isIgnored = ignoredDomains.some(d => candidateDomain.includes(d));
+      if (!isIgnored) {
+        const directUrl = candidateDomain.startsWith("http") ? candidateDomain : `https://${candidateDomain}`;
+        const alreadyPresent = results.some(r => r.url.toLowerCase().includes(candidateDomain));
+        if (!alreadyPresent) {
+          results.unshift({
+            title: `Sitio Web Oficial (${candidateDomain})`,
+            url: directUrl,
+            snippet: `Portal corporativo directo detectado para "${candidateDomain}".`,
+            source: '🌐 Web Oficial Directa'
+          });
+        }
+      }
+    }
+
     const manualLinks = `
 🚀 **ENLACES ADICIONALES (DIRECTORIOS, MAPS Y SOLVENCIA)**
 ────────────────────────────
@@ -562,6 +582,15 @@ export async function readUrl(rawUrl: string): Promise<string> {
       }
     });
 
+    // Extraer perfiles sociales de meta tags si existen
+    const twitterHandle = $("meta[name='twitter:site']").attr("content") || $("meta[name='twitter:creator']").attr("content");
+    if (twitterHandle && !socialLinks["Twitter/X"]) {
+      const cleanHandle = twitterHandle.replace(/^@/, "").trim();
+      if (cleanHandle && !cleanHandle.includes(" ") && cleanHandle.length > 1) {
+        socialLinks["Twitter/X"] = `https://x.com/${cleanHandle}`;
+      }
+    }
+
     // 3. Extraer correos, teléfonos, CIF y dirección física del texto del body (incluyendo footer/header)
     const bodyText = $("body").text();
 
@@ -617,7 +646,12 @@ export async function readUrl(rawUrl: string): Promise<string> {
 
     // Extraer texto principal
     const rawText = $("body").text().replace(/\s+/g, " ").trim();
-    const cleanContent = rawText.slice(0, 4000);
+    let cleanContent = rawText.slice(0, 4000);
+    if (!cleanContent || cleanContent.length < 50) {
+      if (description) {
+        cleanContent = `[Contenido cargado dinámicamente mediante JS / SPA]\nDescripción corporativa oficial: ${description}`;
+      }
+    }
 
     let output = `🌐 **CONTENIDO DE LA PÁGINA:** [${title}](${targetUrl})\n${SEP}\n\n`;
     if (description) {

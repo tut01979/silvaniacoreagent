@@ -420,10 +420,15 @@ ${userTier === "prod" ? `
 4. ESTRICTAMENTE PROHIBIDO inventar URLs de Google Maps (\`google.com/maps/place/...\`), Páginas Amarillas (\`paginasamarillas.es/...\`), e-Informa o directorios empresariales. Solo se permiten enlaces web que provengan textualmente de los resultados de \`web_search\` o \`read_url\`.
 5. ESTRICTAMENTE PROHIBIDO emitir fragmentos de código o pseudo-llamadas a herramientas como \`print(gmail_list(...))\`, \`print(web_search(...))\`, o \`tools.drive_list\`. Ejecuta las herramientas exclusivamente mediante function calling; NUNCA imprimas pseudo-llamadas en el texto de cara al usuario.
 6. PROTOCOLO DE INVESTIGACIÓN EMPRESARIAL:
-   - Al investigar empresas, autónomos o sitios web, ejecuta búsquedas reales con \`web_search\` y consulta páginas relevantes con \`read_url\`.
-   - Divide la respuesta obligatoriamente en dos bloques:
-     * **Datos Verificados**: solo lo confirmado directamente por las herramientas, citando las fuentes/URLs reales encontradas.
-     * **No Encontrado / Pendiente de Verificación**: aspectos que no pudieron verificarse de manera fidedigna (ej. si no hay CIF, teléfono comprobado o ficha oficial). Jamás inventes datos.
+   - Al investigar empresas, autónomos o sitios web, ejecuta búsquedas reales con \`web_search\` y consulta OBLIGATORIAMENTE la página web oficial con \`read_url\`.
+   - Si la consulta del usuario menciona un dominio o URL (ej: "Silvania.ai", "mercadona.es"), ejecuta \`read_url\` sobre ese dominio oficial ("https://silvania.ai").
+   - Toda investigación empresarial DEBE incluir obligatoriamente un **ANÁLISIS Y RESUMEN EMPRESARIAL** detallando a qué se dedica la empresa, qué productos o servicios ofrece y su modelo de negocio, extraído directamente de la lectura de su web oficial.
+   - Divide la respuesta obligatoriamente en:
+     * **Análisis y Resumen Empresarial**: Actividad principal, sector, productos/servicios y modelo de negocio extraído de su web oficial.
+     * **Datos Corporativos y de Contacto Verificados**: solo lo confirmado por las herramientas (web, dirección física, CIF, teléfonos, emails).
+     * **Redes Sociales Oficiales**: enlaces Markdown directos o "📱 Redes sociales: No encontradas".
+     * **Enlaces y Directorios Adicionales**: Maps, Páginas Amarillas, Solvencia o "⚠️ Enlaces adicionales no encontrados".
+     * **No Encontrado / Pendiente de Verificación**: aspectos que no pudieron verificarse de manera fidedigna. Jamás inventes datos.
 7. Si el usuario pide explícitamente "enlace de autorización", "vincular Google", "conectar cuenta", "cambiar de cuenta" o "/auth": DEBES llamar obligatoriamente a la herramienta \`generate_authorization_link\`. NUNCA inventes enlaces de autorización ni utilices otros client_id ajenos al sistema.
 8. Si el usuario ya vinculó su cuenta o te indica frases como "ya lo vinculé", "inténtalo ahora", "prueba ahora", "reintenta", o solicita una acción ejecutiva (ej. "crea la reunión", "lista mis eventos", "envía el correo"): ESTÁ ESTRICTAMENTE PROHIBIDO volver a llamar a \`generate_authorization_link\` o pedir autorización. Debes proceder INMEDIATAMENTE a ejecutar la acción solicitada llamando a la herramienta correspondiente (\`calendar_create\`, \`gmail_send\`, \`drive_list\`, etc.). Solo si una herramienta devuelve expresamente un error de sesión expirada ('invalid_grant', 'unauthorized_client'), ofrecerás reconectar.
 9. CONFIRMACIÓN Y ENLACES DE GMAIL (\`gmail_send\`):
@@ -599,13 +604,15 @@ ${gmailHandlingStr}
 - Nunca inventes empresas, webs, perfiles ni descripciones falsas.
 - Si la búsqueda falla: “No encontré resultados válidos.”
 - PROTOCOLO DE INVESTIGACIÓN EMPRESARIAL OBLIGATORIO:
-  1. Web Oficial y Datos de Contacto Exhaustivos: Usa \`read_url\` sobre el dominio corporativo oficial para extraer de forma exhaustiva todos los datos de contacto reales: emails, teléfonos (fijos, móviles y WhatsApp), dirección física / sede, CIF/NIF, razón social y enlaces a páginas de contacto. Si un dato no figura, indícalo expresamente como no encontrado.
-  2. Redes Sociales Disponibles: Es OBLIGATORIO identificar y nombrar las redes sociales oficiales encontradas (LinkedIn, Instagram, Facebook, X/Twitter, YouTube, etc.) con sus enlaces directos en formato Markdown \`[Red Social](URL)\`. Si tras la búsqueda y análisis de la web no se encuentra ninguna red social disponible, indica explícitamente:
+  1. Análisis y Resumen Empresarial de la Web Oficial: Usa \`read_url\` sobre el dominio corporativo oficial para extraer y redactar un análisis claro y completo: qué es la empresa, a qué se dedica exactamente (actividad principal, sector), catálogo de productos o servicios que ofrece y su modelo de negocio/propuesta de valor.
+  2. Datos de Contacto Exhaustivos: Extrae de la web oficial y fuentes verificadas todos los datos de contacto reales: emails, teléfonos (fijos, móviles y WhatsApp), dirección física / sede corporativa, CIF/NIF, razón social y enlaces a páginas de contacto. Si un dato no figura, indícalo expresamente como no encontrado.
+  3. Redes Sociales Disponibles: Es OBLIGATORIO identificar y nombrar las redes sociales oficiales encontradas (LinkedIn, Instagram, Facebook, X/Twitter, YouTube, etc.) con sus enlaces directos en formato Markdown \`[Red Social](URL)\`. Si tras la búsqueda y análisis de la web no se encuentra ninguna red social disponible, indica explícitamente:
      \`📱 Redes sociales: No encontradas\`.
-  3. Enlaces y Datos Adicionales (Maps, Directorios y Solvencia):
+  4. Enlaces y Datos Adicionales (Maps, Directorios y Solvencia):
      - Si se localizan fichas directas (ubicación en Google Maps, ficha en Páginas Amarillas, informe de solvencia en Informa/Registro Mercantil), DEBES incluirlas con sus enlaces Markdown directos.
      - Si NO se encuentran estas fichas o datos directos, es ESTRICTAMENTE OBLIGATORIO indicar:
        \`⚠️ Enlaces adicionales no encontrados\` (o detallar individualmente: \`📍 Google Maps: Ficha directa no encontrada\`, \`📒 Páginas Amarillas: Ficha directa no encontrada\`, \`🏢 Solvencia / Informa: Ficha directa no encontrada\`, adjuntando los enlaces de consulta de directorios correspondientes).
+  5. Detección de Dominio en Consulta: Si el usuario escribe un dominio como "Silvania.ai", "mercadona.es", o una URL directa, DEBES llamar a \`read_url\` sobre esa web ("https://silvania.ai") de forma prioritaria para inspeccionar su contenido real.
 - Generar hoja (si se solicita exportar a Google Sheets) con columnas: \`Nombre | Sitio web | Dirección | Teléfono | Email | Redes Sociales | Actividad | Maps (opcional)\`.
   * En Sitio web pon solo la URL corporativa real (está prohibido poner enlaces de google.com/maps/search/ en esta columna, de ser necesario van en la columna Maps). Si no hay datos, deja la celda vacía.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -818,6 +825,63 @@ Si detectas un error de red o de "Conflict", informa al usuario que estás reini
               history.push({
                 role: "user" as const,
                 content: `⚠️ ACCIÓN OBLIGATORIA: Para responder sobre el archivo ${fileId}, DEBES ejecutar obligatoriamente la herramienta analyze_document (o drive_read_file) con file_id: "${fileId}". No respondas sin haber leído el archivo real.`
+              });
+              iterations++;
+              continue;
+            }
+          }
+
+          // Guardia de investigación empresarial: si se solicita investigar una empresa/sitio y aún no se ha ejecutado read_url
+          const isInvestigationReq = /\b(investig|analiz|informe corporativo|datos de contacto de|a qu[eé] se dedica|quien es|qui[eé]nes son)\b/i.test(userMessage) ||
+                                     /(?:https?:\/\/)?([a-zA-Z0-9-]+\.[a-zA-Z]{2,})/i.test(userMessage);
+
+          const hasCalledReadUrlInTurn = history.some(m => m.role === "tool" && (
+            String(m.content).includes("CONTENIDO DE LA PÁGINA") ||
+            String(m.content).includes("[readUrl]") ||
+            String(m.content).includes("DATOS DE CONTACTO EXTRAÍDOS")
+          ));
+
+          if (iterations <= 1 && isInvestigationReq && !hasCalledReadUrlInTurn) {
+            let targetSiteUrl = "";
+            const domainInUser = userMessage.match(/(?:https?:\/\/)?([a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/i);
+            const ignoredDomains = ["google.com", "duckduckgo.com", "bing.com", "wikipedia.org", "youtube.com", "t.me", "telegram.org", "openrouter.ai"];
+            
+            if (domainInUser && !ignoredDomains.some(d => domainInUser[1].toLowerCase().includes(d))) {
+              const dom = domainInUser[1].replace(/\/+$/, "");
+              targetSiteUrl = dom.startsWith("http") ? dom : "https://" + dom;
+            } else {
+              const searchToolMsg = [...history].reverse().find(m => m.role === "tool" && (
+                String(m.content).includes("RESULTADOS WEB") || String(m.content).includes("NEGOCIOS LOCALES")
+              ));
+              if (searchToolMsg) {
+                const urlMatches = Array.from(String(searchToolMsg.content).matchAll(/\[(?:Sitio Web Oficial|Web Oficial|Web|Portal|Empresa|Oficial)[^\]]*\]\((https?:\/\/[^\s)]+)\)/gi));
+                if (urlMatches.length > 0) {
+                  targetSiteUrl = urlMatches[0][1];
+                } else {
+                  const anyUrlMatches = Array.from(String(searchToolMsg.content).matchAll(/\[([^\]]+)\]\((https?:\/\/(?:www\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s)]*)?)\)/gi));
+                  for (const m of anyUrlMatches) {
+                    const u = m[2];
+                    if (!ignoredDomains.some(d => u.toLowerCase().includes(d)) && !u.includes("maps") && !u.includes("paginasamarillas") && !u.includes("informa.es") && !u.includes("linkedin.com/search") && !u.includes("play.google.com") && !u.includes("apple.com")) {
+                      targetSiteUrl = u;
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+
+            if (targetSiteUrl) {
+              console.log(`🌐 [Agent Guard] Investigación detectada sin lectura de web oficial. Forzando read_url sobre: ${targetSiteUrl}`);
+              history.push(response);
+              history.push({
+                role: "user" as const,
+                content: `⚠️ ACCIÓN OBLIGATORIA DE INVESTIGACIÓN EMPRESARIAL:
+Has localizado la web oficial "${targetSiteUrl}". DEBES ejecutar inmediatamente la herramienta read_url con url: "${targetSiteUrl}".
+Es estrictamente obligatorio leer la web oficial para:
+1. Redactar el ANÁLISIS Y RESUMEN EMPRESARIAL (qué es la empresa, a qué se dedica exactamente, catálogo de productos/servicios y modelo de negocio).
+2. Extraer sus datos de contacto reales (emails, teléfonos, dirección física, CIF).
+3. Identificar sus redes sociales oficiales con enlaces directos.
+No respondas al usuario sin haber ejecutado read_url sobre su web oficial.`
               });
               iterations++;
               continue;
