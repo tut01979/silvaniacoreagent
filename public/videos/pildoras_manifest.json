@@ -1,0 +1,47 @@
+[
+  {
+    "id": 1,
+    "title": "Conexión Segura con Google (OAuth 2.0)",
+    "badge": "Google OAuth 2.0",
+    "icon": "fa-shield-halved",
+    "desc": "Vinculación oficial con permisos mínimos: Calendar, Sheets, Drive y Gmail acotado.",
+    "file": "/videos/coreagent_pildora_1.mp4",
+    "duration": "0:26"
+  },
+  {
+    "id": 2,
+    "title": "Google Calendar por Voz en Tiempo Real",
+    "badge": "Google Calendar",
+    "icon": "fa-calendar-check",
+    "desc": "Agendamiento instantáneo de citas y reuniones por nota de voz sin abrir la app.",
+    "file": "/videos/coreagent_pildora_2.mp4",
+    "duration": "0:22"
+  },
+  {
+    "id": 3,
+    "title": "Investigación Web y Envío por Gmail",
+    "badge": "Gmail & Web",
+    "icon": "fa-paper-plane",
+    "desc": "Inspección de empresas en tiempo real y redacción con envío de informes por Gmail.",
+    "file": "/videos/coreagent_pildora_3.mp4",
+    "duration": "0:23"
+  },
+  {
+    "id": 4,
+    "title": "Google Drive y Facturación en Sheets",
+    "badge": "Google Sheets & Drive",
+    "icon": "fa-file-invoice-dollar",
+    "desc": "Creación de carpetas en Drive y plantillas contables con IVA 21% en Google Sheets.",
+    "file": "/videos/coreagent_pildora_4.mp4",
+    "duration": "0:21"
+  },
+  {
+    "id": 5,
+    "title": "Transcripción de YouTube y Visión en Drive",
+    "badge": "YouTube & Visión IA",
+    "icon": "fa-eye",
+    "desc": "Extracción de transcripciones a Drive y análisis inteligente de imágenes y PDFs.",
+    "file": "/videos/coreagent_pildora_5.mp4",
+    "duration": "0:22"
+  }
+]
