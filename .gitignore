@@ -7,3 +7,5 @@ memory.db
 service-account.json
 data/
 gmail-credentials.json
+scratch/
+.railway/
