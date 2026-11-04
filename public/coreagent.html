@@ -1345,7 +1345,6 @@
       <nav id="core-nav">
         <div class="nav-center">
           <a href="#como-funciona">Cómo funciona</a>
-          <a href="#demos">Demos en Vídeo</a>
           <a href="#herramientas">Herramientas</a>
           <a href="#seguridad">Seguridad</a>
           <a href="#faq">FAQ</a>
@@ -1495,95 +1494,6 @@
     </div>
   </div>
 
-  <!-- SECCIÓN DEMOS EN VÍDEO (PÍLDORAS PRÁCTICAS) -->
-  <section class="section-container" id="demos">
-    <div class="section-title">
-      <span class="badge-pill" style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); color: #818cf8; margin-bottom: 0.8rem; display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.9rem; border-radius: 50px; font-size: 0.82rem; font-weight: 700; text-transform: uppercase;">
-        <i class="fa-solid fa-play"></i> Demos Prácticas en Vídeo
-      </span>
-      <h2>CoreAgent en <span>Acción Real</span></h2>
-      <p>Demostraciones prácticas paso a paso de casos de uso reales integrados con Google Workspace y automatización.</p>
-    </div>
-
-    <div class="video-showcase-grid">
-      <div class="video-player-container">
-        <div class="video-frame">
-          <video id="main-video-player" controls preload="metadata" playsinline poster="/robot.png">
-            <source id="main-video-source" src="/videos/coreagent_pildora_1.mp4" type="video/mp4">
-            Tu navegador no soporta reproducción de vídeo HTML5.
-          </video>
-          <div class="video-overlay-badge" id="video-overlay-badge">
-            <i class="fa-solid fa-shield-halved" id="video-badge-icon"></i>
-            <span id="video-badge-text">Google OAuth 2.0</span>
-          </div>
-        </div>
-        <div class="video-info-box">
-          <h3 id="video-title">Conexión Segura con Google (OAuth 2.0)</h3>
-          <p id="video-desc">Vinculación oficial con permisos mínimos: Calendar, Sheets, Drive y Gmail acotado.</p>
-          <div class="video-actions">
-            <span class="video-meta-time">
-              <i class="fa-regular fa-clock"></i> Píldora de demostración práctica
-            </span>
-            <a href="https://t.me/Silvania_Core_Agent_Bot" target="_blank" rel="noopener noreferrer" class="btn-main" style="padding: 0.6rem 1.2rem; font-size: 0.88rem;">
-              <i class="fa-brands fa-telegram"></i> Probar este caso en Telegram
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <div class="video-playlist">
-        <div class="playlist-header">
-          <i class="fa-solid fa-list-check" style="color: var(--primary);"></i> Casos de uso disponibles
-        </div>
-
-        <button type="button" class="playlist-item active" onclick="switchVideo(1, this)" data-file="/videos/coreagent_pildora_1.mp4" data-badge="Google OAuth 2.0" data-icon="fa-shield-halved" data-title="Conexión Segura con Google (OAuth 2.0)" data-desc="Vinculación oficial con permisos mínimos: Calendar, Sheets, Drive y Gmail acotado.">
-          <div class="playlist-item-num">1</div>
-          <div class="playlist-item-info">
-            <h4>Conexión Segura (OAuth 2.0)</h4>
-            <p>Permisos mínimos oficiales y consentimiento</p>
-          </div>
-          <span class="playlist-time">0:26</span>
-        </button>
-
-        <button type="button" class="playlist-item" onclick="switchVideo(2, this)" data-file="/videos/coreagent_pildora_2.mp4" data-badge="Google Calendar" data-icon="fa-calendar-check" data-title="Google Calendar por Voz en Tiempo Real" data-desc="Agendamiento instantáneo de citas y reuniones por nota de voz sin abrir la app.">
-          <div class="playlist-item-num">2</div>
-          <div class="playlist-item-info">
-            <h4>Calendar por Nota de Voz</h4>
-            <p>Agendado instantáneo en tiempo real</p>
-          </div>
-          <span class="playlist-time">0:22</span>
-        </button>
-
-        <button type="button" class="playlist-item" onclick="switchVideo(3, this)" data-file="/videos/coreagent_pildora_3.mp4" data-badge="Gmail & Web" data-icon="fa-paper-plane" data-title="Investigación Web y Envío por Gmail" data-desc="Inspección de empresas en tiempo real y redacción con envío de informes por Gmail.">
-          <div class="playlist-item-num">3</div>
-          <div class="playlist-item-info">
-            <h4>Investigación Web y Gmail</h4>
-            <p>Inspección empresarial y redacción de email</p>
-          </div>
-          <span class="playlist-time">0:23</span>
-        </button>
-
-        <button type="button" class="playlist-item" onclick="switchVideo(4, this)" data-file="/videos/coreagent_pildora_4.mp4" data-badge="Google Sheets & Drive" data-icon="fa-file-invoice-dollar" data-title="Google Drive y Facturación en Sheets" data-desc="Creación de carpetas en Drive y plantillas contables con IVA 21% en Google Sheets.">
-          <div class="playlist-item-num">4</div>
-          <div class="playlist-item-info">
-            <h4>Drive y Facturación en Sheets</h4>
-            <p>Carpetas y hojas contables con IVA</p>
-          </div>
-          <span class="playlist-time">0:21</span>
-        </button>
-
-        <button type="button" class="playlist-item" onclick="switchVideo(5, this)" data-file="/videos/coreagent_pildora_5.mp4" data-badge="YouTube & Visión IA" data-icon="fa-eye" data-title="Transcripción de YouTube y Visión en Drive" data-desc="Extracción de transcripciones a Drive y análisis inteligente de imágenes y PDFs.">
-          <div class="playlist-item-num">5</div>
-          <div class="playlist-item-info">
-            <h4>YouTube y Visión en Drive</h4>
-            <p>Transcripción y extracción visual de docs</p>
-          </div>
-          <span class="playlist-time">0:22</span>
-        </button>
-      </div>
-    </div>
-  </section>
-
   <!-- Sección de Operativa Diaria: Robot en la Oficina -->
   <section class="section-container" id="cerebro" style="padding-top: 1rem;">
     <div class="brain-card-grid">
@@ -1732,41 +1642,6 @@
   </footer>
 
   <script>
-    // ─── CONTROL DEL REPRODUCTOR DE PÍLDORAS DEMO ───
-    function switchVideo(id, btn) {
-      const player = document.getElementById('main-video-player');
-      const source = document.getElementById('main-video-source');
-      const title = document.getElementById('video-title');
-      const desc = document.getElementById('video-desc');
-      const badgeText = document.getElementById('video-badge-text');
-      const badgeIcon = document.getElementById('video-badge-icon');
-
-      if (!player || !source || !btn) return;
-
-      const file = btn.getAttribute('data-file');
-      const vTitle = btn.getAttribute('data-title');
-      const vDesc = btn.getAttribute('data-desc');
-      const vBadge = btn.getAttribute('data-badge');
-      const vIcon = btn.getAttribute('data-icon');
-
-      // Actualizar estado activo en la lista
-      document.querySelectorAll('.video-playlist .playlist-item').forEach(item => item.classList.remove('active'));
-      btn.classList.add('active');
-
-      // Actualizar textos y badges
-      if (title) title.textContent = vTitle;
-      if (desc) desc.textContent = vDesc;
-      if (badgeText) badgeText.textContent = vBadge;
-      if (badgeIcon) {
-        badgeIcon.className = 'fa-solid ' + vIcon;
-      }
-
-      // Cargar nuevo vídeo
-      source.setAttribute('src', file);
-      player.load();
-      player.play().catch(() => {});
-    }
-
     // ─── EFECTO 3D TILT CON EL RATÓN (SUAVE Y ALINEADO) ───
     const card = document.getElementById('interactive-robot');
     if (card) {
