@@ -814,10 +814,8 @@
       background: rgba(16, 185, 129, 0.1);
     }
 
-    @media (max-width: 992px) {
-      .video-showcase-grid {
-        grid-template-columns: 1fr;
-      }
+    .mobile-jump-player-btn {
+      display: none;
     }
 
     /* Section styling */
@@ -1273,6 +1271,11 @@
     }
 
     @media (max-width: 900px) {
+      .section-container {
+        padding: 3.5rem 1rem !important;
+        max-width: 100% !important;
+        box-sizing: border-box;
+      }
       .hero {
         grid-template-columns: 1fr;
         padding-top: 7rem;
@@ -1289,7 +1292,123 @@
       .cta-container { justify-content: center; }
       .oauth-trust-box { margin: 2rem auto 0 auto; text-align: left; }
       .steps-grid { grid-template-columns: 1fr; }
-      .transparency-box { grid-template-columns: 1fr; }
+
+      /* Caja de Transparencia y Permisos en móvil */
+      .transparency-box {
+        grid-template-columns: 1fr !important;
+        padding: 1.75rem 1.2rem !important;
+        margin: 2rem 0 !important;
+        gap: 1.75rem !important;
+        border-radius: 20px !important;
+        overflow-x: hidden;
+        width: 100% !important;
+        box-sizing: border-box;
+      }
+      .transparency-box h3 {
+        font-size: 1.4rem !important;
+        margin-bottom: 0.65rem !important;
+      }
+      .transparency-box p {
+        font-size: 0.92rem !important;
+        line-height: 1.6 !important;
+      }
+      .check-list {
+        gap: 0.85rem !important;
+        width: 100% !important;
+      }
+      .check-list li {
+        font-size: 0.88rem !important;
+        line-height: 1.5 !important;
+        gap: 0.65rem !important;
+        overflow-wrap: break-word;
+        word-break: break-word;
+      }
+      .check-list li code {
+        word-break: break-all;
+        font-size: 0.82rem;
+      }
+
+      /* Sección Vídeo Demo en móvil */
+      #demo-video {
+        padding: 3rem 1rem !important;
+        max-width: 100% !important;
+        box-sizing: border-box;
+        overflow-x: hidden;
+      }
+      #demo-video > div:first-child {
+        margin-bottom: 2rem !important;
+      }
+      .video-showcase-grid {
+        grid-template-columns: 1fr !important;
+        gap: 1.75rem !important;
+        width: 100% !important;
+      }
+      .video-player-container {
+        padding: 0.9rem !important;
+        border-radius: 18px !important;
+        width: 100% !important;
+        box-sizing: border-box;
+      }
+      .video-frame {
+        width: 100% !important;
+        aspect-ratio: 16 / 9;
+        border-radius: 14px !important;
+      }
+      .video-playlist {
+        max-height: min(42vh, 320px) !important;
+        width: 100% !important;
+        box-sizing: border-box;
+        padding-right: 0.25rem;
+      }
+      .playlist-item {
+        min-width: 0 !important;
+        padding: 0.65rem 0.85rem !important;
+        gap: 0.65rem !important;
+        box-sizing: border-box;
+      }
+      .playlist-item-info {
+        min-width: 0 !important;
+        flex: 1 1 auto;
+        overflow: hidden;
+      }
+      .playlist-item-info h4 {
+        font-size: 0.88rem !important;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .playlist-item-info p {
+        font-size: 0.75rem !important;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .playlist-time {
+        font-size: 0.72rem !important;
+        padding: 0.15rem 0.4rem !important;
+      }
+      .mobile-jump-player-btn {
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        width: 100%;
+        margin-top: 0.75rem;
+        padding: 0.75rem 1rem;
+        background: rgba(16, 185, 129, 0.12);
+        border: 1px solid rgba(16, 185, 129, 0.35);
+        color: #34d399;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-sizing: border-box;
+      }
+      .mobile-jump-player-btn:hover {
+        background: rgba(16, 185, 129, 0.22);
+      }
+
       .mobile-menu-toggle { display: inline-flex; }
       nav {
         display: none;
@@ -1323,6 +1442,45 @@
       }
       .nav-hub, .nav-btn {
         justify-content: center;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .section-container {
+        padding: 2.75rem 0.75rem !important;
+      }
+      #demo-video {
+        padding: 2.25rem 0.75rem !important;
+      }
+      .transparency-box {
+        padding: 1.35rem 0.95rem !important;
+        border-radius: 16px !important;
+      }
+      .video-player-container {
+        padding: 0.65rem !important;
+        border-radius: 16px !important;
+      }
+      .video-info-box {
+        padding: 0.85rem 0.2rem 0.2rem !important;
+      }
+      .video-info-box h3 {
+        font-size: 1.15rem !important;
+      }
+      .video-info-box p {
+        font-size: 0.85rem !important;
+        line-height: 1.5 !important;
+      }
+      .video-actions {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.65rem !important;
+      }
+      .video-actions button,
+      .video-actions a {
+        width: 100% !important;
+        text-align: center !important;
+        justify-content: center !important;
+        box-sizing: border-box;
       }
     }
   </style>
@@ -1687,6 +1845,9 @@
             <span class="playlist-time">11:53</span>
           </div>
         </div>
+        <button type="button" class="mobile-jump-player-btn" onclick="scrollToPlayer()">
+          <i class="fa-solid fa-arrow-up"></i> Ver vídeo en reproducción
+        </button>
       </div>
     </div>
   </section>
@@ -2023,7 +2184,17 @@
       if (!demoPlayer) return;
       demoPlayer.currentTime = sec;
       demoPlayer.play().catch(() => {});
-      updateActiveChapterUI(sec);
+      updateActiveChapterUI(sec, false);
+
+      // En móviles o pantallas pequeñas, hacer scroll suave al reproductor
+      scrollToPlayer();
+    }
+
+    function scrollToPlayer() {
+      const playerContainer = document.querySelector('#demo-video .video-player-container') || demoPlayer;
+      if (playerContainer) {
+        playerContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     }
 
     function restartDemoVideo() {
@@ -2035,7 +2206,7 @@
       }
     }
 
-    function updateActiveChapterUI(currentSec) {
+    function updateActiveChapterUI(currentSec, scrollPlaylist = true) {
       // Find matching chapter (last one with seconds <= currentSec)
       let activeChapter = demoChapters[0];
       let activeIdx = 0;
@@ -2062,7 +2233,9 @@
         items.forEach((item, idx) => {
           if (idx === activeIdx) {
             item.classList.add('active');
-            item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            if (scrollPlaylist) {
+              item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
           } else {
             item.classList.remove('active');
           }
@@ -2076,7 +2249,7 @@
         const cur = Math.floor(demoPlayer.currentTime);
         if (cur !== lastSec) {
           lastSec = cur;
-          updateActiveChapterUI(cur);
+          updateActiveChapterUI(cur, true);
         }
       });
     }
