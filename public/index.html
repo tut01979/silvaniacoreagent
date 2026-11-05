@@ -855,9 +855,54 @@
     }
 
     @media (max-width: 900px) {
-      .hero-title { font-size: 3rem; }
-      .hero-subtitle { font-size: 1.1rem; }
-      .banner-box { grid-template-columns: 1fr; padding: 2rem; }
+      .hero-section {
+        padding: 7rem 1.25rem 3.5rem;
+      }
+      .hero-title {
+        font-size: 2.75rem;
+        letter-spacing: -1px;
+      }
+      .hero-subtitle {
+        font-size: 1.1rem;
+        margin-bottom: 2rem;
+      }
+      .section-agents {
+        padding: 0 1.25rem;
+        margin: 2rem auto 4rem;
+      }
+      .agents-grid {
+        grid-template-columns: 1fr;
+        gap: 1.75rem;
+      }
+      .agent-card {
+        padding: 2.25rem 1.75rem;
+        border-radius: 24px;
+      }
+      .ecosystem-banner {
+        padding: 0 1.25rem;
+        margin: 3.5rem auto;
+      }
+      .banner-box {
+        grid-template-columns: 1fr;
+        padding: 2.25rem 1.75rem;
+        gap: 2rem;
+        border-radius: 24px;
+      }
+      .vision-section {
+        padding: 0 1.25rem;
+        margin: 4rem auto;
+      }
+      .vision-quote {
+        font-size: 1.45rem;
+      }
+      .footer-social-section {
+        padding: 0 1.25rem;
+        margin-bottom: 2.5rem;
+      }
+      .social-grid {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 0.75rem;
+      }
       .mobile-menu-toggle { display: inline-flex; }
       nav {
         display: none;
@@ -891,6 +936,156 @@
       }
       .nav-channel-btn, .nav-bot-btn {
         justify-content: center;
+      }
+    }
+
+    @media (max-width: 640px) {
+      header {
+        padding: 0.65rem 1rem;
+      }
+      .brand {
+        font-size: 1.25rem;
+      }
+      .hero-section {
+        padding: 5.75rem 1rem 2.5rem;
+        min-height: auto;
+      }
+      .watermark-hub {
+        width: 280px;
+        height: 280px;
+      }
+      .hero-badge {
+        font-size: 0.76rem;
+        padding: 0.4rem 0.85rem;
+        margin-bottom: 1.25rem;
+        line-height: 1.3;
+        max-width: 100%;
+        box-sizing: border-box;
+        text-align: center;
+      }
+      .hero-title {
+        font-size: 2.15rem;
+        line-height: 1.15;
+        letter-spacing: -0.5px;
+        margin-bottom: 1.2rem;
+      }
+      .hero-subtitle {
+        font-size: 0.95rem;
+        line-height: 1.55;
+        margin-bottom: 1.75rem;
+      }
+      .hero-actions {
+        flex-direction: column;
+        width: 100%;
+        gap: 0.75rem;
+      }
+      .btn-hero-primary,
+      .btn-hero-secondary {
+        width: 100%;
+        justify-content: center;
+        padding: 0.85rem 1.25rem;
+        font-size: 0.95rem;
+        box-sizing: border-box;
+      }
+      .section-agents {
+        padding: 0 1rem;
+        margin: 1.5rem auto 3.5rem;
+      }
+      .section-header {
+        margin-bottom: 2rem;
+      }
+      .section-header h2 {
+        font-size: 1.85rem;
+        line-height: 1.2;
+      }
+      .section-header p {
+        font-size: 0.92rem;
+      }
+      .agents-grid {
+        gap: 1.25rem;
+      }
+      .agent-card {
+        padding: 1.5rem 1.15rem;
+        border-radius: 20px;
+      }
+      .agent-card h3 {
+        font-size: 1.5rem;
+      }
+      .agent-headline {
+        font-size: 0.92rem;
+      }
+      .agent-desc {
+        font-size: 0.88rem;
+        margin-bottom: 1.5rem;
+      }
+      .agent-features-mini {
+        gap: 0.65rem;
+        margin-bottom: 1.75rem;
+      }
+      .agent-features-mini li {
+        font-size: 0.82rem;
+      }
+      .card-buttons {
+        gap: 0.6rem;
+        margin-top: 1.25rem;
+      }
+      .btn-card-primary {
+        padding: 0.85rem 1rem;
+        font-size: 0.88rem;
+      }
+      .ecosystem-banner {
+        padding: 0 1rem;
+        margin: 2.5rem auto;
+      }
+      .banner-box {
+        padding: 1.4rem 1.1rem;
+        border-radius: 20px;
+        gap: 1.5rem;
+      }
+      .banner-text h3 {
+        font-size: 1.45rem;
+        line-height: 1.25;
+      }
+      .banner-text p {
+        font-size: 0.88rem;
+        line-height: 1.6;
+        margin-bottom: 1.25rem;
+      }
+      .vision-section {
+        padding: 0 1rem;
+        margin: 3rem auto;
+      }
+      .vision-quote {
+        font-size: 1.15rem;
+        line-height: 1.5;
+        margin-bottom: 1.2rem;
+      }
+      .vision-sub {
+        font-size: 0.88rem;
+        line-height: 1.6;
+      }
+      footer {
+        padding: 3rem 1rem 2rem;
+      }
+      .footer-social-section {
+        padding: 0;
+        margin-bottom: 2rem;
+      }
+      .social-heading {
+        font-size: 1.4rem;
+      }
+      .social-desc {
+        font-size: 0.88rem;
+        margin-bottom: 1.5rem;
+      }
+      .social-grid {
+        grid-template-columns: 1fr;
+        gap: 0.65rem;
+      }
+      .footer-links {
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
       }
     }
   </style>
