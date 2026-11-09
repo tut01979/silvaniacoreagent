@@ -53,7 +53,13 @@ export const marketingManager = {
 
       // 2. Generación de Imagen (FLUX Free por defecto)
       try {
-        const imgRes = await imageGenerator.generateImage(scriptRes.data.imagePrompt, { width: 1200, height: 675 });
+        const imgRes = await imageGenerator.generateImage(`${topic} ${scriptRes.data.imagePrompt}`, {
+          width: 1200,
+          height: 675,
+          sceneIndex: 1,
+          totalScenes: 1,
+          sceneTitle: scriptRes.data.title,
+        });
         draft.imageUrls.push(imgRes.filePath);
         draft.imageProvider = imgRes.provider;
       } catch (err: any) {

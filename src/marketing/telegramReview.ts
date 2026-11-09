@@ -378,9 +378,10 @@ export const telegramReview = {
           const hasImage = draft.imageUrls && draft.imageUrls.length > 0 && fs.existsSync(draft.imageUrls[0]);
           let channelMsg: any = null;
 
-          const publishCaption = draft.socialContent
+          const rawCaption = draft.socialContent
             ? `${draft.socialContent.title}\n\n${draft.socialContent.copy}\n\n${draft.socialContent.hashtags.join(" ")}`
             : `${draft.videoScript?.title || draft.topic}`;
+          const publishCaption = rawCaption.replace(/\*\*/g, "");
 
           if (hasVideo && fs.statSync(draft.videoPath!).size <= 49 * 1024 * 1024) {
             try {

@@ -39,45 +39,49 @@ export const socialPublisher = {
       callToAction: "Pruébalo gratis en t.me/Silvania_Core_Agent_Bot"
     };
 
-    const tagsStr = post.hashtags.map(t => t.startsWith("#") ? t : `#${t}`).join(" ");
+    const cleanTitle = post.title.replace(/\*\*/g, "").trim();
+    const cleanCopy = post.copy.replace(/\*\*/g, "").trim();
+    const tagsStr = post.hashtags
+      .map(t => (t.startsWith("#") ? t : `#${t}`).replace(/\s+/g, ""))
+      .join(" ");
 
     // 1. X / Twitter (Máximo 280 caracteres)
-    let twitterCopy = `${post.title}\n\n${post.copy.slice(0, 140)}...\n\n👉 t.me/silvania_ai ${tagsStr.split(" ").slice(0, 3).join(" ")}`;
+    let twitterCopy = `${cleanTitle}\n\n${cleanCopy.slice(0, 140)}...\n\n👉 t.me/silvania_ai ${tagsStr.split(" ").slice(0, 3).join(" ")}`;
     if (twitterCopy.length > 280) {
-      twitterCopy = `${post.title}\n\n👉 t.me/silvania_ai ${tagsStr.split(" ").slice(0, 3).join(" ")}`;
+      twitterCopy = `${cleanTitle}\n\n👉 t.me/silvania_ai ${tagsStr.split(" ").slice(0, 3).join(" ")}`;
     }
 
     // 2. LinkedIn (Estructurado, saltos de línea limpios, enfoque profesional)
     const linkedinCopy = 
-      `🚀 ${post.title}\n\n` +
-      `${post.copy}\n\n` +
+      `🚀 ${cleanTitle}\n\n` +
+      `${cleanCopy}\n\n` +
       `💡 ¿Cómo automatizas tú estas tareas en tu día a día?\n\n` +
       `🔗 Descubre más y accede al asistente en Telegram: https://silvania.ai/coreagent\n\n` +
       `${tagsStr}`;
 
     // 3. Facebook (Tono conversacional, invitando a interactuar)
     const facebookCopy =
-      `✨ ${post.title}\n\n` +
-      `${post.copy}\n\n` +
+      `✨ ${cleanTitle}\n\n` +
+      `${cleanCopy}\n\n` +
       `👉 Pruébalo ahora mismo gratis en Telegram: https://t.me/Silvania_Core_Agent_Bot\n` +
       `📢 Únete a nuestro canal oficial de novedades: https://t.me/silvania_ai\n\n` +
       `${tagsStr}`;
 
     // 4. TikTok (Descripción corta + gancho + tags de alto volumen)
     const tiktokCopy = 
-      `🔥 ${post.title.slice(0, 60)} | Asistente IA para Google Workspace\n` +
+      `🔥 ${cleanTitle.slice(0, 60)} | Asistente IA para Google Workspace\n` +
       `¿Lo usarías en tu oficina? Comenta 👇\n\n` +
       `#SilvaniaAI #Productividad #InteligenciaArtificial #Telegram #GoogleWorkspace #TechTok #Emprendimiento`;
 
     // 5. YouTube (Título SEO + Descripción con capítulos y enlaces)
-    const ytTitle = draft.videoScript?.title || `${post.title} | Silvania.ai`;
+    const ytTitle = draft.videoScript?.title || `${cleanTitle} | Silvania.ai`;
     const ytDescription = 
       `En este vídeo te mostramos cómo usar Silvania CoreAgent para optimizar tu trabajo diario con Google Workspace directamente desde Telegram.\n\n` +
       `📌 Enlaces oficiales:\n` +
       `• Web: https://silvania.ai\n` +
       `• Bot en Telegram: https://t.me/Silvania_Core_Agent_Bot\n` +
       `• Canal de Novedades: https://t.me/silvania_ai\n\n` +
-      `${post.copy}\n\n` +
+      `${cleanCopy}\n\n` +
       `Capítulos:\n00:00 Introducción y problema\n00:15 Demostración en directo\n00:45 Conclusiones y acceso\n\n` +
       `${tagsStr}`;
 
