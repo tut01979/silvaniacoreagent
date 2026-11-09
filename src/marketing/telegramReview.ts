@@ -337,18 +337,30 @@ export const telegramReview = {
       }
 
       // 4. Publicar en YouTube de forma nativa si hay vídeo MP4 y credenciales
-      if (draft.videoPath && fs.existsSync(draft.videoPath) && config.marketing?.youtubeRefreshToken) {
-        try {
-          const { youtubePublisher } = await import("./services/youtubePublisher.js");
-          const ytRes = await youtubePublisher.publishVideo(draft);
-          if (ytRes.success) {
-            publishReport.push(`🎬 *YouTube:* Publicado en @silvania_ai\n🔗 [Ver en YouTube](${ytRes.url})`);
+      const isVideoFormat = draft.format === "youtube_long" || draft.format === "youtube_short" || draft.format === "tiktok";
+      if (draft.videoPath || isVideoFormat) {
+        if (draft.videoPath && fs.existsSync(draft.videoPath)) {
+          if (config.marketing?.youtubeRefreshToken) {
+            try {
+              console.log(`🎬 [Marketing] Publicando vídeo en YouTube para borrador #${draftId}...`);
+              const { youtubePublisher } = await import("./services/youtubePublisher.js");
+              const ytRes = await youtubePublisher.publishVideo(draft);
+              if (ytRes.success) {
+                publishReport.push(`🎬 *YouTube:* Publicado en @silvania_ai\n🔗 [Ver en YouTube](${ytRes.url})`);
+              } else {
+                publishReport.push(`⚠️ *YouTube:* ${ytRes.error}`);
+              }
+            } catch (ytErr: any) {
+              console.warn("⚠️ Error invocando youtubePublisher:", ytErr.message);
+              publishReport.push(`⚠️ *YouTube:* ${ytErr.message}`);
+            }
           } else {
-            publishReport.push(`⚠️ *YouTube:* ${ytRes.error}`);
+            console.warn("⚠️ [Marketing] YOUTUBE_REFRESH_TOKEN no configurado.");
+            publishReport.push(`⚠️ *YouTube:* No configurado (falta YOUTUBE_REFRESH_TOKEN)`);
           }
-        } catch (ytErr: any) {
-          console.warn("⚠️ Error invocando youtubePublisher:", ytErr.message);
-          publishReport.push(`⚠️ *YouTube:* ${ytErr.message}`);
+        } else {
+          console.warn(`⚠️ [Marketing] El borrador #${draftId} no tiene archivo de vídeo disponible.`);
+          publishReport.push(`⚠️ *YouTube:* Archivo de vídeo no disponible para subir`);
         }
       }
 

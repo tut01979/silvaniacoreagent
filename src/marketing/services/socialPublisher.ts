@@ -193,7 +193,9 @@ export const socialPublisher = {
     } catch (err: any) {
       console.error("❌ Error publicando en X (Twitter):", err?.data || err.message);
       const isUnauthorized = err?.data?.status === 401 || err?.status === 401 || (err?.message && err.message.toLowerCase().includes("unauthorized"));
-      const errorMsg = isUnauthorized ? "X no configurado" : (err?.data?.detail || err.message);
+      const errorMsg = isUnauthorized 
+        ? "Claves de X no autorizadas (Error 401: regenerar Access Token & Secret en Developer Portal con permisos Read/Write)" 
+        : (err?.data?.detail || err.message);
       return { platform: "X (Twitter)", success: false, error: errorMsg };
     }
   }
