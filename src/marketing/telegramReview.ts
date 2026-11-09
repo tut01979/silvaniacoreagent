@@ -336,7 +336,23 @@ export const telegramReview = {
         }
       }
 
-      // 4. Publicación en Canal Oficial de Telegram
+      // 4. Publicar en YouTube de forma nativa si hay vídeo MP4 y credenciales
+      if (draft.videoPath && fs.existsSync(draft.videoPath) && config.marketing?.youtubeRefreshToken) {
+        try {
+          const { youtubePublisher } = await import("./services/youtubePublisher.js");
+          const ytRes = await youtubePublisher.publishVideo(draft);
+          if (ytRes.success) {
+            publishReport.push(`🎬 *YouTube:* Publicado en @silvania_ai\n🔗 [Ver en YouTube](${ytRes.url})`);
+          } else {
+            publishReport.push(`⚠️ *YouTube:* ${ytRes.error}`);
+          }
+        } catch (ytErr: any) {
+          console.warn("⚠️ Error invocando youtubePublisher:", ytErr.message);
+          publishReport.push(`⚠️ *YouTube:* ${ytErr.message}`);
+        }
+      }
+
+      // 5. Publicación en Canal Oficial de Telegram
       if (channelId && channelId.trim().length > 0) {
         try {
           console.log(`📢 [Marketing] Publicando borrador #${draftId} en canal ${channelId}...`);

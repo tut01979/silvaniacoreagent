@@ -69,6 +69,9 @@ export const config = {
     twitterApiSecret: process.env.TWITTER_API_SECRET || "",
     twitterAccessToken: process.env.TWITTER_ACCESS_TOKEN || "",
     twitterAccessSecret: process.env.TWITTER_ACCESS_SECRET || "",
+    youtubeClientId: process.env.YOUTUBE_CLIENT_ID || "",
+    youtubeClientSecret: process.env.YOUTUBE_CLIENT_SECRET || "",
+    youtubeRefreshToken: process.env.YOUTUBE_REFRESH_TOKEN || "",
     cronEnabled: process.env.MARKETING_CRON_ENABLED !== "false",
     cronHour: parseInt(process.env.MARKETING_CRON_HOUR || "11"),
     cronMinute: parseInt(process.env.MARKETING_CRON_MINUTE || "0")
