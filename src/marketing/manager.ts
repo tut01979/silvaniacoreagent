@@ -43,6 +43,8 @@ export const marketingManager = {
       updatedAt: now,
     };
 
+    const targetProduct = visualAssetSelector.detectProduct(topic);
+
     if (format === "social_post") {
       // 1. Redacción de Post y Prompt de Imagen (LLM) adaptado a la red elegida
       const targetPlatform = options.targetPlatform || "generic";
@@ -59,6 +61,7 @@ export const marketingManager = {
           sceneIndex: 1,
           totalScenes: 1,
           sceneTitle: scriptRes.data.title,
+          product: targetProduct,
         });
         draft.imageUrls.push(imgRes.filePath);
         draft.imageProvider = imgRes.provider;
@@ -122,6 +125,7 @@ export const marketingManager = {
           ...imgDimensions,
           sceneIndex: 1,
           sceneTitle: scriptRes.data.title,
+          product: targetProduct,
         });
         coverImagePath = imgRes.filePath;
         draft.imageUrls.push(imgRes.filePath);
@@ -176,7 +180,6 @@ export const marketingManager = {
       }
 
       // 4. Generación de imágenes por escena (1 por escena, N = min(escenas, maxScenes))
-      const targetProduct = visualAssetSelector.detectProduct(topic);
       console.log(`🎯 [Marketing Video] Producto y marca identificados: ${targetProduct.toUpperCase()} (Tema: "${topic}")`);
 
       const sceneMediaList: SceneMediaInput[] = [];
