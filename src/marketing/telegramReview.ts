@@ -314,29 +314,8 @@ export const telegramReview = {
         }
       }
 
-      // 2. Publicar en X (Twitter) de forma nativa si las claves están configuradas
-      if (config.marketing?.twitterApiKey && config.marketing?.twitterAccessToken) {
-        const imagePath = draft.imageUrls && draft.imageUrls.length > 0 ? draft.imageUrls[0] : undefined;
-        const twitterRes = await socialPublisher.publishToTwitter(socialPack.twitter, imagePath);
-        if (twitterRes.success) {
-          const tweetLink = twitterRes.url ? `\n🔗 [Ver Tweet en X](${twitterRes.url})` : "";
-          publishReport.push(`🕇 *X (Twitter):* Publicado en @Silvania_AI${tweetLink}`);
-        } else {
-          publishReport.push(`⚠️ *X (Twitter):* ${twitterRes.error}`);
-        }
-      }
-
-      // 3. Enviar a Facebook Page si está configurado
-      if (config.marketing?.facebookPageAccessToken) {
-        const fbRes = await socialPublisher.publishToFacebook(socialPack.facebook);
-        if (fbRes.success) {
-          publishReport.push(`📘 *Facebook Page:* Publicado (ID: ${fbRes.messageId})`);
-        } else {
-          publishReport.push(`⚠️ *Facebook:* ${fbRes.error}`);
-        }
-      }
-
-      // 4. Publicar en YouTube de forma nativa si hay vídeo MP4 y credenciales
+      // 2. Publicar en YouTube de forma nativa si hay vídeo MP4 y credenciales
+      let publishedYoutubeUrl: string | undefined;
       const isVideoFormat = draft.format === "youtube_long" || draft.format === "youtube_short" || draft.format === "tiktok";
       if (draft.videoPath || isVideoFormat) {
         if (draft.videoPath && fs.existsSync(draft.videoPath)) {
@@ -346,7 +325,8 @@ export const telegramReview = {
               const { youtubePublisher } = await import("./services/youtubePublisher.js");
               const ytRes = await youtubePublisher.publishVideo(draft);
               if (ytRes.success) {
-                publishReport.push(`🎬 *YouTube:* Publicado en @silvania_ai\n🔗 [Ver en YouTube](${ytRes.url})`);
+                publishedYoutubeUrl = ytRes.url;
+                publishReport.push(`🎬 *YouTube:* Publicado en @silvania\\_ai\n🔗 [Ver en YouTube](${ytRes.url})`);
               } else {
                 publishReport.push(`⚠️ *YouTube:* ${ytRes.error}`);
               }
@@ -356,11 +336,37 @@ export const telegramReview = {
             }
           } else {
             console.warn("⚠️ [Marketing] YOUTUBE_REFRESH_TOKEN no configurado.");
-            publishReport.push(`⚠️ *YouTube:* No configurado (falta YOUTUBE_REFRESH_TOKEN)`);
+            publishReport.push(`⚠️ *YouTube:* No configurado (falta YOUTUBE\\_REFRESH\\_TOKEN)`);
           }
         } else {
           console.warn(`⚠️ [Marketing] El borrador #${draftId} no tiene archivo de vídeo disponible.`);
           publishReport.push(`⚠️ *YouTube:* Archivo de vídeo no disponible para subir`);
+        }
+      }
+
+      // 3. Publicar en X (Twitter) de forma nativa si las claves están configuradas
+      if (config.marketing?.twitterApiKey && config.marketing?.twitterAccessToken) {
+        const imagePath = draft.imageUrls && draft.imageUrls.length > 0 ? draft.imageUrls[0] : undefined;
+        let twitterText = socialPack.twitter;
+        if (publishedYoutubeUrl) {
+          twitterText = `${draft.videoScript?.title || draft.topic}\n\n🎬 ${publishedYoutubeUrl}\n👉 t.me/silvania_ai #SilvaniaAI #IA`;
+        }
+        const twitterRes = await socialPublisher.publishToTwitter(twitterText, imagePath);
+        if (twitterRes.success) {
+          const tweetLink = twitterRes.url ? `\n🔗 [Ver Tweet en X](${twitterRes.url})` : "";
+          publishReport.push(`𝕏 *X (Twitter):* Publicado en @Silvania\\_AI${tweetLink}`);
+        } else {
+          publishReport.push(`⚠️ *X (Twitter):* ${twitterRes.error}`);
+        }
+      }
+
+      // 4. Enviar a Facebook Page si está configurado
+      if (config.marketing?.facebookPageAccessToken) {
+        const fbRes = await socialPublisher.publishToFacebook(socialPack.facebook);
+        if (fbRes.success) {
+          publishReport.push(`📘 *Facebook Page:* Publicado (ID: ${fbRes.messageId})`);
+        } else {
+          publishReport.push(`⚠️ *Facebook:* ${fbRes.error}`);
         }
       }
 
@@ -430,7 +436,11 @@ export const telegramReview = {
             `💡 _Toca el botón abajo para obtener los textos listos para pegar en X, LinkedIn, TikTok y YouTube:_`;
 
           const followUpKeyboard = new InlineKeyboard().text("📦 Ver Pack Multirredes (1-Click)", `mkt_pack_${draftId}`);
-          await ctx.reply(reportText, { parse_mode: "Markdown", reply_markup: followUpKeyboard });
+          try {
+            await ctx.reply(reportText, { parse_mode: "Markdown", reply_markup: followUpKeyboard });
+          } catch {
+            await ctx.reply(reportText.replace(/[*_`\\]/g, ""), { reply_markup: followUpKeyboard });
+          }
           return true;
         } catch (publishErr: any) {
           console.error("❌ Error publicando en canal de Telegram:", publishErr.message);
