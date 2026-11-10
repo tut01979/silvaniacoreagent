@@ -65,6 +65,8 @@ export const config = {
     webhookUrl: process.env.MARKETING_WEBHOOK_URL || "",
     facebookPageAccessToken: process.env.FACEBOOK_PAGE_ACCESS_TOKEN || "",
     facebookPageId: process.env.FACEBOOK_PAGE_ID || "",
+    instagramAccountId: process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID || "",
+    publicUrl: process.env.PUBLIC_URL || "https://silvania.ai",
     twitterApiKey: process.env.TWITTER_API_KEY || "",
     twitterApiSecret: process.env.TWITTER_API_SECRET || "",
     twitterAccessToken: process.env.TWITTER_ACCESS_TOKEN || "",

@@ -289,6 +289,8 @@ export const telegramReview = {
         `\`\`\`text\n${pack.linkedin}\n\`\`\`\n\n` +
         `📘 *Facebook:*\n` +
         `\`\`\`text\n${pack.facebook}\n\`\`\`\n\n` +
+        `📸 *Instagram (@silvania.ai):*\n` +
+        `\`\`\`text\n${pack.instagram}\n\`\`\`\n\n` +
         `🎵 *TikTok:*\n` +
         `\`\`\`text\n${pack.tiktok}\n\`\`\`\n\n` +
         `🎬 *YouTube (Título & Descripción):*\n` +
@@ -373,6 +375,23 @@ export const telegramReview = {
           publishReport.push(`📘 *Facebook Page:* Publicado en Silvania.ai${fbLink}`);
         } else {
           publishReport.push(`⚠️ *Facebook:* ${fbRes.error}`);
+        }
+      }
+
+      // 5. Enviar a Instagram si está configurado
+      if (config.marketing?.instagramAccountId && config.marketing?.facebookPageAccessToken) {
+        const imagePath = draft.imageUrls && draft.imageUrls.length > 0 ? draft.imageUrls[0] : undefined;
+        const videoPath = draft.videoPath && fs.existsSync(draft.videoPath) ? draft.videoPath : undefined;
+        let igCaption = socialPack.instagram || socialPack.facebook;
+        if (publishedYoutubeUrl) {
+          igCaption = `${draft.videoScript?.title || draft.topic}\n\n🎬 Míralo también en YouTube: ${publishedYoutubeUrl}\n\n${igCaption}`;
+        }
+        const igRes = await socialPublisher.publishToInstagram(igCaption, imagePath, videoPath);
+        if (igRes.success) {
+          const igLink = igRes.url ? `\n🔗 [Ver en Instagram](${igRes.url})` : "";
+          publishReport.push(`📸 *Instagram:* Publicado en @silvania.ai${igLink}`);
+        } else {
+          publishReport.push(`⚠️ *Instagram:* ${igRes.error}`);
         }
       }
 

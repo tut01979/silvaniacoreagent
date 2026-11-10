@@ -1,6 +1,7 @@
 import axios from "axios";
 import { TwitterApi } from "twitter-api-v2";
 import fs from "fs";
+import path from "path";
 import { MarketingDraft, SocialPost, VideoScript } from "../types.js";
 import { config } from "../../config/config.js";
 
@@ -8,6 +9,7 @@ export interface FormattedSocialPack {
   twitter: string;
   linkedin: string;
   facebook: string;
+  instagram: string;
   tiktok: string;
   youtube: {
     title: string;
@@ -67,13 +69,21 @@ export const socialPublisher = {
       `📢 Únete a nuestro canal oficial de novedades: https://t.me/silvania_ai\n\n` +
       `${tagsStr}`;
 
-    // 4. TikTok (Descripción corta + gancho + tags de alto volumen)
+    // 4. Instagram (Enfoque visual, invitando al link en bio y bot)
+    const instagramCopy =
+      `✨ ${cleanTitle}\n\n` +
+      `${cleanCopy}\n\n` +
+      `🔗 Enlace en bio: silvania.ai\n` +
+      `👉 Pruébalo gratis en Telegram: @Silvania_Core_Agent_Bot\n\n` +
+      `${tagsStr}`;
+
+    // 5. TikTok (Descripción corta + gancho + tags de alto volumen)
     const tiktokCopy = 
       `🔥 ${cleanTitle.slice(0, 60)} | Asistente IA para Google Workspace\n` +
       `¿Lo usarías en tu oficina? Comenta 👇\n\n` +
       `#SilvaniaAI #Productividad #InteligenciaArtificial #Telegram #GoogleWorkspace #TechTok #Emprendimiento`;
 
-    // 5. YouTube (Título SEO + Descripción con capítulos y enlaces)
+    // 6. YouTube (Título SEO + Descripción con capítulos y enlaces)
     const ytTitle = draft.videoScript?.title || `${cleanTitle} | Silvania.ai`;
     const ytDescription = 
       `En este vídeo te mostramos cómo usar Silvania CoreAgent para optimizar tu trabajo diario con Google Workspace directamente desde Telegram.\n\n` +
@@ -89,6 +99,7 @@ export const socialPublisher = {
       twitter: twitterCopy,
       linkedin: linkedinCopy,
       facebook: facebookCopy,
+      instagram: instagramCopy,
       tiktok: tiktokCopy,
       youtube: {
         title: ytTitle,
@@ -171,6 +182,115 @@ export const socialPublisher = {
     } catch (err: any) {
       console.error("❌ Error publicando en Facebook:", err.response?.data?.error?.message || err.message);
       return { platform: "Facebook", success: false, error: err.response?.data?.error?.message || err.message };
+    }
+  },
+
+  /**
+   * Publica de forma directa en Instagram (@silvania.ai) usando la Instagram Graph API
+   * Soporta tanto publicación de imágenes individuales como de Reels de vídeo
+   */
+  async publishToInstagram(caption: string, imagePath?: string, videoPath?: string): Promise<PublishResult> {
+    const pageToken = config.marketing?.facebookPageAccessToken;
+    const igAccountId = config.marketing?.instagramAccountId;
+    const publicUrl = config.marketing?.publicUrl || (process.env.RAILWAY_STATIC_URL ? `https://${process.env.RAILWAY_STATIC_URL}` : "https://silvania.ai");
+
+    if (!pageToken || !igAccountId) {
+      return { platform: "Instagram", success: false, error: "Faltan claves (FACEBOOK_PAGE_ACCESS_TOKEN / INSTAGRAM_BUSINESS_ACCOUNT_ID)" };
+    }
+
+    try {
+      console.log("📸 [Marketing] Iniciando publicación en Instagram @silvania.ai...");
+      let containerId: string | undefined;
+
+      // 1. Si hay vídeo MP4, publicarlo como REEL
+      if (videoPath && fs.existsSync(videoPath)) {
+        const filename = path.basename(videoPath);
+        const targetTempPath = path.join(process.cwd(), "temp", filename);
+        if (videoPath !== targetTempPath && !fs.existsSync(targetTempPath)) {
+          try { fs.copyFileSync(videoPath, targetTempPath); } catch (_) {}
+        }
+        const mediaUrl = `${publicUrl}/marketing-media/${filename}`;
+        console.log(`🎬 [Instagram] Creando contenedor Reel desde URL: ${mediaUrl}...`);
+
+        const createRes = await axios.post(`https://graph.facebook.com/v19.0/${igAccountId}/media`, {
+          media_type: "REELS",
+          video_url: mediaUrl,
+          caption,
+          access_token: pageToken
+        }, { timeout: 30000 });
+
+        containerId = createRes.data?.id;
+
+        // Esperar procesamiento del vídeo en Instagram
+        if (containerId) {
+          console.log(`⏳ [Instagram] Esperando procesamiento del Reel (${containerId})...`);
+          let attempts = 0;
+          let isFinished = false;
+          while (attempts < 15 && !isFinished) {
+            await new Promise(r => setTimeout(r, 4000));
+            attempts++;
+            try {
+              const statusRes = await axios.get(`https://graph.facebook.com/v19.0/${containerId}?fields=status_code&access_token=${pageToken}`);
+              const status = statusRes.data?.status_code;
+              console.log(`⏳ [Instagram] Estado del contenedor (intento ${attempts}): ${status}`);
+              if (status === "FINISHED") {
+                isFinished = true;
+                break;
+              } else if (status === "ERROR") {
+                throw new Error("El procesamiento del Reel en Instagram devolvió ERROR.");
+              }
+            } catch (pollErr: any) {
+              console.warn(`⚠️ [Instagram] Error consultando estado: ${pollErr.message}`);
+            }
+          }
+        }
+      } else if (imagePath && fs.existsSync(imagePath)) {
+        // 2. Si hay imagen, publicarla en el feed
+        const filename = path.basename(imagePath);
+        const targetTempPath = path.join(process.cwd(), "temp", filename);
+        if (imagePath !== targetTempPath && !fs.existsSync(targetTempPath)) {
+          try { fs.copyFileSync(imagePath, targetTempPath); } catch (_) {}
+        }
+        const mediaUrl = `${publicUrl}/marketing-media/${filename}`;
+        console.log(`🖼️ [Instagram] Creando contenedor de imagen desde URL: ${mediaUrl}...`);
+
+        const createRes = await axios.post(`https://graph.facebook.com/v19.0/${igAccountId}/media`, {
+          image_url: mediaUrl,
+          caption,
+          access_token: pageToken
+        }, { timeout: 20000 });
+
+        containerId = createRes.data?.id;
+      }
+
+      if (!containerId) {
+        return { platform: "Instagram", success: false, error: "No se proporcionó imagen ni vídeo para Instagram" };
+      }
+
+      // 3. Publicar el contenedor en Instagram
+      console.log(`🚀 [Instagram] Publicando contenedor ${containerId}...`);
+      const publishRes = await axios.post(`https://graph.facebook.com/v19.0/${igAccountId}/media_publish`, {
+        creation_id: containerId,
+        access_token: pageToken
+      }, { timeout: 25000 });
+
+      const mediaId = publishRes.data?.id;
+      let permalink = "https://www.instagram.com/silvania.ai/";
+      if (mediaId) {
+        try {
+          const permRes = await axios.get(`https://graph.facebook.com/v19.0/${mediaId}?fields=permalink&access_token=${pageToken}`);
+          if (permRes.data?.permalink) {
+            permalink = permRes.data.permalink;
+          }
+        } catch (_) {}
+      }
+
+      console.log(`✅ [Instagram] ¡Publicado con éxito en @silvania.ai! Permalink: ${permalink}`);
+      return { platform: "Instagram", success: true, messageId: mediaId, url: permalink };
+    } catch (err: any) {
+      const errMsg = err.response?.data?.error?.message || err.message;
+      console.error("❌ Error publicando en Instagram:", errMsg);
+      return { platform: "Instagram", success: false, error: errMsg };
     }
   },
 

@@ -286,6 +286,13 @@ const PORT = process.env.PORT || 3000;
 const publicUrlRaw = process.env.PUBLIC_URL || (process.env.RAILWAY_STATIC_URL ? `https://${process.env.RAILWAY_STATIC_URL}` : "");
 const PUBLIC_URL = publicUrlRaw.endsWith("/") ? publicUrlRaw.slice(0, -1) : publicUrlRaw;
 
+// Servir archivos multimedia de marketing para APIs públicas de publicación (Instagram Graph API, etc.)
+const tempMediaDir = path.join(process.cwd(), "temp");
+if (!fs.existsSync(tempMediaDir)) {
+  try { fs.mkdirSync(tempMediaDir, { recursive: true }); } catch (_) {}
+}
+app.use("/marketing-media", express.static(tempMediaDir));
+
 // Servir Landing Page dinámica con Rate Limiting
 app.get("/", rateLimiter(60, 60000), (req: any, res: any) => {
   try {
