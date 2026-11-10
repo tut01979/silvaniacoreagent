@@ -132,7 +132,7 @@ export const socialPublisher = {
   /**
    * Publica de forma directa en Facebook Page mediante Meta Graph API (si está configurado)
    */
-  async publishToFacebook(message: string): Promise<PublishResult> {
+  async publishToFacebook(message: string, imagePath?: string): Promise<PublishResult> {
     const pageToken = config.marketing?.facebookPageAccessToken;
     const pageId = config.marketing?.facebookPageId;
 
@@ -141,12 +141,33 @@ export const socialPublisher = {
     }
 
     try {
+      console.log("📘 [Marketing] Publicando en Facebook Page Silvania.ai...");
+      if (imagePath && fs.existsSync(imagePath)) {
+        try {
+          const fileBuffer = fs.readFileSync(imagePath);
+          const blob = new Blob([fileBuffer], { type: "image/png" });
+          const form = new FormData();
+          form.append("source", blob, "image.png");
+          form.append("caption", message);
+          form.append("access_token", pageToken);
+
+          const res = await axios.post(`https://graph.facebook.com/v19.0/${pageId}/photos`, form);
+          const photoId = res.data?.id;
+          const postUrl = photoId ? `https://facebook.com/${photoId}` : `https://facebook.com/${pageId}`;
+          return { platform: "Facebook", success: true, messageId: photoId, url: postUrl };
+        } catch (imgErr: any) {
+          console.warn("⚠️ Falló subida con foto a Facebook, intentando solo texto:", imgErr.response?.data?.error?.message || imgErr.message);
+        }
+      }
+
       const url = `https://graph.facebook.com/v19.0/${pageId}/feed`;
       const res = await axios.post(url, {
         message,
         access_token: pageToken
       });
-      return { platform: "Facebook", success: true, messageId: res.data?.id };
+      const postId = res.data?.id;
+      const postUrl = postId ? `https://facebook.com/${postId}` : `https://facebook.com/${pageId}`;
+      return { platform: "Facebook", success: true, messageId: postId, url: postUrl };
     } catch (err: any) {
       console.error("❌ Error publicando en Facebook:", err.response?.data?.error?.message || err.message);
       return { platform: "Facebook", success: false, error: err.response?.data?.error?.message || err.message };

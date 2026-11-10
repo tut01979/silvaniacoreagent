@@ -362,9 +362,15 @@ export const telegramReview = {
 
       // 4. Enviar a Facebook Page si está configurado
       if (config.marketing?.facebookPageAccessToken) {
-        const fbRes = await socialPublisher.publishToFacebook(socialPack.facebook);
+        const imagePath = draft.imageUrls && draft.imageUrls.length > 0 ? draft.imageUrls[0] : undefined;
+        let fbText = socialPack.facebook;
+        if (publishedYoutubeUrl) {
+          fbText = `${draft.videoScript?.title || draft.topic}\n\n🎬 Míralo en YouTube: ${publishedYoutubeUrl}\n\n${socialPack.facebook}`;
+        }
+        const fbRes = await socialPublisher.publishToFacebook(fbText, imagePath);
         if (fbRes.success) {
-          publishReport.push(`📘 *Facebook Page:* Publicado (ID: ${fbRes.messageId})`);
+          const fbLink = fbRes.url ? `\n🔗 [Ver en Facebook](${fbRes.url})` : "";
+          publishReport.push(`📘 *Facebook Page:* Publicado en Silvania.ai${fbLink}`);
         } else {
           publishReport.push(`⚠️ *Facebook:* ${fbRes.error}`);
         }
