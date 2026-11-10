@@ -74,6 +74,8 @@ export const config = {
     youtubeClientId: process.env.YOUTUBE_CLIENT_ID || "",
     youtubeClientSecret: process.env.YOUTUBE_CLIENT_SECRET || "",
     youtubeRefreshToken: process.env.YOUTUBE_REFRESH_TOKEN || "",
+    linkedinAccessToken: process.env.LINKEDIN_ACCESS_TOKEN || "AQVts5Vntlmtb3ktSdY42lXsvi8KPzCtUdvsFenEyXyqkRqHaaVO7k0luUny_GtSV-S57Jg0IDzc-VJirYa2bF_iWC7-4eT-tVXlSkA7_deyRMDscvFg4rzNFNg-6jPh-IUJa_lIqhG1Gj5j5S2UbABAormExaTe1gNgmJRBJS7_ZEBrcl587Y9j_fe8aqxrTeT3Y7qDf98n6tbUq8Zcuu4xn6AoSHJRg16DZSiGq8z-O-kgg1EJHj00Vfh53MllZUF4tQQ61IV8alszG53T_B5S5WJUcZ_3IE3yfvBdNZ6f0I7Mt46kU0QzOUkKG2MM5_LF2NPm9aMH2VOTzow3lGRD4wdphQ",
+    linkedinPersonUrn: process.env.LINKEDIN_PERSON_URN || "urn:li:person:5hWnXvuzlV",
     cronEnabled: process.env.MARKETING_CRON_ENABLED !== "false",
     cronHour: parseInt(process.env.MARKETING_CRON_HOUR || "11"),
     cronMinute: parseInt(process.env.MARKETING_CRON_MINUTE || "0")

@@ -343,5 +343,62 @@ export const socialPublisher = {
         : (err?.data?.detail || err.message);
       return { platform: "X (Twitter)", success: false, error: errorMsg };
     }
+  },
+
+  /**
+   * Publica de forma directa en LinkedIn Personal/Company usando la LinkedIn v2 UGC Posts API
+   */
+  async publishToLinkedIn(text: string, linkUrl?: string): Promise<PublishResult> {
+    const token = config.marketing?.linkedinAccessToken;
+    const author = config.marketing?.linkedinPersonUrn || "urn:li:person:5hWnXvuzlV";
+
+    if (!token) {
+      return { platform: "LinkedIn", success: false, error: "Falta token de LinkedIn (LINKEDIN_ACCESS_TOKEN)" };
+    }
+
+    try {
+      console.log(`💼 [Marketing] Publicando en LinkedIn como ${author}...`);
+      const body: any = {
+        author: author,
+        lifecycleState: "PUBLISHED",
+        specificContent: {
+          "com.linkedin.ugc.ShareContent": {
+            shareCommentary: {
+              text: text
+            },
+            shareMediaCategory: linkUrl ? "ARTICLE" : "NONE",
+            ...(linkUrl ? {
+              media: [
+                {
+                  status: "READY",
+                  originalUrl: linkUrl
+                }
+              ]
+            } : {})
+          }
+        },
+        visibility: {
+          "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"
+        }
+      };
+
+      const res = await axios.post("https://api.linkedin.com/v2/ugcPosts", body, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "X-Restli-Protocol-Version": "2.0.0",
+          "Content-Type": "application/json"
+        },
+        timeout: 20000
+      });
+
+      const shareUrn = res.data?.id; // e.g. "urn:li:share:7525976108299620352"
+      const postUrl = shareUrn ? `https://www.linkedin.com/feed/update/${shareUrn}` : "https://www.linkedin.com/feed/";
+      console.log(`✅ [Marketing] Publicado en LinkedIn con éxito: ${postUrl}`);
+      return { platform: "LinkedIn", success: true, messageId: shareUrn, url: postUrl };
+    } catch (err: any) {
+      const errMsg = err.response?.data?.message || err.message;
+      console.error("❌ Error publicando en LinkedIn:", errMsg);
+      return { platform: "LinkedIn", success: false, error: errMsg };
+    }
   }
 };

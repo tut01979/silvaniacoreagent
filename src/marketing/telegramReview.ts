@@ -395,7 +395,22 @@ export const telegramReview = {
         }
       }
 
-      // 5. Publicación en Canal Oficial de Telegram
+      // 6. Enviar a LinkedIn si está configurado
+      if (config.marketing?.linkedinAccessToken) {
+        let liText = socialPack.linkedin;
+        if (publishedYoutubeUrl) {
+          liText = `${draft.videoScript?.title || draft.topic}\n\n🎬 Míralo también en YouTube: ${publishedYoutubeUrl}\n\n${socialPack.linkedin}`;
+        }
+        const liRes = await socialPublisher.publishToLinkedIn(liText, publishedYoutubeUrl);
+        if (liRes.success) {
+          const liLink = liRes.url ? `\n🔗 [Ver en LinkedIn](${liRes.url})` : "";
+          publishReport.push(`💼 *LinkedIn:* Publicado en Eduardo Quintero (Silvania AI)${liLink}`);
+        } else {
+          publishReport.push(`⚠️ *LinkedIn:* ${liRes.error}`);
+        }
+      }
+
+      // 7. Publicación en Canal Oficial de Telegram
       if (channelId && channelId.trim().length > 0) {
         try {
           console.log(`📢 [Marketing] Publicando borrador #${draftId} en canal ${channelId}...`);
