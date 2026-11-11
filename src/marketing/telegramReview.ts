@@ -281,14 +281,17 @@ export const telegramReview = {
       await ctx.answerCallbackQuery({ text: "📦 Generando Pack Multirredes..." }).catch(() => {});
       const pack = socialPublisher.generateSocialPack(draft);
 
-      const msg = 
-        `📦 *PACK MULTIRREDES LISTO (Copia y Pega)*\n\n` +
+      const msgPart1 = 
+        `📦 *PACK MULTIRREDES (Parte 1/2)*\n\n` +
         `𝕏 *X / Twitter (Optimizado < 280 caracteres):*\n` +
         `\`\`\`text\n${pack.twitter}\n\`\`\`\n\n` +
         `💼 *LinkedIn (Profesional B2B):*\n` +
         `\`\`\`text\n${pack.linkedin}\n\`\`\`\n\n` +
         `📘 *Facebook:*\n` +
-        `\`\`\`text\n${pack.facebook}\n\`\`\`\n\n` +
+        `\`\`\`text\n${pack.facebook}\n\`\`\``;
+
+      const msgPart2 = 
+        `📦 *PACK MULTIRREDES (Parte 2/2)*\n\n` +
         `📸 *Instagram (@silvania.ai):*\n` +
         `\`\`\`text\n${pack.instagram}\n\`\`\`\n\n` +
         `🎵 *TikTok:*\n` +
@@ -297,7 +300,17 @@ export const telegramReview = {
         `*Título:* \`${pack.youtube.title}\`\n\n` +
         `*Descripción:*\n\`\`\`text\n${pack.youtube.description.slice(0, 1000)}\n\`\`\``;
 
-      await ctx.reply(msg, { parse_mode: "Markdown" });
+      try {
+        await ctx.reply(msgPart1, { parse_mode: "Markdown" });
+      } catch {
+        await ctx.reply(msgPart1.replace(/[*`]/g, ""));
+      }
+
+      try {
+        await ctx.reply(msgPart2, { parse_mode: "Markdown" });
+      } catch {
+        await ctx.reply(msgPart2.replace(/[*`]/g, ""));
+      }
       return true;
     }
 
