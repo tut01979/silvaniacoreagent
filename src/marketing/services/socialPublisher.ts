@@ -26,6 +26,45 @@ export interface PublishResult {
   error?: string;
 }
 
+/**
+ * Calcula la longitud ponderada de un tweet según las reglas oficiales de X (Twitter):
+ * - URLs (http/https/t.me) cuentan exactamente 23 caracteres.
+ * - Emojis y caracteres de planos extendidos cuentan 2 caracteres.
+ * - Caracteres ASCII estándar cuentan 1 carácter.
+ */
+export function getTwitterWeightedLength(text: string): number {
+  const urlRegex = /https?:\/\/[^\s]+|t\.me\/[^\s]+/gi;
+  const withoutUrls = text.replace(urlRegex, "");
+  const urlCount = (text.match(urlRegex) || []).length;
+  let len = urlCount * 23;
+  for (const ch of withoutUrls) {
+    const code = ch.codePointAt(0) || 0;
+    if (code > 0x7FF || ch.length > 1 || /[\uD800-\uDBFF][\uDC00-\uDFFF]/.test(ch)) {
+      len += 2;
+    } else {
+      len += 1;
+    }
+  }
+  return len;
+}
+
+/**
+ * Trunca un texto de forma inteligente para que nunca exceda el límite de X (280 chars ponderados)
+ */
+export function truncateForTwitter(text: string, maxWeighted: number = 265): string {
+  if (getTwitterWeightedLength(text) <= maxWeighted) return text;
+  let trimmed = text.trim();
+  while (getTwitterWeightedLength(`${trimmed}...`) > maxWeighted && trimmed.length > 20) {
+    const lastSpace = trimmed.lastIndexOf(" ");
+    if (lastSpace > 15) {
+      trimmed = trimmed.slice(0, lastSpace).trim();
+    } else {
+      trimmed = trimmed.slice(0, -5).trim();
+    }
+  }
+  return `${trimmed}...`;
+}
+
 export const socialPublisher = {
   /**
    * Adapta y formatea el contenido del borrador para cada red social respetando
@@ -47,11 +86,20 @@ export const socialPublisher = {
       .map(t => (t.startsWith("#") ? t : `#${t}`).replace(/\s+/g, ""))
       .join(" ");
 
-    // 1. X / Twitter (Máximo 280 caracteres)
-    let twitterCopy = `${cleanTitle}\n\n${cleanCopy.slice(0, 140)}...\n\n👉 t.me/silvania_ai ${tagsStr.split(" ").slice(0, 3).join(" ")}`;
-    if (twitterCopy.length > 280) {
-      twitterCopy = `${cleanTitle}\n\n👉 t.me/silvania_ai ${tagsStr.split(" ").slice(0, 3).join(" ")}`;
+    // 1. X / Twitter (Máximo 280 caracteres ponderados, margen de seguridad a 260)
+    const fixedTwitterCta = `👉 t.me/silvania_ai ${tagsStr.split(" ").slice(0, 2).join(" ")}`.trim();
+    const ctaWeighted = getTwitterWeightedLength(fixedTwitterCta);
+    const availableForTitleAndBody = 255 - ctaWeighted - 4; // 4 por los saltos de línea
+
+    let mainText = cleanTitle;
+    if (cleanCopy && cleanTitle.length < 80) {
+      const remaining = availableForTitleAndBody - getTwitterWeightedLength(cleanTitle) - 4;
+      if (remaining > 30) {
+        mainText = `${cleanTitle}\n\n${cleanCopy.slice(0, remaining)}...`;
+      }
     }
+    const truncatedMain = truncateForTwitter(mainText, availableForTitleAndBody);
+    const twitterCopy = `${truncatedMain}\n\n${fixedTwitterCta}`.trim();
 
     // 2. LinkedIn (Estructurado, saltos de línea limpios, enfoque profesional)
     const linkedinCopy = 
@@ -314,21 +362,23 @@ export const socialPublisher = {
       });
 
       const rwClient = client.readWrite;
+      // Truncado estricto con cálculo ponderado (máx 265) para garantizar aceptación en X
+      const safeText = truncateForTwitter(text, 265);
       let tweetRes: any;
 
       if (imagePath && fs.existsSync(imagePath)) {
         try {
           const mediaId = await client.v1.uploadMedia(imagePath);
           tweetRes = await rwClient.v2.tweet({
-            text: text.slice(0, 280),
+            text: safeText,
             media: { media_ids: [mediaId] }
           });
         } catch (mediaErr: any) {
           console.warn("⚠️ Falló subida de imagen a Twitter, publicando solo texto:", mediaErr.message);
-          tweetRes = await rwClient.v2.tweet(text.slice(0, 280));
+          tweetRes = await rwClient.v2.tweet(safeText);
         }
       } else {
-        tweetRes = await rwClient.v2.tweet(text.slice(0, 280));
+        tweetRes = await rwClient.v2.tweet(safeText);
       }
 
       const tweetId = tweetRes?.data?.id;
@@ -347,8 +397,9 @@ export const socialPublisher = {
 
   /**
    * Publica de forma directa en LinkedIn Personal/Company usando la LinkedIn v2 UGC Posts API
+   * Soporta publicación con imagen nativa (upload binario a assets), enlaces a vídeos o solo texto.
    */
-  async publishToLinkedIn(text: string, linkUrl?: string): Promise<PublishResult> {
+  async publishToLinkedIn(text: string, linkUrl?: string, imagePath?: string): Promise<PublishResult> {
     const token = config.marketing?.linkedinAccessToken;
     const author = config.marketing?.linkedinPersonUrn || "urn:li:person:5hWnXvuzlV";
 
@@ -358,6 +409,76 @@ export const socialPublisher = {
 
     try {
       console.log(`💼 [Marketing] Publicando en LinkedIn como ${author}...`);
+      let assetUrn: string | undefined;
+
+      // 1. Si se proporciona imagen local, registrar y subir binario a LinkedIn DMS
+      if (imagePath && fs.existsSync(imagePath)) {
+        try {
+          console.log(`🖼️ [LinkedIn] Registrando subida de imagen (${path.basename(imagePath)})...`);
+          const regRes = await axios.post("https://api.linkedin.com/v2/assets?action=registerUpload", {
+            registerUploadRequest: {
+              recipes: ["urn:li:digitalmediaRecipe:feedshare-image"],
+              owner: author,
+              serviceRelationships: [
+                {
+                  relationshipType: "OWNER",
+                  identifier: "urn:li:userGeneratedContent"
+                }
+              ]
+            }
+          }, {
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "X-Restli-Protocol-Version": "2.0.0",
+              "Content-Type": "application/json"
+            },
+            timeout: 15000
+          });
+
+          const uploadUrl = regRes.data?.value?.uploadMechanism?.["com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest"]?.uploadUrl;
+          const registeredAsset = regRes.data?.value?.asset;
+
+          if (uploadUrl && registeredAsset) {
+            console.log(`🖼️ [LinkedIn] Subiendo binario de imagen (${registeredAsset})...`);
+            const imageBuffer = fs.readFileSync(imagePath);
+            await axios.put(uploadUrl, imageBuffer, {
+              headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": imagePath.endsWith(".png") ? "image/png" : "image/jpeg"
+              },
+              timeout: 25000
+            });
+            assetUrn = registeredAsset;
+            console.log(`✅ [LinkedIn] Imagen subida y asociada con éxito: ${assetUrn}`);
+          }
+        } catch (imgErr: any) {
+          console.warn("⚠️ [LinkedIn] Falló subida de imagen, continuando publicación con enlace/texto:", imgErr.response?.data?.message || imgErr.message);
+        }
+      }
+
+      // 2. Determinar categoría y adjunto: IMAGEN > ENLACE / VÍDEO > TEXTO PLANO
+      let shareMediaCategory = "NONE";
+      let mediaArray: any[] | undefined = undefined;
+
+      if (assetUrn) {
+        shareMediaCategory = "IMAGE";
+        mediaArray = [
+          {
+            status: "READY",
+            media: assetUrn,
+            title: { text: "Silvania CoreAgent" }
+          }
+        ];
+      } else if (linkUrl) {
+        shareMediaCategory = "ARTICLE";
+        mediaArray = [
+          {
+            status: "READY",
+            originalUrl: linkUrl
+          }
+        ];
+      }
+
       const body: any = {
         author: author,
         lifecycleState: "PUBLISHED",
@@ -366,15 +487,8 @@ export const socialPublisher = {
             shareCommentary: {
               text: text
             },
-            shareMediaCategory: linkUrl ? "ARTICLE" : "NONE",
-            ...(linkUrl ? {
-              media: [
-                {
-                  status: "READY",
-                  originalUrl: linkUrl
-                }
-              ]
-            } : {})
+            shareMediaCategory,
+            ...(mediaArray ? { media: mediaArray } : {})
           }
         },
         visibility: {

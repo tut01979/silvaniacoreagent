@@ -414,7 +414,8 @@ export const telegramReview = {
         if (publishedYoutubeUrl) {
           liText = `${draft.videoScript?.title || draft.topic}\n\n🎬 Míralo también en YouTube: ${publishedYoutubeUrl}\n\n${socialPack.linkedin}`;
         }
-        const liRes = await socialPublisher.publishToLinkedIn(liText, publishedYoutubeUrl);
+        const imagePath = draft.imageUrls && draft.imageUrls.length > 0 ? draft.imageUrls[0] : undefined;
+        const liRes = await socialPublisher.publishToLinkedIn(liText, publishedYoutubeUrl, imagePath);
         if (liRes.success) {
           const liLink = liRes.url ? `\n🔗 [Ver en LinkedIn](${liRes.url})` : "";
           publishReport.push(`💼 *LinkedIn:* Publicado en Eduardo Quintero (Silvania AI)${liLink}`);
