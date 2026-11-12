@@ -212,13 +212,24 @@ export const leadSetter = {
    * Formatea el pack de prospección en Markdown listo para el chat de Telegram
    */
   formatTelegramReport(persona: ProspectingPersona, city: string = "España"): string {
+    const keywordMap: Record<string, string> = {
+      inmobiliaria: "asesor inmobiliario",
+      autonomos: "consultor autonomo",
+      comerciales: "ejecutivo comercial ventas",
+      emprendedores: "fundador ceo director"
+    };
+    const baseKeyword = keywordMap[persona.key] || "consultor";
+    const linkedinDirectUrl = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(`${baseKeyword} ${city}`)}`;
+    const googleDirectUrl = `https://www.google.com/search?q=${encodeURIComponent(persona.dorkSearch)}`;
+
     return (
       `🎯 *PLAYBOOK SETTER B2B: ${persona.name.toUpperCase()}*\n` +
       `───────────────────────────\n\n` +
       `📌 *Perfil Objetivo:* ${persona.targetRole}\n` +
       `⚠️ *Dolor Principal:* _${persona.mainPain}_\n\n` +
-      `🔍 *Comando de Búsqueda (Google / LinkedIn):*\n` +
-      `\`\`\`text\n${persona.dorkSearch}\n\`\`\`\n\n` +
+      `🚀 *Búsqueda Directa en 1 Clic (Sin copiar nada):*\n` +
+      `• 👉 [Abrir Lista de Personas en LinkedIn](${linkedinDirectUrl})\n` +
+      `• 🌐 [Abrir Perfiles desde Google](${googleDirectUrl})\n\n` +
       `📨 *1. Nota de Invitación (< 200 caracteres - Máx 10/día):*\n` +
       `\`\`\`text\n${persona.connectionNote}\n\`\`\`\n\n` +
       `💬 *2. Mensaje tras Aceptar la Conexión:*\n` +
