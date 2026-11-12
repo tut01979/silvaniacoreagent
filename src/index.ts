@@ -666,6 +666,31 @@ app.post("/stripe-webhook", express.raw({ type: "application/json" }), async (re
   res.json({ received: true });
 });
 
+// Webhook Nivel 2: Ingesta de mensajes de prospectos de LinkedIn (SetterLink AI / Chrome Extension / Simulador)
+app.post("/api/setter/incoming-message", express.json(), async (req: any, res: any) => {
+  try {
+    const { leadName, leadRole, messageText, leadProfileUrl, personaKey, chatId } = req.body;
+    if (!leadName || !messageText) {
+      return res.status(400).json({ error: "leadName and messageText are required" });
+    }
+    const adminId = chatId || config.marketing?.adminIds?.[0] || 1572946817;
+    const { leadSetter } = await import("./services/leadSetter.js");
+    const pending = await leadSetter.createPendingLeadReply({
+      leadName,
+      leadRole: leadRole || "Profesional B2B",
+      leadProfileUrl,
+      messageText,
+      personaKey,
+      chatId: adminId
+    });
+    await leadSetter.sendApprovalAlert(bot, adminId, pending);
+    return res.json({ success: true, pendingId: pending.id });
+  } catch (err: any) {
+    console.error("❌ Error en webhook incoming-message:", err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // Páginas de éxito y cancelación
 app.get("/success", (req: any, res: any) => {
   res.send(`
@@ -2276,7 +2301,7 @@ bot.command("eva", async (ctx) => {
   );
 });
 
-// --- SILVANIA MARKETING STUDIO (HUMAN-IN-THE-LOOP) ---
+// --- SILVANIA MARKETING STUDIO & LEADSETTER (HUMAN-IN-THE-LOOP) ---
 bot.on("callback_query:data", async (ctx, next) => {
   const data = ctx.callbackQuery?.data || "";
   if (data.startsWith("mkt_")) {
@@ -2286,6 +2311,14 @@ bot.on("callback_query:data", async (ctx, next) => {
       if (handled) return;
     } catch (err: any) {
       console.error("❌ Error manejando callback de marketing:", err);
+    }
+  } else if (data.startsWith("setter_")) {
+    try {
+      const { leadSetter } = await import("./services/leadSetter.js");
+      const handled = await leadSetter.handleCallback(bot, ctx);
+      if (handled) return;
+    } catch (err: any) {
+      console.error("❌ Error manejando callback de setter:", err);
     }
   }
   await next();
@@ -2335,15 +2368,103 @@ bot.command(["setter", "prospecting", "leads"], async (ctx) => {
 
   const rawArgs = ctx.match ? ctx.match.toString().trim() : "";
   const parts = rawArgs.split(/\s+/);
+  const subCmd = parts[0]?.toLowerCase() || "";
+
+  const { leadSetter } = await import("./services/leadSetter.js");
+
+  // 1. Simulación o Test Nivel 2 (Asistente con Aprobación en 1 Clic)
+  if (subCmd === "test" || subCmd === "simular") {
+    const rest = rawArgs.substring(subCmd.length).trim();
+    let name = "Juan Pérez";
+    let role = "Agente Inmobiliario en Madrid";
+    let message = "Me parece interesante pero esta semana voy a tope de visitas.";
+
+    if (rest.includes("|")) {
+      const subParts = rest.split("|").map(s => s.trim());
+      if (subParts[0]) name = subParts[0];
+      if (subParts[1]) role = subParts[1];
+      if (subParts[2]) message = subParts[2];
+    }
+
+    const pending = await leadSetter.createPendingLeadReply({
+      leadName: name,
+      leadRole: role,
+      messageText: message,
+      personaKey: "inmobiliaria",
+      chatId: userId
+    });
+
+    await leadSetter.sendApprovalAlert(bot, userId, pending);
+    return;
+  }
+
+  // 2. Desbloquear lote adicional (/setter more o /setter 10)
+  if (subCmd === "more" || subCmd === "10") {
+    leadSetter.unlockExtraBatch(userId);
+    return ctx.reply(
+      "🛡️ *Lote Adicional Desbloqueado (10 prospectos)*\n" +
+      "───────────────────────────\n\n" +
+      "Has desbloqueado un cupo adicional de 10 prospectos bajo tu supervisión.\n" +
+      "Puedes solicitar tu playbook ejecutando:\n" +
+      "👉 `/setter inmobiliaria [ciudad]` (o `autonomos`, `comerciales`, `emprendedores`).",
+      { parse_mode: "Markdown" }
+    );
+  }
+
+  // 3. Responder a un mensaje específico: /setter responder [leadName | mensaje]
+  if (subCmd === "responder" || subCmd === "reply") {
+    const rest = rawArgs.substring(subCmd.length).trim();
+    if (!rest) {
+      return ctx.reply("⚠️ Uso: `/setter responder [Nombre | Mensaje del prospecto]`\nEjemplo: `/setter responder María Gómez | ¿Cuánto cuesta la suscripción?`", { parse_mode: "Markdown" });
+    }
+
+    let leadName = "Prospecto LinkedIn";
+    let leadRole = "Contacto Profesional";
+    let msgText = rest;
+
+    if (rest.includes("|")) {
+      const sub = rest.split("|").map(s => s.trim());
+      leadName = sub[0];
+      msgText = sub.slice(1).join(" | ");
+    }
+
+    const pending = await leadSetter.createPendingLeadReply({
+      leadName,
+      leadRole,
+      messageText: msgText,
+      chatId: userId
+    });
+
+    await leadSetter.sendApprovalAlert(bot, userId, pending);
+    return;
+  }
+
+  // 4. Verificación de límite diario seguro (Máx 10 por defecto anti-baneo)
+  const limitCheck = leadSetter.checkDailyLimit(userId);
+  if (!limitCheck.allowed) {
+    return ctx.reply(
+      "🛡️ *LÍMITE DIARIO DE SEGURIDAD ALCANZADO (10/10 LEADS)*\n" +
+      "───────────────────────────\n\n" +
+      "Para blindar tu cuenta de LinkedIn contra baneos o restricciones algorítmicas, Silvania limita el envío a un máximo de 10 prospectos al día.\n\n" +
+      "⚠️ *¿Deseas prospectar 10 más bajo tu propio criterio?*\n" +
+      "Escribe `/setter more` o `/setter 10` para autorizar un nuevo lote de 10.",
+      { parse_mode: "Markdown" }
+    );
+  }
+
+  // 5. Playbook de prospección regular
   const personaKey = parts[0] || "autonomos";
   const city = parts.slice(1).join(" ") || "España";
 
   try {
-    const { leadSetter } = await import("./services/leadSetter.js");
     const pack = leadSetter.getPack(personaKey, city);
     if (!pack) {
       return ctx.reply("⚠️ Nicho no encontrado. Opciones: `inmobiliaria`, `autonomos`, `comerciales`, `emprendedores`.", { parse_mode: "Markdown" });
     }
+
+    // Contabilizar las 10 prospecciones seguras del día
+    leadSetter.incrementDailyCount(userId, 10);
+
     const report = leadSetter.formatTelegramReport(pack, city);
     await ctx.reply(report, { parse_mode: "Markdown" });
   } catch (err: any) {

@@ -1,3 +1,7 @@
+import { InlineKeyboard } from "grammy";
+import { llmService } from "./llm.js";
+import { calendarCreate } from "../tools/calendar.js";
+
 export interface ProspectingPersona {
   key: string;
   name: string;
@@ -15,6 +19,19 @@ export interface ProspectingPersona {
   meetingProposal: string;
 }
 
+export interface PendingLeadReply {
+  id: string;
+  leadName: string;
+  leadRole: string;
+  leadProfileUrl?: string;
+  messageText: string;
+  personaKey?: string;
+  suggestedReply: string;
+  status: "pending" | "approved" | "edited" | "discarded";
+  createdAt: number;
+  chatId: number;
+}
+
 export const PERSONAS: Record<string, ProspectingPersona> = {
   inmobiliaria: {
     key: "inmobiliaria",
@@ -23,7 +40,7 @@ export const PERSONAS: Record<string, ProspectingPersona> = {
     targetRole: "Asesor / Agente Inmobiliario / Broker",
     mainPain: "Pasa el día en la calle visitando inmuebles; perder citas o no poder abrir el portátil en el coche para apuntar datos en Sheets y Calendar.",
     dorkSearch: 'site:linkedin.com/in ("agente inmobiliario" OR "asesor inmobiliario" OR "consultor inmobiliario") [CIUDAD]',
-    connectionNote: "Hola [Nombre], veo tu labor con propiedades en [Zona]. Sé lo caótico que es cuadrar visitas en la calle. Creamos un asistente en Telegram que te agenda en Calendar por voz. ¿Conectamos?",
+    connectionNote: "Hola [Nombre], veo tu labor con inmuebles en [Zona]. Sé lo caótico que es cuadrar visitas en la calle. Creamos un bot en Telegram que agenda en Calendar por voz. ¿Conectamos?",
     followUpMessage: 
       "¡Hola [Nombre]! Gracias por conectar. Te contacto brevemente porque muchos asesores pierden visitas o notas por estar fuera de la oficina sin poder abrir el ordenador.\n\n" +
       "Con Silvania CoreAgent puedes dictar una nota de voz en Telegram tipo:\n" +
@@ -108,7 +125,63 @@ export const PERSONAS: Record<string, ProspectingPersona> = {
   }
 };
 
+// Store en memoria para respuestas entrantes pendientes de aprobación
+const pendingReplies = new Map<string, PendingLeadReply>();
+
+// Límite diario estricto anti-baneos (máx 10 leads diarios por defecto)
+const MAX_DAILY_LEADS = 10;
+const dailyUsageTracker = new Map<string, { date: string; count: number }>();
+
+function getTodayKey(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Madrid" }); // YYYY-MM-DD
+}
+
 export const leadSetter = {
+  /**
+   * Comprueba si el usuario ha alcanzado el límite diario seguro (10 leads).
+   */
+  checkDailyLimit(userId: number): { allowed: boolean; currentCount: number; max: number } {
+    const today = getTodayKey();
+    const userKey = String(userId);
+    const record = dailyUsageTracker.get(userKey);
+
+    if (!record || record.date !== today) {
+      dailyUsageTracker.set(userKey, { date: today, count: 0 });
+      return { allowed: true, currentCount: 0, max: MAX_DAILY_LEADS };
+    }
+
+    return {
+      allowed: record.count < MAX_DAILY_LEADS,
+      currentCount: record.count,
+      max: MAX_DAILY_LEADS
+    };
+  },
+
+  /**
+   * Incrementa el contador diario o desbloquea un lote adicional con /setter more
+   */
+  incrementDailyCount(userId: number, quantity: number = 10): void {
+    const today = getTodayKey();
+    const userKey = String(userId);
+    const record = dailyUsageTracker.get(userKey);
+
+    if (!record || record.date !== today) {
+      dailyUsageTracker.set(userKey, { date: today, count: quantity });
+    } else {
+      record.count += quantity;
+    }
+  },
+
+  /**
+   * Desbloquea un lote extra manual (/setter more o /setter 10)
+   */
+  unlockExtraBatch(userId: number): void {
+    const userKey = String(userId);
+    const today = getTodayKey();
+    // Reinicia el contador diario para permitir un nuevo lote de 10
+    dailyUsageTracker.set(userKey, { date: today, count: 0 });
+  },
+
   /**
    * Genera el pack completo de prospección adaptado a un nicho o perfil
    */
@@ -141,12 +214,12 @@ export const leadSetter = {
   formatTelegramReport(persona: ProspectingPersona, city: string = "España"): string {
     return (
       `🎯 *PLAYBOOK SETTER B2B: ${persona.name.toUpperCase()}*\n` +
-      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `───────────────────────────\n\n` +
       `📌 *Perfil Objetivo:* ${persona.targetRole}\n` +
       `⚠️ *Dolor Principal:* _${persona.mainPain}_\n\n` +
       `🔍 *Comando de Búsqueda (Google / LinkedIn):*\n` +
       `\`\`\`text\n${persona.dorkSearch}\n\`\`\`\n\n` +
-      `📨 *1. Nota de Invitación (< 200 caracteres):*\n` +
+      `📨 *1. Nota de Invitación (< 200 caracteres - Máx 10/día):*\n` +
       `\`\`\`text\n${persona.connectionNote}\n\`\`\`\n\n` +
       `💬 *2. Mensaje tras Aceptar la Conexión:*\n` +
       `\`\`\`text\n${persona.followUpMessage}\n\`\`\`\n\n` +
@@ -156,7 +229,217 @@ export const leadSetter = {
       `• *Si dice "Ya uso otras herramientas":*\n_${persona.objections.alreadyHaveTools}_\n\n` +
       `📅 *4. Propuesta de Cierre en Google Calendar:* \n` +
       `\`\`\`text\n${persona.meetingProposal}\n\`\`\`\n\n` +
-      `📹 *Google Meet:* Automático con enlace único generado por Google Calendar.`
+      `🎥 *Google Meet:* Automático con enlace único generado por Google Calendar.\n\n` +
+      `🛡️ *Seguridad Anti-Baneo:* Límite seguro activo (10 invitaciones/día). Para pedir 10 adicionales: \`/setter more\` o \`/setter 10\`.`
     );
+  },
+
+  /**
+   * Genera una respuesta inteligente con IA a un mensaje entrante de LinkedIn
+   */
+  async generateSuggestedReply(leadName: string, leadRole: string, messageText: string, personaKey?: string): Promise<string> {
+    try {
+      const prompt = 
+        `Eres Silvania Setter AI, un asistente de prospección B2B de élite para Silvania CoreAgent (tu oficina ejecutiva en Telegram conectada con Google Workspace: Calendar, Gmail, Sheets, Drive).\n` +
+        `Un prospecto en LinkedIn ha respondido a nuestro contacto:\n` +
+        `- Nombre: ${leadName}\n` +
+        `- Cargo/Sector: ${leadRole}\n` +
+        `- Mensaje recibido del prospecto: "${messageText}"\n\n` +
+        `Tu misión: Redactar la respuesta ideal en español para continuar la conversación con naturalidad, empatía y efectividad.\n` +
+        `Reglas indispensables:\n` +
+        `1. Longitud: 2 a 3 frases cortas (< 280 caracteres). Tono humano y cercano, cero lenguaje robótico o de venta agresiva.\n` +
+        `2. Desactiva su objeción de inmediato (si no tiene tiempo, dile que por eso le ayuda a ganar 2 horas al día; si pregunta precio, indícale prueba gratis y tarifa plana reducida).\n` +
+        `3. Propón una demo ágil de 10 minutos por Google Meet ofreciendo 2 opciones (ej: martes a las 10:00 o jueves a las 16:30).\n` +
+        `4. Devuelve EXCLUSIVAMENTE el texto de la respuesta, sin saludos introductorios ni comillas extras.`;
+
+      const response = await llmService.chatSimple([
+        { role: "system", content: "Eres Silvania Setter AI, el copiloto de prospección y cierre de reuniones B2B." },
+        { role: "user", content: prompt }
+      ]);
+
+      const text = response?.content ? String(response.content).trim() : "";
+      if (text) return text;
+    } catch (err: any) {
+      console.warn("⚠️ Falló llamada a LLM para respuesta sugerida, usando fallback contextual:", err.message);
+    }
+
+    // Fallback contextual de alta calidad
+    return `Te entiendo perfectamente ${leadName}, justo por eso te vendrá genial: te muestro en 10 min cómo dictar visitas por voz a Calendar y Sheets para ahorrarte 2h al día. ¿Te viene mejor el martes a las 10:00 o jueves a las 16:30?`;
+  },
+
+  /**
+   * Crea un registro de mensaje entrante pendiente de aprobación en Nivel 2
+   */
+  async createPendingLeadReply(opts: {
+    leadName: string;
+    leadRole: string;
+    leadProfileUrl?: string;
+    messageText: string;
+    personaKey?: string;
+    chatId: number;
+    customSuggestedReply?: string;
+  }): Promise<PendingLeadReply> {
+    const id = `lr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const suggested = opts.customSuggestedReply || await this.generateSuggestedReply(opts.leadName, opts.leadRole, opts.messageText, opts.personaKey);
+
+    const pending: PendingLeadReply = {
+      id,
+      leadName: opts.leadName,
+      leadRole: opts.leadRole,
+      leadProfileUrl: opts.leadProfileUrl,
+      messageText: opts.messageText,
+      personaKey: opts.personaKey,
+      suggestedReply: suggested,
+      status: "pending",
+      createdAt: Date.now(),
+      chatId: opts.chatId
+    };
+
+    pendingReplies.set(id, pending);
+    return pending;
+  },
+
+  /**
+   * Envía la alerta interactiva Nivel 2 a Telegram con botones [Aprobar y Enviar] y [Modificar]
+   */
+  async sendApprovalAlert(bot: any, chatId: number, reply: PendingLeadReply): Promise<void> {
+    const keyboard = new InlineKeyboard()
+      .text("✅ Aprobar y Enviar", `setter_app_${reply.id}`)
+      .text("✏️ Modificar", `setter_edit_${reply.id}`)
+      .row()
+      .text("❌ Descartar", `setter_disc_${reply.id}`);
+
+    const message = 
+      `🔔 *Nuevo mensaje de ${reply.leadName} (${reply.leadRole}):*\n` +
+      `"${reply.messageText}"\n\n` +
+      `🤖 *Respuesta sugerida por Silvania:*\n` +
+      `"${reply.suggestedReply}"`;
+
+    await bot.api.sendMessage(chatId, message, {
+      parse_mode: "Markdown",
+      reply_markup: keyboard
+    });
+  },
+
+  /**
+   * Procesa los callbacks de Telegram para la aprobación en 1 clic
+   */
+  async handleCallback(bot: any, ctx: any): Promise<boolean> {
+    const data = ctx.callbackQuery?.data || "";
+    if (!data.startsWith("setter_")) return false;
+
+    await ctx.answerCallbackQuery().catch(() => {});
+
+    // Aprobar y Enviar
+    if (data.startsWith("setter_app_")) {
+      const id = data.replace("setter_app_", "");
+      const item = pendingReplies.get(id);
+
+      if (!item) {
+        await ctx.reply("⚠️ Este mensaje ya ha expirado o no se encuentra en memoria.");
+        return true;
+      }
+
+      item.status = "approved";
+
+      const meetKeyboard = new InlineKeyboard()
+        .text("📅 Agendar Google Meet", `setter_meet_${id}`);
+
+      const approvedMsg = 
+        `✅ *Respuesta APROBADA y Lista para Enviar*\n` +
+        `───────────────────────────\n\n` +
+        `👤 *Destinatario:* ${item.leadName} (${item.leadRole})\n` +
+        (item.leadProfileUrl ? `🔗 *Perfil:* [Ver LinkedIn](${item.leadProfileUrl})\n\n` : `\n`) +
+        `💬 *Texto Listo:* (Copia y pega en LinkedIn):\n` +
+        `\`\`\`text\n${item.suggestedReply}\n\`\`\`\n` +
+        `*(Si el prospecto acepta una de las horas propuestas, pulsa abajo para agendar de inmediato en tu Google Calendar)*`;
+
+      try {
+        await ctx.editMessageText(approvedMsg, {
+          parse_mode: "Markdown",
+          reply_markup: meetKeyboard
+        });
+      } catch {
+        await ctx.reply(approvedMsg, {
+          parse_mode: "Markdown",
+          reply_markup: meetKeyboard
+        });
+      }
+      return true;
+    }
+
+    // Modificar
+    if (data.startsWith("setter_edit_")) {
+      const id = data.replace("setter_edit_", "");
+      const item = pendingReplies.get(id);
+      if (!item) {
+        await ctx.reply("⚠️ Registro no encontrado.");
+        return true;
+      }
+
+      await ctx.reply(
+        `✏️ *Modificar Respuesta para ${item.leadName}:*\n\n` +
+        `Para personalizar el mensaje, escribe:\n` +
+        `\`/setter responder ${item.leadName} | [tu nuevo texto]\`\n\n` +
+        `O simplemente dicta una nota de voz con lo que deseas responderle.`,
+        { parse_mode: "Markdown" }
+      );
+      return true;
+    }
+
+    // Descartar
+    if (data.startsWith("setter_disc_")) {
+      const id = data.replace("setter_disc_", "");
+      const item = pendingReplies.get(id);
+      if (item) item.status = "discarded";
+
+      try {
+        await ctx.editMessageText(`❌ Conversación con *${item?.leadName || "prospecto"}* descartada.`, {
+          parse_mode: "Markdown"
+        });
+      } catch {
+        await ctx.reply(`❌ Conversación descartada.`);
+      }
+      return true;
+    }
+
+    // Agendar Google Meet
+    if (data.startsWith("setter_meet_")) {
+      const id = data.replace("setter_meet_", "");
+      const item = pendingReplies.get(id);
+      const leadTitle = item ? item.leadName : "Prospecto LinkedIn";
+      const uId = ctx.from?.id || 0;
+
+      // Calcular fecha automática: mañana a las 11:00
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const dateStr = tomorrow.toISOString().split("T")[0];
+      const startDateTime = `${dateStr}T11:00:00+02:00`;
+      const endDateTime = `${dateStr}T11:15:00+02:00`;
+
+      try {
+        const calendarRes = await calendarCreate(
+          uId,
+          `Demo Silvania CoreAgent - ${leadTitle}`,
+          startDateTime,
+          endDateTime,
+          `Demostración de 10 minutos de Silvania CoreAgent para Google Workspace con ${leadTitle}.\nProspecto originado en LinkedIn.`
+        );
+
+        await ctx.reply(
+          `🎉 *¡REUNIÓN CREADA EN GOOGLE CALENDAR!* 🎥\n` +
+          `───────────────────────────\n\n` +
+          `👤 *Contacto:* ${leadTitle}\n` +
+          `📅 *Horario Tentativo:* Mañana a las 11:00 (15 min)\n` +
+          `🔗 *Detalles del Evento y Sala Google Meet:*\n${calendarRes}`,
+          { parse_mode: "Markdown" }
+        );
+      } catch (err: any) {
+        await ctx.reply(`❌ No se pudo crear el evento en Calendar: ${err.message}`);
+      }
+      return true;
+    }
+
+    return false;
   }
 };
