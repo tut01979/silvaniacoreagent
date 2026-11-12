@@ -132,6 +132,10 @@ export const calendarCreate = async (
     const calendar = google.calendar({ version: "v3", auth });
     const attendeeList = parseAttendeesList(attendees);
     const hasAttendees = attendeeList.length > 0;
+    const shouldAddMeet = Boolean(
+      hasAttendees ||
+      /meet|videollamada|reuni[oó]n|demo|call|llamada/i.test(`${summary} ${description || ""} ${location || ""}`)
+    );
 
     const event: any = {
       summary,
@@ -139,17 +143,27 @@ export const calendarCreate = async (
       start: { dateTime: start, timeZone: "Europe/Madrid" },
       end: { dateTime: end, timeZone: "Europe/Madrid" },
       ...(location ? { location } : {}),
-      ...(hasAttendees ? { attendees: attendeeList } : {})
+      ...(hasAttendees ? { attendees: attendeeList } : {}),
+      ...(shouldAddMeet ? {
+        conferenceData: {
+          createRequest: {
+            requestId: `silvania-${Date.now()}`,
+            conferenceSolutionKey: { type: "hangoutsMeet" }
+          }
+        }
+      } : {})
     };
 
     const response = await calendar.events.insert({
       calendarId: "primary",
       requestBody: event,
+      conferenceDataVersion: shouldAddMeet ? 1 : 0,
       sendUpdates: hasAttendees ? "all" : "none"
     });
 
     const eventData = response.data;
     const eventId = eventData.id || "";
+    const meetLink = eventData.hangoutLink;
     const startStr = new Date(eventData.start?.dateTime || eventData.start?.date || start).toLocaleString("es-ES", {
       timeZone: "Europe/Madrid", weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit"
     });
@@ -160,13 +174,17 @@ export const calendarCreate = async (
     const attendeesStr = hasAttendees
       ? `\n> 👥 **Invitados:** ${attendeeList.map(a => a.email).join(", ")} (notificación de invitación enviada por email)`
       : "";
+    const meetStr = meetLink
+      ? `\n> 📹 **Google Meet:** [Unirse a Google Meet](${meetLink})`
+      : "";
 
     return `✅ **EVENTO PROGRAMADO CON ÉXITO**\n${SEP}\n\n` +
            `CALENDAR_MARKDOWN=${fullMarkdown}\n` +
            `${fullMarkdown}\n` +
            `> 🆔 **ID:** \`${eventId}\`\n` +
            `> ⏰ **Cuándo:** ${startStr}\n` +
-           `> 📍 **Lugar:** ${eventData.location || "No especificado"}` +
+           `> 📍 **Lugar:** ${eventData.location || "Google Meet"}` +
+           `${meetStr}` +
            `${attendeesStr}\n` +
            `> 🔗 **Enlace directo:** ${fullMarkdown}\n\n` +
            `⚠️ OBLIGATORIO: En tu respuesta al usuario incluye SIEMPRE en una línea el Markdown completo: ${fullMarkdown} (prohibido dejar solo "Abrir" o el título sin URL).`;

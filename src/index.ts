@@ -2325,6 +2325,33 @@ bot.command(["campaña", "campana", "campaign"], async (ctx) => {
   }
 });
 
+bot.command(["setter", "prospecting", "leads"], async (ctx) => {
+  const userId = ctx.from!.id;
+  const adminIds = config.marketing?.adminIds || [1572946817];
+
+  if (!adminIds.includes(userId)) {
+    return ctx.reply("❌ No tienes permisos para acceder a Silvania LeadSetter.");
+  }
+
+  const rawArgs = ctx.match ? ctx.match.toString().trim() : "";
+  const parts = rawArgs.split(/\s+/);
+  const personaKey = parts[0] || "autonomos";
+  const city = parts.slice(1).join(" ") || "España";
+
+  try {
+    const { leadSetter } = await import("./services/leadSetter.js");
+    const pack = leadSetter.getPack(personaKey, city);
+    if (!pack) {
+      return ctx.reply("⚠️ Nicho no encontrado. Opciones: `inmobiliaria`, `autonomos`, `comerciales`, `emprendedores`.", { parse_mode: "Markdown" });
+    }
+    const report = leadSetter.formatTelegramReport(pack, city);
+    await ctx.reply(report, { parse_mode: "Markdown" });
+  } catch (err: any) {
+    console.error("❌ Error en LeadSetter:", err);
+    await ctx.reply(`❌ Error en LeadSetter: ${err.message}`);
+  }
+});
+
 bot.command("marketing", async (ctx) => {
   const userId = ctx.from!.id;
   const adminIds = config.marketing?.adminIds || [1572946817];
@@ -2338,6 +2365,7 @@ bot.command("marketing", async (ctx) => {
     return ctx.reply(
       "🚀 *Silvania Marketing Studio (Omnicanal & Low-Cost)*\n\n" +
       "Uso del comando:\n" +
+      "• `/setter [inmobiliaria|autonomos|comerciales|emprendedores] [ciudad]` - Playbook de prospección B2B y agendamiento en Google Calendar.\n" +
       "• `/campaña [tema]` o `/marketing campaña [tema]` - Genera el pack omnicanal completo (YouTube + TikTok + LinkedIn + X + Telegram).\n" +
       "• `/marketing video [youtube] [tema]` - Vídeo 16:9 extendido (admite hasta 30 escenas y duración > 2-3 min).\n" +
       "• `/marketing short [tiktok] [tema]` - Vídeo vertical 9:16 ágil (3-4 escenas condensadas, ~40s).\n" +
@@ -2345,8 +2373,9 @@ bot.command("marketing", async (ctx) => {
       "• `/marketing draft [coreagent|eva|marketing]` - Borrador diario rotativo de producto para revisión HITL.\n" +
       "• `/marketing status` - Consulta el estado del último borrador generado.\n\n" +
       "_Ejemplos:_\n" +
+      "• `/setter inmobiliaria Madrid`\n" +
+      "• `/setter autonomos Barcelona`\n" +
       "• `/campaña Relatos de fe y esperanza 30 escenas`\n" +
-      "• `/marketing video youtube Historias biblicas 15 escenas`\n" +
       "• `/marketing post linkedin Caso de exito con Google Calendar`",
       { parse_mode: "Markdown" }
     );
@@ -2354,6 +2383,23 @@ bot.command("marketing", async (ctx) => {
 
   const parts = rawArgs.split(/\s+/);
   const subCmd = parts[0].toLowerCase();
+
+  // Subcomando de LeadSetter
+  if (subCmd === "setter" || subCmd === "prospecting" || subCmd === "leads") {
+    const personaKey = parts[1] || "autonomos";
+    const city = parts.slice(2).join(" ") || "España";
+    try {
+      const { leadSetter } = await import("./services/leadSetter.js");
+      const pack = leadSetter.getPack(personaKey, city);
+      if (!pack) {
+        return ctx.reply("⚠️ Nicho no encontrado. Opciones: `inmobiliaria`, `autonomos`, `comerciales`, `emprendedores`.", { parse_mode: "Markdown" });
+      }
+      const report = leadSetter.formatTelegramReport(pack, city);
+      return ctx.reply(report, { parse_mode: "Markdown" });
+    } catch (err: any) {
+      return ctx.reply(`❌ Error en LeadSetter: ${err.message}`);
+    }
+  }
 
   // Subcomando de Campaña Omnicanal
   if (subCmd === "campaña" || subCmd === "campana" || subCmd === "campaign" || subCmd === "pack") {
