@@ -224,7 +224,7 @@ export const leadSetter = {
 
     const validationUniversalNote = "¡Hola! Estamos validando una herramienta verificada por Google que gestiona por voz tu Google Workspace desde Telegram. Es gratis. ¿Conectamos?";
     const noNoteFollowUpShort =
-      "¡Hola! Gracias por conectar. Estamos validando una IA verificada por Google para gestionar Calendar, Gmail y Sheets por voz desde Telegram y ahorrar 2h al día de tareas repetitivas. ¿Te paso el enlace para que la pruebes?";
+      "¡Hola! Gracias por conectar. Estamos validando una IA verificada por Google para gestionar Calendar, Gmail y Sheets por voz desde Telegram y ahorrar 2h al día en tareas repetitivas, como agendar reuniones. ¿Te paso el enlace para que la pruebes? ¡Es gratis!";
     const validationFollowUp =
       "¡Gracias por conectar! Estamos en fase de validación de Silvania CoreAgent (https://silvania.ai): un asistente verificado por Google que te permite agendar en Calendar, registrar datos en Sheets y redactar correos simplemente enviando un audio en Telegram.\n\n" +
       "Estamos dando acceso gratuito a profesionales para conocer vuestro feedback real y ahorrarte hasta 2h al día.\n\n" +
