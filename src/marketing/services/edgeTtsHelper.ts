@@ -5,6 +5,13 @@ import { exec } from "child_process";
 import { promisify } from "util";
 // @ts-ignore
 import { WebSocket } from "ws";
+import {
+  generateSecMsGecV2,
+  adjClockSkewSeconds,
+  getUnixTimestamp,
+  SEC_MS_GEC_VERSION,
+  CHROMIUM_MAJOR_VERSION,
+} from "./edgeTtsDrm.js";
 
 const execAsync = promisify(exec);
 
@@ -38,7 +45,8 @@ export function resolveVoiceName(voice?: string): string {
 
 /**
  * Sintetiza texto a voz usando el motor Edge-TTS (v2 con firma Sec-MS-GEC).
- * Ejecuta mediante el runner de alta velocidad con fallback a WebSocket.
+ * Intento 1: WebSocket nativo en Node.js con firma Sec-MS-GEC v2 (0 dependencias externas).
+ * Intento 2: Runner Python de respaldo.
  */
 export async function saveEdgeTts(text: string, outputPath: string, options: EdgeTtsOptions = {}): Promise<void> {
   const dir = path.dirname(outputPath);
@@ -48,10 +56,22 @@ export async function saveEdgeTts(text: string, outputPath: string, options: Edg
 
   const voice = resolveVoiceName(options.voice);
   const rate = options.rate || "+0%";
+
+  // Intento 1: WebSocket nativo con Sec-MS-GEC v2 (sin dependencias de Python/Nixpacks/Railpack)
+  try {
+    const buffer = await synthesizeEdgeTts(text, { ...options, voice });
+    if (buffer && buffer.length > 500) {
+      fs.writeFileSync(outputPath, buffer);
+      console.log(`✅ [Edge-TTS Native] Síntesis exitosa (${voice}, ${buffer.length} bytes)`);
+      return;
+    }
+  } catch (wsErr: any) {
+    console.warn(`⚠️ [Edge-TTS Native] WebSocket falló (${wsErr.message}). Probando runner Python...`);
+  }
+
+  // Intento 2: Runner Python de respaldo
   const tempDir = dir;
   const tempTextFile = path.join(tempDir, `temp_edge_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.txt`);
-
-  // Intento 1: Runner de Edge-TTS (soporta v2 Sec-MS-GEC sin bloqueos 403)
   try {
     fs.writeFileSync(tempTextFile, text, "utf-8");
     const scriptPath = path.resolve(process.cwd(), "scripts", "synthesize_voice.py");
@@ -68,42 +88,41 @@ export async function saveEdgeTts(text: string, outputPath: string, options: Edg
       `python -m edge_tts -f "${tempTextFile}" --write-media "${outputPath}" --voice "${voice}" --rate="${rateArg}"`
     ];
 
-    let generated = false;
     for (const cmd of commandsToTry) {
       try {
-        const { stdout, stderr } = await execAsync(cmd, { timeout: 35000 });
+        await execAsync(cmd, { timeout: 35000 });
         if (fs.existsSync(outputPath) && fs.statSync(outputPath).size > 1000) {
           console.log(`✅ [Edge-TTS Runner] Síntesis exitosa con comando: ${cmd.split(" ")[0]} (${fs.statSync(outputPath).size} bytes)`);
-          generated = true;
-          break;
+          return;
         }
       } catch (err: any) {
-        // Registrar intento para depuración si no es simplemente ejecutable faltante
         if (!err.message?.includes("not found") && !err.message?.includes("no se reconoce")) {
           console.warn(`⚠️ [Edge-TTS Runner] Intento con ${cmd.split(" ")[0]} falló: ${err.message}`);
         }
       }
     }
-
-    if (generated) {
-      try { fs.unlinkSync(tempTextFile); } catch {}
-      return;
-    }
-  } catch (pyErr: any) {
-    console.warn(`⚠️ Runner Python de Edge-TTS falló (${pyErr.message}). Probando WebSocket nativo...`);
   } finally {
     try { fs.unlinkSync(tempTextFile); } catch {}
   }
 
-  // Intento 2: WebSocket directo
-  const buffer = await synthesizeEdgeTts(text, { ...options, voice });
-  fs.writeFileSync(outputPath, buffer);
+  throw new Error("Edge-TTS falló tanto en WebSocket nativo como en runner Python.");
 }
 
 /**
- * Sintetiza texto a voz usando Edge-TTS mediante WebSocket directo.
+ * Sintetiza texto a voz usando Edge-TTS mediante WebSocket directo con Sec-MS-GEC v2.
  */
-export function synthesizeEdgeTts(text: string, options: EdgeTtsOptions = {}): Promise<Buffer> {
+export async function synthesizeEdgeTts(text: string, options: EdgeTtsOptions = {}): Promise<Buffer> {
+  try {
+    return await _synthesizeEdgeTtsOnce(text, options);
+  } catch (err: any) {
+    if (err?.isClockSkewRetryable) {
+      return await _synthesizeEdgeTtsOnce(text, options);
+    }
+    throw err;
+  }
+}
+
+function _synthesizeEdgeTtsOnce(text: string, options: EdgeTtsOptions = {}): Promise<Buffer> {
   const voice = resolveVoiceName(options.voice);
   const rate = options.rate || "+0%";
   const pitch = options.pitch || "+0Hz";
@@ -111,24 +130,54 @@ export function synthesizeEdgeTts(text: string, options: EdgeTtsOptions = {}): P
 
   return new Promise<Buffer>((resolve, reject) => {
     const connectionId = crypto.randomUUID().replace(/-/g, "");
-    const url = `${WSS_URL}&ConnectionId=${connectionId}`;
+    const secMsGec = generateSecMsGecV2();
+    const muid = crypto.randomBytes(16).toString("hex").toUpperCase();
+    const url = `${WSS_URL}&ConnectionId=${connectionId}&Sec-MS-GEC=${secMsGec}&Sec-MS-GEC-Version=${SEC_MS_GEC_VERSION}`;
 
     const ws = new WebSocket(url, {
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0",
+        Pragma: "no-cache",
+        "Cache-Control": "no-cache",
         Origin: "chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold",
+        "User-Agent": `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${CHROMIUM_MAJOR_VERSION}.0.0.0 Safari/537.36 Edg/${CHROMIUM_MAJOR_VERSION}.0.0.0`,
+        "Accept-Encoding": "gzip, deflate, br, zstd",
+        "Accept-Language": "en-US,en;q=0.9",
+        Cookie: `muid=${muid};`,
       },
     });
 
     const audioBuffers: Buffer[] = [];
+    let settled = false;
     const timeout = setTimeout(() => {
+      if (settled) return;
+      settled = true;
       try { ws.close(); } catch {}
       reject(new Error("Timeout en síntesis Edge-TTS (30s)"));
     }, 30000);
 
+    ws.on("unexpected-response", (_req: any, res: any) => {
+      clearTimeout(timeout);
+      if (settled) return;
+      settled = true;
+      const status = res?.statusCode;
+      const serverDateStr = res?.headers?.date;
+      if (status === 403 && serverDateStr) {
+        const parsedMs = Date.parse(serverDateStr);
+        if (!Number.isNaN(parsedMs)) {
+          adjClockSkewSeconds(parsedMs / 1000 - getUnixTimestamp());
+          const retryErr: any = new Error(`Unexpected server response: 403 (retrying with adjusted clock skew)`);
+          retryErr.isClockSkewRetryable = true;
+          reject(retryErr);
+          return;
+        }
+      }
+      reject(new Error(`Unexpected server response: ${status || "unknown"}`));
+    });
+
     ws.on("error", (err: any) => {
       clearTimeout(timeout);
+      if (settled) return;
+      settled = true;
       reject(err);
     });
 
@@ -137,6 +186,8 @@ export function synthesizeEdgeTts(text: string, options: EdgeTtsOptions = {}): P
         const textData = rawData.toString("utf8");
         if (textData.includes("turn.end")) {
           clearTimeout(timeout);
+          if (settled) return;
+          settled = true;
           try { ws.close(); } catch {}
           resolve(Buffer.concat(audioBuffers));
         }
