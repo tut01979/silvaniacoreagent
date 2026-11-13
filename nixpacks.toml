@@ -2,10 +2,15 @@
 # Guarantees FFmpeg, Python and edge-tts are installed system-wide on Railway builds
 
 [phases.setup]
-nixPkgs = ["ffmpeg", "python311", "python311Packages.pip"]
+nixPkgs = ["ffmpeg", "python311", "python311Packages.pip", "python311Packages.setuptools", "python311Packages.wheel"]
 
 [phases.install]
 cmds = [
   "npm install",
-  "pip install --upgrade edge-tts"
+  "python3 -m venv /app/.venv",
+  "/app/.venv/bin/pip install --upgrade edge-tts",
+  "python3 -m pip install --break-system-packages --upgrade edge-tts || true"
 ]
+
+[variables]
+PATH = "/app/.venv/bin:$PATH"

@@ -2708,6 +2708,45 @@ bot.command("marketing", async (ctx) => {
   }
 });
 
+// ─── CAMBIO RÁPIDO DE VOZ EN LENGUAJE NATURAL (Álvaro / Lucía) ───
+async function handleVoiceChangeIntent(userId: number, rawText: string, ctx: any): Promise<boolean> {
+  const norm = rawText.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  
+  const isLucia = norm.includes("voz de lucia") || norm.includes("voz femenina") || 
+                  norm.includes("cambia a voz de mujer") || norm.includes("pon la voz de lucia") ||
+                  norm.includes("con la voz de lucia") || norm.includes("quiero la voz de lucia") ||
+                  norm.includes("pon a lucia") || norm.includes("voz lucia");
+                  
+  const isAlvaro = norm.includes("voz de alvaro") || norm.includes("voz masculina") || 
+                   norm.includes("cambia a voz de hombre") || norm.includes("pon la voz de alvaro") ||
+                   norm.includes("con la voz de alvaro") || norm.includes("quiero la voz de alvaro") ||
+                   norm.includes("pon a alvaro") || norm.includes("voz alvaro");
+
+  if (isLucia) {
+    await dbService.setUserVoice(userId, "Lucia");
+    const ack = "👩 He cambiado mi voz a Lucía. A partir de ahora te responderé con mi voz femenina.";
+    await ctx.reply(ack);
+    try {
+      const audios = await voiceService.textToSpeech(ack, userId, "Lucia");
+      if (audios && audios[0]) await ctx.replyWithVoice(new InputFile(audios[0]));
+    } catch {}
+    return true;
+  }
+
+  if (isAlvaro) {
+    await dbService.setUserVoice(userId, "Alvaro");
+    const ack = "👨 He cambiado mi voz a Álvaro. A partir de ahora te responderé con mi voz masculina.";
+    await ctx.reply(ack);
+    try {
+      const audios = await voiceService.textToSpeech(ack, userId, "Alvaro");
+      if (audios && audios[0]) await ctx.replyWithVoice(new InputFile(audios[0]));
+    } catch {}
+    return true;
+  }
+
+  return false;
+}
+
 // Manejador de mensajes de texto
 bot.on("message:text", async (ctx) => {
   const userId = ctx.from.id;
@@ -2788,25 +2827,7 @@ bot.on("message:text", async (ctx) => {
   }
 
   // ─── CAMBIO RÁPIDO DE VOZ EN LENGUAJE NATURAL (Álvaro / Lucía) ───
-  if (textLower.includes("voz de lucia") || textLower.includes("voz de lucía") || textLower.includes("voz femenina") || textLower.includes("cambia a voz de mujer") || textLower === "pon la voz de lucia") {
-    await dbService.setUserVoice(userId, "Lucia");
-    const ack = "👩 He cambiado mi voz a Lucía. A partir de ahora te responderé con mi voz femenina.";
-    await ctx.reply(ack);
-    try {
-      const audios = await voiceService.textToSpeech(ack, userId, "Lucia");
-      if (audios && audios[0]) await ctx.replyWithVoice(new InputFile(audios[0]));
-    } catch {}
-    return;
-  }
-
-  if (textLower.includes("voz de alvaro") || textLower.includes("voz de álvaro") || textLower.includes("voz masculina") || textLower.includes("cambia a voz de hombre") || textLower === "pon la voz de alvaro") {
-    await dbService.setUserVoice(userId, "Alvaro");
-    const ack = "👨 He cambiado mi voz a Álvaro. A partir de ahora te responderé con mi voz masculina.";
-    await ctx.reply(ack);
-    try {
-      const audios = await voiceService.textToSpeech(ack, userId, "Alvaro");
-      if (audios && audios[0]) await ctx.replyWithVoice(new InputFile(audios[0]));
-    } catch {}
+  if (await handleVoiceChangeIntent(userId, text, ctx)) {
     return;
   }
 
@@ -2969,6 +2990,12 @@ bot.on("message:voice", async (ctx) => {
     }
 
     await ctx.reply(`🎙️ _Escuché:_ "${escapeMarkdown(transcribedText)}"`, { parse_mode: "Markdown" });
+
+    // Intención de cambio de voz detectada en nota de voz
+    if (await handleVoiceChangeIntent(userId, transcribedText, ctx)) {
+      clearInterval(typingInterval);
+      return;
+    }
 
     // Verificar cortesía rápido desactivado para permitir ruteo dinámico.
     /*

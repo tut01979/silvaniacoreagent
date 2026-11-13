@@ -54,23 +54,34 @@ export async function saveEdgeTts(text: string, outputPath: string, options: Edg
   // Intento 1: Runner de Edge-TTS (soporta v2 Sec-MS-GEC sin bloqueos 403)
   try {
     fs.writeFileSync(tempTextFile, text, "utf-8");
-    const rateArg = rate && rate !== "+0%" ? `--rate="${rate}"` : "";
+    const scriptPath = path.resolve(process.cwd(), "scripts", "synthesize_voice.py");
+    const rateArg = rate || "+0%";
+    
     const commandsToTry = [
-      `python3 -m edge_tts -f "${tempTextFile}" --write-media "${outputPath}" --voice "${voice}" ${rateArg}`,
-      `python -m edge_tts -f "${tempTextFile}" --write-media "${outputPath}" --voice "${voice}" ${rateArg}`,
-      `edge-tts -f "${tempTextFile}" --write-media "${outputPath}" --voice "${voice}" ${rateArg}`
+      `/app/.venv/bin/python "${scriptPath}" "${tempTextFile}" "${outputPath}" "${voice}" "${rateArg}"`,
+      `python3 "${scriptPath}" "${tempTextFile}" "${outputPath}" "${voice}" "${rateArg}"`,
+      `python "${scriptPath}" "${tempTextFile}" "${outputPath}" "${voice}" "${rateArg}"`,
+      `py -3 "${scriptPath}" "${tempTextFile}" "${outputPath}" "${voice}" "${rateArg}"`,
+      `/app/.venv/bin/edge-tts -f "${tempTextFile}" --write-media "${outputPath}" --voice "${voice}" --rate="${rateArg}"`,
+      `edge-tts -f "${tempTextFile}" --write-media "${outputPath}" --voice "${voice}" --rate="${rateArg}"`,
+      `python3 -m edge_tts -f "${tempTextFile}" --write-media "${outputPath}" --voice "${voice}" --rate="${rateArg}"`,
+      `python -m edge_tts -f "${tempTextFile}" --write-media "${outputPath}" --voice "${voice}" --rate="${rateArg}"`
     ];
 
     let generated = false;
     for (const cmd of commandsToTry) {
       try {
-        await execAsync(cmd, { timeout: 35000 });
+        const { stdout, stderr } = await execAsync(cmd, { timeout: 35000 });
         if (fs.existsSync(outputPath) && fs.statSync(outputPath).size > 1000) {
+          console.log(`✅ [Edge-TTS Runner] Síntesis exitosa con comando: ${cmd.split(" ")[0]} (${fs.statSync(outputPath).size} bytes)`);
           generated = true;
           break;
         }
-      } catch {
-        // Continuar con el siguiente comando si el binario no existe en el OS
+      } catch (err: any) {
+        // Registrar intento para depuración si no es simplemente ejecutable faltante
+        if (!err.message?.includes("not found") && !err.message?.includes("no se reconoce")) {
+          console.warn(`⚠️ [Edge-TTS Runner] Intento con ${cmd.split(" ")[0]} falló: ${err.message}`);
+        }
       }
     }
 
