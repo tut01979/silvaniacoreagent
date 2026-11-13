@@ -222,6 +222,12 @@ export const leadSetter = {
     const linkedinDirectUrl = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(`${baseKeyword} ${city}`)}`;
     const googleDirectUrl = `https://www.google.com/search?q=${encodeURIComponent(persona.dorkSearch)}`;
 
+    const validationUniversalNote = "¡Hola! Estamos validando una herramienta verificada por Google que gestiona por voz tu Google Workspace desde Telegram. Es gratis. ¿Conectamos?";
+    const validationFollowUp =
+      "¡Gracias por conectar! Estamos en fase de validación de Silvania CoreAgent (https://silvania.ai): un asistente verificado por Google que te permite agendar en Calendar, registrar datos en Sheets y redactar correos simplemente enviando un audio en Telegram.\n\n" +
+      "Estamos dando acceso gratuito a profesionales para conocer vuestro feedback real y ahorrarte hasta 2h al día.\n\n" +
+      "¿Te paso el acceso directo para probarlo gratis o prefieres verlo en 5 min por Google Meet?";
+
     return (
       `🎯 *PLAYBOOK SETTER B2B: ${persona.name.toUpperCase()}*\n` +
       `───────────────────────────\n\n` +
@@ -230,9 +236,13 @@ export const leadSetter = {
       `🚀 *Búsqueda Directa en 1 Clic (Sin copiar nada):*\n` +
       `• 👉 [Abrir Lista de Personas en LinkedIn](${linkedinDirectUrl})\n` +
       `• 🌐 [Abrir Perfiles desde Google](${googleDirectUrl})\n\n` +
-      `📨 *1. Nota de Invitación (< 200 caracteres - Máx 10/día):*\n` +
+      `⭐ *1A. Nota Universal de Validación (143 caracteres - Copiar y pegar directo sin editar nada):*\n` +
+      `\`\`\`text\n${validationUniversalNote}\n\`\`\`\n\n` +
+      `📨 *1B. Nota Personalizada por Sector (< 200 caracteres):*\n` +
       `\`\`\`text\n${persona.connectionNote}\n\`\`\`\n\n` +
-      `💬 *2. Mensaje tras Aceptar la Conexión:*\n` +
+      `💬 *2A. Mensaje tras Conectar (Enfoque Validación Gratis):*\n` +
+      `\`\`\`text\n${validationFollowUp}\n\`\`\`\n\n` +
+      `💬 *2B. Mensaje tras Conectar (Enfoque Dolor Específico):*\n` +
       `\`\`\`text\n${persona.followUpMessage}\n\`\`\`\n\n` +
       `🛡️ *3. Manejo de Objeciones:*\n` +
       `• *Si dice "No tengo tiempo":*\n_${persona.objections.noTime}_\n\n` +
