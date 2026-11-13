@@ -1,4 +1,4 @@
-import { Bot, InputFile } from "grammy";
+import { Bot, InputFile, InlineKeyboard } from "grammy";
 import Stripe from "stripe";
 import { spawn, execSync } from "child_process";
 import { config } from "./config/config.js";
@@ -2320,8 +2320,62 @@ bot.on("callback_query:data", async (ctx, next) => {
     } catch (err: any) {
       console.error("❌ Error manejando callback de setter:", err);
     }
+  } else if (data === "set_voice_alvaro" || data === "set_voice_lucia") {
+    const userId = ctx.from!.id;
+    const isAlvaro = data === "set_voice_alvaro";
+    const voiceChoice = isAlvaro ? "Alvaro" : "Lucia";
+    await dbService.setUserVoice(userId, voiceChoice);
+
+    const keyboard = new InlineKeyboard()
+      .text(isAlvaro ? "👨 Álvaro (Activo ✅)" : "👨 Álvaro (Masculino)", "set_voice_alvaro")
+      .text(isAlvaro ? "👩 Lucía (Femenino)" : "👩 Lucía (Activa ✅)", "set_voice_lucia");
+
+    const ack = isAlvaro 
+      ? "✅ Has seleccionado la voz de *Álvaro (Masculina Neural)*. A partir de ahora te responderé con esta voz."
+      : "✅ Has seleccionado la voz de *Lucía (Femenina Neural)*. A partir de ahora te responderé con esta voz.";
+
+    try {
+      await ctx.editMessageText(
+        `🎙️ *Selector de Voz de Silvania CoreAgent*\n` +
+        `───────────────────────────\n\n` +
+        ack,
+        { parse_mode: "Markdown", reply_markup: keyboard }
+      );
+    } catch {}
+
+    try {
+      const sampleText = isAlvaro 
+        ? "¡Hola! Soy Álvaro, tu asistente ejecutivo en Silvania CoreAgent. ¿En qué te ayudo hoy?"
+        : "¡Hola! Soy Lucía, tu asistente ejecutiva en Silvania CoreAgent. ¿En qué te ayudo hoy?";
+      const audioPaths = await voiceService.textToSpeech(sampleText, userId, voiceChoice);
+      if (audioPaths && audioPaths[0]) {
+        await ctx.replyWithVoice(new InputFile(audioPaths[0]));
+      }
+    } catch (e: any) {
+      console.warn("⚠️ No se pudo enviar nota de muestra de voz:", e.message);
+    }
+    return;
   }
   await next();
+});
+
+// Comando /voz o /voice (Selector de Voz Álvaro / Lucía)
+bot.command(["voz", "voice"], async (ctx) => {
+  const userId = ctx.from!.id;
+  const currentVoice = await dbService.getUserVoice(userId);
+  const isLucia = currentVoice.toLowerCase().includes("lucia") || currentVoice.toLowerCase().includes("elvira");
+
+  const keyboard = new InlineKeyboard()
+    .text(isLucia ? "👨 Álvaro (Masculino)" : "👨 Álvaro (Activo ✅)", "set_voice_alvaro")
+    .text(isLucia ? "👩 Lucía (Activa ✅)" : "👩 Lucía (Femenino)", "set_voice_lucia");
+
+  await ctx.reply(
+    `🎙️ *Selector de Voz de Silvania CoreAgent*\n` +
+    `───────────────────────────\n\n` +
+    `Voz actual: *${isLucia ? "👩 Lucía (Femenina Neural)" : "👨 Álvaro (Masculina Neural)"}*\n\n` +
+    `Toca abajo para elegir la voz que prefieras para tus notas de voz y vídeos:`,
+    { parse_mode: "Markdown", reply_markup: keyboard }
+  );
 });
 
 // Comando /campaña (Campaña Omnicanal Multired)
@@ -2731,6 +2785,29 @@ bot.on("message:text", async (ctx) => {
       }
       return;
     }
+  }
+
+  // ─── CAMBIO RÁPIDO DE VOZ EN LENGUAJE NATURAL (Álvaro / Lucía) ───
+  if (textLower.includes("voz de lucia") || textLower.includes("voz de lucía") || textLower.includes("voz femenina") || textLower.includes("cambia a voz de mujer") || textLower === "pon la voz de lucia") {
+    await dbService.setUserVoice(userId, "Lucia");
+    const ack = "👩 He cambiado mi voz a Lucía. A partir de ahora te responderé con mi voz femenina.";
+    await ctx.reply(ack);
+    try {
+      const audios = await voiceService.textToSpeech(ack, userId, "Lucia");
+      if (audios && audios[0]) await ctx.replyWithVoice(new InputFile(audios[0]));
+    } catch {}
+    return;
+  }
+
+  if (textLower.includes("voz de alvaro") || textLower.includes("voz de álvaro") || textLower.includes("voz masculina") || textLower.includes("cambia a voz de hombre") || textLower === "pon la voz de alvaro") {
+    await dbService.setUserVoice(userId, "Alvaro");
+    const ack = "👨 He cambiado mi voz a Álvaro. A partir de ahora te responderé con mi voz masculina.";
+    await ctx.reply(ack);
+    try {
+      const audios = await voiceService.textToSpeech(ack, userId, "Alvaro");
+      if (audios && audios[0]) await ctx.replyWithVoice(new InputFile(audios[0]));
+    } catch {}
+    return;
   }
 
   // Notificar que está pensando con un intervalo para mantener el estado "escribiendo"

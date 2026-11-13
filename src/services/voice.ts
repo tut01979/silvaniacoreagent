@@ -5,6 +5,7 @@ import { config } from "../config/config.js";
 import * as googleTTS from 'google-tts-api';
 import { PollyClient, SynthesizeSpeechCommand } from "@aws-sdk/client-polly";
 import { saveEdgeTts, resolveVoiceName } from "../marketing/services/edgeTtsHelper.js";
+import { dbService } from "../database/db.js";
 
 // Función auxiliar para dividir textos muy largos en fragmentos y evitar límites en las APIs
 function splitTextIntoChunks(text: string, maxLength: number = 2000): string[] {
@@ -40,7 +41,8 @@ export const voiceService = {
 
       // INTENTO 1: EDGE-TTS NEURAL (Álvaro o Lucía - Calidad de Estudio, 0€ y sin claves de API)
       try {
-        const preferredVoice = voiceChoice || config.voice.pollyVoice || "Alvaro";
+        const userDbVoice = userId ? await dbService.getUserVoice(userId) : null;
+        const preferredVoice = voiceChoice || userDbVoice || config.voice.pollyVoice || "Alvaro";
         const edgeVoice = resolveVoiceName(preferredVoice);
         console.log(`🎙️ Intentando Edge-TTS Neural (${edgeVoice}) para la parte ${i+1}...`);
         await saveEdgeTts(chunk, filePath, { voice: edgeVoice, rate: "+2%" });

@@ -55,10 +55,26 @@ export async function saveEdgeTts(text: string, outputPath: string, options: Edg
   try {
     fs.writeFileSync(tempTextFile, text, "utf-8");
     const rateArg = rate && rate !== "+0%" ? `--rate="${rate}"` : "";
-    const cmd = `python -m edge_tts -f "${tempTextFile}" --write-media "${outputPath}" --voice "${voice}" ${rateArg}`;
-    await execAsync(cmd, { timeout: 35000 });
+    const commandsToTry = [
+      `python3 -m edge_tts -f "${tempTextFile}" --write-media "${outputPath}" --voice "${voice}" ${rateArg}`,
+      `python -m edge_tts -f "${tempTextFile}" --write-media "${outputPath}" --voice "${voice}" ${rateArg}`,
+      `edge-tts -f "${tempTextFile}" --write-media "${outputPath}" --voice "${voice}" ${rateArg}`
+    ];
 
-    if (fs.existsSync(outputPath) && fs.statSync(outputPath).size > 1000) {
+    let generated = false;
+    for (const cmd of commandsToTry) {
+      try {
+        await execAsync(cmd, { timeout: 35000 });
+        if (fs.existsSync(outputPath) && fs.statSync(outputPath).size > 1000) {
+          generated = true;
+          break;
+        }
+      } catch {
+        // Continuar con el siguiente comando si el binario no existe en el OS
+      }
+    }
+
+    if (generated) {
       try { fs.unlinkSync(tempTextFile); } catch {}
       return;
     }

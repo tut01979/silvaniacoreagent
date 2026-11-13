@@ -111,6 +111,13 @@ const migrations: { [version: number]: () => void } = {
     } catch (e: any) {
       console.warn("⚠️ Error creando tabla drive_folders:", e.message);
     }
+  },
+  5: () => {
+    try {
+      db.exec("ALTER TABLE user_settings ADD COLUMN preferredVoice TEXT DEFAULT 'Alvaro'");
+    } catch (e: any) {
+      console.warn("⚠️ Columna preferredVoice ya existía en user_settings:", e.message);
+    }
   }
 };
 
@@ -349,6 +356,27 @@ export const dbService = {
       stmt.run(userId, mute ? 1 : 0);
     } catch (err: any) {
       console.error("Error guardando settings de voz:", err.message);
+    }
+  },
+
+  getUserVoice: async (userId: number): Promise<string> => {
+    try {
+      const stmt = db.prepare("SELECT preferredVoice FROM user_settings WHERE userId = ?");
+      const row = stmt.get(userId) as { preferredVoice?: string } | undefined;
+      return row?.preferredVoice || "Alvaro";
+    } catch {
+      return "Alvaro";
+    }
+  },
+
+  setUserVoice: async (userId: number, voice: string): Promise<void> => {
+    try {
+      const stmt = db.prepare(
+        "INSERT INTO user_settings (userId, preferredVoice) VALUES (?, ?) ON CONFLICT(userId) DO UPDATE SET preferredVoice = excluded.preferredVoice"
+      );
+      stmt.run(userId, voice);
+    } catch (err: any) {
+      console.error("Error guardando preferredVoice en BD:", err.message);
     }
   },
 
