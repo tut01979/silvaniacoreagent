@@ -4,6 +4,7 @@ import path from "path";
 import { config } from "../config/config.js";
 import * as googleTTS from 'google-tts-api';
 import { PollyClient, SynthesizeSpeechCommand } from "@aws-sdk/client-polly";
+import { saveEdgeTts, resolveVoiceName } from "../marketing/services/edgeTtsHelper.js";
 
 // Función auxiliar para dividir textos muy largos en fragmentos y evitar límites en las APIs
 function splitTextIntoChunks(text: string, maxLength: number = 2000): string[] {
@@ -24,8 +25,8 @@ function splitTextIntoChunks(text: string, maxLength: number = 2000): string[] {
 }
 
 export const voiceService = {
-  async textToSpeech(text: string, userId: number): Promise<string[]> {
-    if (!fs.existsSync(config.tempDir)) fs.mkdirSync(config.tempDir);
+  async textToSpeech(text: string, userId: number, voiceChoice?: string): Promise<string[]> {
+    if (!fs.existsSync(config.tempDir)) fs.mkdirSync(config.tempDir, { recursive: true });
     
     // Cortamos en fragmentos de unos 2000 caracteres (aprox. 2-3 minutos de voz por nota)
     const chunks = splitTextIntoChunks(text, 2000); 
@@ -37,7 +38,23 @@ export const voiceService = {
       const filePath = path.join(config.tempDir, fileName);
       let success = false;
 
-      // INTENTO 1: ELEVENLABS (Premium)
+      // INTENTO 1: EDGE-TTS NEURAL (Álvaro o Lucía - Calidad de Estudio, 0€ y sin claves de API)
+      try {
+        const preferredVoice = voiceChoice || config.voice.pollyVoice || "Alvaro";
+        const edgeVoice = resolveVoiceName(preferredVoice);
+        console.log(`🎙️ Intentando Edge-TTS Neural (${edgeVoice}) para la parte ${i+1}...`);
+        await saveEdgeTts(chunk, filePath, { voice: edgeVoice, rate: "+2%" });
+
+        if (fs.existsSync(filePath) && fs.statSync(filePath).size > 1000) {
+          console.log(`✅ Edge-TTS Neural (${edgeVoice}) exitoso para la parte ${i+1}. Tamaño: ${fs.statSync(filePath).size} bytes.`);
+          generatedFiles.push(filePath);
+          success = true;
+        }
+      } catch (edgeErr: any) {
+        console.warn(`⚠️ Edge-TTS Neural falló para la parte ${i+1} (${edgeErr.message}), pasando a ElevenLabs/Polly...`);
+      }
+
+      // INTENTO 2: ELEVENLABS (Premium con API Key)
       if (config.voice.elevenLabsKey && !success) {
         try {
           console.log(`🎙️ Intentando ElevenLabs para la parte ${i+1}...`);
@@ -65,14 +82,14 @@ export const voiceService = {
           generatedFiles.push(filePath);
           success = true;
         } catch (error: any) {
-          console.warn(`⚠️ ElevenLabs falló para la parte ${i+1}, intentando respaldo 1...`);
+          console.warn(`⚠️ ElevenLabs falló para la parte ${i+1}, intentando respaldo Polly...`);
         }
       }
 
-      // INTENTO 2: AMAZON POLLY (Lucia)
+      // INTENTO 3: AMAZON POLLY (Lucia)
       if (config.voice.awsAccessKey && config.voice.awsSecretKey && !success) {
         try {
-          console.log(`🎙️ Intentando Amazon Polly para la parte ${i+1} (Respaldo 1)...`);
+          console.log(`🎙️ Intentando Amazon Polly para la parte ${i+1} (Respaldo Polly)...`);
           const polly = new PollyClient({
             region: config.voice.awsRegion,
             credentials: {
@@ -101,7 +118,7 @@ export const voiceService = {
         }
       }
 
-      // INTENTO 3: GOOGLE TTS (Respaldo final y sin fallos)
+      // INTENTO 4: GOOGLE TTS (Respaldo final y sin fallos)
       if (!success) {
         try {
           console.log(`🎙️ Intentando Google TTS para la parte ${i+1} (Respaldo Final)...`);

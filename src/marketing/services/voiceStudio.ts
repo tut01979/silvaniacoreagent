@@ -69,10 +69,30 @@ export const voiceStudio = {
     const usePremium = options.forcePremium || config.marketing?.premiumVoice === true;
     const spokenText = normalizeSpokenText(text);
 
-    // --- CAMINO 1 (Prioritario Low-Cost): Google TTS (100% libre, sin errores 403 en Railway) ---
+    // --- CAMINO 1 (Prioritario Neural Premium 0€): Edge-TTS Neural (Álvaro / Lucía) ---
     if (!usePremium) {
+      const edgeVoice = config.voice?.pollyVoice?.toLowerCase().includes("lucia") ? "es-ES-ElviraNeural" : "es-ES-AlvaroNeural";
+      const edgeFileName = `mkt_edge_${userId}_${Date.now()}.mp3`;
+      const edgeFilePath = path.join(tempDir, edgeFileName);
+
       try {
-        console.log(`🎙️ VoiceStudio [Low-Cost Primario]: Generando locución con Google TTS (0€)...`);
+        console.log(`🎙️ VoiceStudio [Prioritario Neural]: Generando locución con Edge-TTS (${edgeVoice})...`);
+        await saveEdgeTts(spokenText, edgeFilePath, { voice: edgeVoice, rate: "+2%" });
+
+        if (fs.existsSync(edgeFilePath) && fs.statSync(edgeFilePath).size > 1000) {
+          console.log(`✅ VoiceStudio: Locución Edge-TTS (${edgeVoice}) completada con éxito (${fs.statSync(edgeFilePath).size} bytes).`);
+          return {
+            audioPath: edgeFilePath,
+            provider: "edge",
+          };
+        }
+      } catch (edgeErr: any) {
+        console.warn(`⚠️ VoiceStudio: Edge-TTS falló (${edgeErr.message}). Probando fallback Google TTS...`);
+      }
+
+      // --- CAMINO 2 (Respaldo secundario): Google TTS (0€) ---
+      try {
+        console.log(`🎙️ VoiceStudio [Respaldo Secundario]: Generando locución con Google TTS (0€)...`);
         const googleTTS = await import("google-tts-api");
         const audioData = await (googleTTS as any).getAllAudioBase64(spokenText, {
           lang: "es",
@@ -90,7 +110,6 @@ export const voiceStudio = {
         fs.writeFileSync(rawFilePath, completeAudio);
 
         if (fs.existsSync(rawFilePath) && fs.statSync(rawFilePath).size > 500) {
-          // Si se solicita aceleración suave para agilidad de podcast (atempo=1.06)
           let finalGooglePath = rawFilePath;
           if (options.applyTempo !== false) {
             try {
@@ -113,27 +132,7 @@ export const voiceStudio = {
           };
         }
       } catch (googleErr: any) {
-        console.warn(`⚠️ VoiceStudio: Google TTS falló (${googleErr.message}). Probando fallback Edge-TTS...`);
-      }
-
-      // --- CAMINO 2 (Respaldo secundario): Edge-TTS Neural ---
-      const edgeVoice = "es-ES-AlvaroNeural";
-      const edgeFileName = `mkt_edge_${userId}_${Date.now()}.mp3`;
-      const edgeFilePath = path.join(tempDir, edgeFileName);
-
-      try {
-        console.log(`🎙️ VoiceStudio [Respaldo]: Probando Edge-TTS (${edgeVoice})...`);
-        await saveEdgeTts(spokenText, edgeFilePath, { voice: edgeVoice, rate: "+2%" });
-
-        if (fs.existsSync(edgeFilePath) && fs.statSync(edgeFilePath).size > 1000) {
-          console.log(`✅ VoiceStudio: Locución Edge-TTS completada con éxito (${fs.statSync(edgeFilePath).size} bytes).`);
-          return {
-            audioPath: edgeFilePath,
-            provider: "edge",
-          };
-        }
-      } catch (edgeErr: any) {
-        console.warn(`⚠️ VoiceStudio: Edge-TTS falló (${edgeErr.message}). Activando fallback en cadena...`);
+        console.warn(`⚠️ VoiceStudio: Google TTS falló (${googleErr.message}). Activando fallback en cadena...`);
       }
     }
 
@@ -204,7 +203,8 @@ export const voiceStudio = {
     const sceneAudioPaths: string[] = [];
     const sceneDurations: number[] = [];
 
-    const googleTTS = await import("google-tts-api");
+    const edgeVoice = config.voice?.pollyVoice?.toLowerCase().includes("lucia") ? "es-ES-ElviraNeural" : "es-ES-AlvaroNeural";
+    let usedProvider: "edge" | "google" = "edge";
 
     for (let i = 0; i < scenes.length; i++) {
       const scene = scenes[i];
@@ -217,19 +217,34 @@ export const voiceStudio = {
       const rawChunkPath = path.join(tempDir, `mkt_chunk_${userId}_${Date.now()}_sc${scene.sceneNumber || i + 1}.mp3`);
       const tempoChunkPath = path.join(tempDir, `mkt_tempo_${userId}_${Date.now()}_sc${scene.sceneNumber || i + 1}.mp3`);
 
-      // Síntesis de este bloque
-      const audioData = await (googleTTS as any).getAllAudioBase64(normalized, {
-        lang: "es",
-        slow: false,
-        host: "https://translate.google.com",
-        timeout: 15000,
-      });
-
-      let chunkBuffer = Buffer.alloc(0);
-      for (const piece of audioData) {
-        chunkBuffer = Buffer.concat([chunkBuffer, Buffer.from(piece.base64, "base64")]);
+      // Síntesis de este bloque (Prioridad 1: Edge-TTS Neural Álvaro/Lucía)
+      let synthesized = false;
+      try {
+        await saveEdgeTts(normalized, rawChunkPath, { voice: edgeVoice, rate: "+2%" });
+        if (fs.existsSync(rawChunkPath) && fs.statSync(rawChunkPath).size > 500) {
+          synthesized = true;
+        }
+      } catch (edgeErr: any) {
+        console.warn(`⚠️ [VoiceStudio Paced] Edge-TTS falló en escena ${i + 1} (${edgeErr.message}), usando Google TTS...`);
       }
-      fs.writeFileSync(rawChunkPath, chunkBuffer);
+
+      // Fallback a Google TTS si Edge-TTS no estuvo disponible
+      if (!synthesized) {
+        usedProvider = "google";
+        const googleTTS = await import("google-tts-api");
+        const audioData = await (googleTTS as any).getAllAudioBase64(normalized, {
+          lang: "es",
+          slow: false,
+          host: "https://translate.google.com",
+          timeout: 15000,
+        });
+
+        let chunkBuffer = Buffer.alloc(0);
+        for (const piece of audioData) {
+          chunkBuffer = Buffer.concat([chunkBuffer, Buffer.from(piece.base64, "base64")]);
+        }
+        fs.writeFileSync(rawChunkPath, chunkBuffer);
+      }
 
       // Aplicar filtro de tempo suave
       execSync(`"${ffmpegBin}" -y -i "${rawChunkPath}" -af "atempo=${tempo}" "${tempoChunkPath}"`, { stdio: "pipe" });
@@ -242,7 +257,7 @@ export const voiceStudio = {
       // La duración de la escena para el visual incluye la locución más la pausa de respiración (salvo la última)
       const allocatedSceneDur = parseFloat((chunkDur + (i < scenes.length - 1 ? pauseSeconds : 0)).toFixed(2));
       sceneDurations.push(allocatedSceneDur);
-      console.log(`   - Escena ${i + 1}/${scenes.length}: ${chunkDur.toFixed(2)}s voz + ${i < scenes.length - 1 ? pauseSeconds : 0}s pausa = ${allocatedSceneDur}s`);
+      console.log(`   - Escena ${i + 1}/${scenes.length}: ${chunkDur.toFixed(2)}s voz (${usedProvider}) + ${i < scenes.length - 1 ? pauseSeconds : 0}s pausa = ${allocatedSceneDur}s`);
     }
 
     // 2. Concatenar con FFmpeg intercalando silencios
@@ -262,11 +277,11 @@ export const voiceStudio = {
     try { fs.unlinkSync(masterConcatList); } catch {}
 
     const totalDurationSeconds = await getAudioDuration(masterAudioPath, ffmpegBin);
-    console.log(`✅ [VoiceStudio Paced] Audio maestro concatenado: ${totalDurationSeconds.toFixed(2)}s totales.`);
+    console.log(`✅ [VoiceStudio Paced] Audio maestro concatenado (${usedProvider}): ${totalDurationSeconds.toFixed(2)}s totales.`);
 
     return {
       audioPath: masterAudioPath,
-      provider: "google",
+      provider: usedProvider,
       totalDurationSeconds,
       sceneDurations,
     };

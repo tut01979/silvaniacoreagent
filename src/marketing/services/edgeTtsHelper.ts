@@ -1,26 +1,83 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
+import { exec } from "child_process";
+import { promisify } from "util";
 // @ts-ignore
 import { WebSocket } from "ws";
+
+const execAsync = promisify(exec);
 
 const BASE_URL = "speech.platform.bing.com/consumer/speech/synthesize/readaloud";
 const TRUSTED_CLIENT_TOKEN = "6A5AA1D4EAFF4E9FB37E23D68491D6F4";
 const WSS_URL = `wss://${BASE_URL}/edge/v1?TrustedClientToken=${TRUSTED_CLIENT_TOKEN}`;
 
 export interface EdgeTtsOptions {
-  voice?: string; // e.g. "es-ES-AlvaroNeural", "es-ES-ElviraNeural", "es-MX-JorgeNeural"
+  voice?: string; // e.g. "es-ES-AlvaroNeural", "es-ES-ElviraNeural", "Alvaro", "Lucia"
   rate?: string;  // e.g. "+0%"
   pitch?: string; // e.g. "+0Hz"
   volume?: string;// e.g. "+0%"
 }
 
 /**
- * Sintetiza texto a voz usando Edge-TTS (Microsoft Neural) mediante WebSocket.
- * 100% gratuito, sin API key ni coste por request.
+ * Resuelve nombres amigables a las voces neuronales oficiales de Microsoft Edge:
+ * - "alvaro" -> "es-ES-AlvaroNeural" (Voz masculina premium de España)
+ * - "lucia" | "elvira" -> "es-ES-ElviraNeural" (Voz femenina premium de España)
+ */
+export function resolveVoiceName(voice?: string): string {
+  if (!voice) return "es-ES-AlvaroNeural";
+  const norm = voice.toLowerCase().trim();
+  if (norm.includes("lucia") || norm.includes("elvira") || norm.includes("mujer") || norm.includes("female")) {
+    return "es-ES-ElviraNeural";
+  }
+  if (norm.includes("alvaro") || norm.includes("hombre") || norm.includes("male")) {
+    return "es-ES-AlvaroNeural";
+  }
+  return voice;
+}
+
+/**
+ * Sintetiza texto a voz usando el motor Edge-TTS (v2 con firma Sec-MS-GEC).
+ * Ejecuta mediante el runner de alta velocidad con fallback a WebSocket.
+ */
+export async function saveEdgeTts(text: string, outputPath: string, options: EdgeTtsOptions = {}): Promise<void> {
+  const dir = path.dirname(outputPath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+
+  const voice = resolveVoiceName(options.voice);
+  const rate = options.rate || "+0%";
+  const tempDir = dir;
+  const tempTextFile = path.join(tempDir, `temp_edge_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.txt`);
+
+  // Intento 1: Runner de Edge-TTS (soporta v2 Sec-MS-GEC sin bloqueos 403)
+  try {
+    fs.writeFileSync(tempTextFile, text, "utf-8");
+    const rateArg = rate && rate !== "+0%" ? `--rate="${rate}"` : "";
+    const cmd = `python -m edge_tts -f "${tempTextFile}" --write-media "${outputPath}" --voice "${voice}" ${rateArg}`;
+    await execAsync(cmd, { timeout: 35000 });
+
+    if (fs.existsSync(outputPath) && fs.statSync(outputPath).size > 1000) {
+      try { fs.unlinkSync(tempTextFile); } catch {}
+      return;
+    }
+  } catch (pyErr: any) {
+    console.warn(`⚠️ Runner Python de Edge-TTS falló (${pyErr.message}). Probando WebSocket nativo...`);
+  } finally {
+    try { fs.unlinkSync(tempTextFile); } catch {}
+  }
+
+  // Intento 2: WebSocket directo
+  const buffer = await synthesizeEdgeTts(text, { ...options, voice });
+  fs.writeFileSync(outputPath, buffer);
+}
+
+/**
+ * Sintetiza texto a voz usando Edge-TTS mediante WebSocket directo.
  */
 export function synthesizeEdgeTts(text: string, options: EdgeTtsOptions = {}): Promise<Buffer> {
-  const voice = options.voice || "es-ES-AlvaroNeural";
+  const voice = resolveVoiceName(options.voice);
   const rate = options.rate || "+0%";
   const pitch = options.pitch || "+0Hz";
   const volume = options.volume || "+0%";
@@ -69,7 +126,6 @@ export function synthesizeEdgeTts(text: string, options: EdgeTtsOptions = {}): P
     });
 
     ws.on("open", () => {
-      // 1. Configuración de formato de audio
       const speechConfig = JSON.stringify({
         context: {
           synthesis: {
@@ -97,7 +153,6 @@ export function synthesizeEdgeTts(text: string, options: EdgeTtsOptions = {}): P
           return;
         }
 
-        // 2. Mensaje SSML con el texto a reproducir
         const requestId = crypto.randomUUID().replace(/-/g, "");
         const escapedText = text
           .replace(/&/g, "&amp;")
@@ -127,16 +182,4 @@ export function synthesizeEdgeTts(text: string, options: EdgeTtsOptions = {}): P
       });
     });
   });
-}
-
-/**
- * Guarda directamente el audio generado por Edge-TTS en disco.
- */
-export async function saveEdgeTts(text: string, outputPath: string, options: EdgeTtsOptions = {}): Promise<void> {
-  const dir = path.dirname(outputPath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  const buffer = await synthesizeEdgeTts(text, options);
-  fs.writeFileSync(outputPath, buffer);
 }
