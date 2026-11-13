@@ -223,6 +223,8 @@ export const leadSetter = {
     const googleDirectUrl = `https://www.google.com/search?q=${encodeURIComponent(persona.dorkSearch)}`;
 
     const validationUniversalNote = "¡Hola! Estamos validando una herramienta verificada por Google que gestiona por voz tu Google Workspace desde Telegram. Es gratis. ¿Conectamos?";
+    const noNoteFollowUpShort =
+      "¡Hola! Gracias por aceptar la conexión. Te agregué porque estamos validando una herramienta verificada por Google que gestiona por voz tu Google Workspace (Calendar, Gmail, Sheets y Drive) desde Telegram. Es gratis. ¿Te paso el acceso para probarla?";
     const validationFollowUp =
       "¡Gracias por conectar! Estamos en fase de validación de Silvania CoreAgent (https://silvania.ai): un asistente verificado por Google que te permite agendar en Calendar, registrar datos en Sheets y redactar correos simplemente enviando un audio en Telegram.\n\n" +
       "Estamos dando acceso gratuito a profesionales para conocer vuestro feedback real y ahorrarte hasta 2h al día.\n\n" +
@@ -240,9 +242,11 @@ export const leadSetter = {
       `\`\`\`text\n${validationUniversalNote}\n\`\`\`\n\n` +
       `📨 *1B. Nota Personalizada por Sector (< 200 caracteres):*\n` +
       `\`\`\`text\n${persona.connectionNote}\n\`\`\`\n\n` +
-      `💬 *2A. Mensaje tras Conectar (Enfoque Validación Gratis):*\n` +
+      `💬 *2A. Si enviaste "Conectar" SIN nota y te han aceptado (Corto y Directo):*\n` +
+      `\`\`\`text\n${noNoteFollowUpShort}\n\`\`\`\n\n` +
+      `💬 *2B. Mensaje Completo tras Conectar (Enfoque Validación Gratis):*\n` +
       `\`\`\`text\n${validationFollowUp}\n\`\`\`\n\n` +
-      `💬 *2B. Mensaje tras Conectar (Enfoque Dolor Específico):*\n` +
+      `💬 *2C. Mensaje tras Conectar (Enfoque Dolor Específico):*\n` +
       `\`\`\`text\n${persona.followUpMessage}\n\`\`\`\n\n` +
       `🛡️ *3. Manejo de Objeciones:*\n` +
       `• *Si dice "No tengo tiempo":*\n_${persona.objections.noTime}_\n\n` +
