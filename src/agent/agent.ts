@@ -414,7 +414,8 @@ ${userTier === "prod" ? `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## 🔷 REGLAS ESTRICTAS ANTI-ALUCINACIÓN Y ENLACES (OBLIGATORIA)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. NUNCA INVENTES identificadores (\`fileId\`, \`messageId\`, \`folderId\`) ni enlaces de Google Drive (\`drive.google.com/drive/folders/...\`) o Gmail (\`#inbox/...\`).
+1. NUNCA INVENTES identificadores (\`fileId\`, \`messageId\`, \`folderId\`) ni enlaces de Google Drive (\`drive.google.com/drive/folders/...\`), Sheets (\`docs.google.com/spreadsheets/d/...\`) o Gmail (\`#inbox/...\`). Cuando \`drive_list\` o \`drive_search\` devuelvan carpetas o archivos, COPIA CARÁCTER POR CARÁCTER el ID y enlace exacto de cada elemento distinto; está ESTRICTAMENTE PROHIBIDO fabricar IDs de relleno (ej. \`1F-F1X-...0f0f0f\`) o repetir el mismo ID para elementos diferentes.
+2. NUNCA escribas acotaciones meta como "(El asistente ahora generaría un audio...)" ni comillas envolviendo toda tu respuesta cuando el usuario pida que se lo expliques "con voz": el sistema convierte automáticamente tu respuesta de texto en nota de voz. Responde directamente el contenido limpio.
 2. SOLO puedes proporcionar enlaces específicos o IDs que hayan sido devueltos EXPLÍCITAMENTE por una herramienta (\`drive_list\`, \`drive_search\`, \`gmail_list\`, \`web_search\`, \`read_url\`, \`calendar_create\`, \`calendar_update\`, \`calendar_list\`) en esta conversación, o las URLs oficiales raíz canónicas:
    - Drive: https://drive.google.com/drive/my-drive
    - Gmail: https://mail.google.com/mail/u/0/#inbox

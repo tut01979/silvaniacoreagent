@@ -29,8 +29,8 @@ export const voiceService = {
   async textToSpeech(text: string, userId: number, voiceChoice?: string): Promise<string[]> {
     if (!fs.existsSync(config.tempDir)) fs.mkdirSync(config.tempDir, { recursive: true });
     
-    // Cortamos en fragmentos de unos 2000 caracteres (aprox. 2-3 minutos de voz por nota)
-    const chunks = splitTextIntoChunks(text, 2000); 
+    // Cortamos en fragmentos de unos 1000 caracteres para máxima velocidad y estabilidad sin timeouts
+    const chunks = splitTextIntoChunks(text, 1000); 
     const generatedFiles: string[] = [];
 
     for (let i = 0; i < chunks.length; i++) {
@@ -45,7 +45,13 @@ export const voiceService = {
         const preferredVoice = voiceChoice || userDbVoice || config.voice.pollyVoice || "Alvaro";
         const edgeVoice = resolveVoiceName(preferredVoice);
         console.log(`🎙️ Intentando Edge-TTS Neural (${edgeVoice}) para la parte ${i+1}...`);
-        await saveEdgeTts(chunk, filePath, { voice: edgeVoice, rate: "+2%" });
+        try {
+          await saveEdgeTts(chunk, filePath, { voice: edgeVoice, rate: "+2%" });
+        } catch (firstErr: any) {
+          console.warn(`⚠️ Reintentando Edge-TTS Neural (${edgeVoice}) para la parte ${i+1} tras fallo transitorio: ${firstErr.message}`);
+          await new Promise((r) => setTimeout(r, 400));
+          await saveEdgeTts(chunk, filePath, { voice: edgeVoice, rate: "+2%" });
+        }
 
         if (fs.existsSync(filePath) && fs.statSync(filePath).size > 1000) {
           console.log(`✅ Edge-TTS Neural (${edgeVoice}) exitoso para la parte ${i+1}. Tamaño: ${fs.statSync(filePath).size} bytes.`);

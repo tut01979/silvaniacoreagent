@@ -279,3 +279,4 @@ export function generateSecMsGecV2(unixTimestamp?: number): string {
   csBuf.writeUInt32LE(cs1 >>> 0, 4);
   return `${csBuf.toString("hex").toUpperCase()}-${digest.toString("hex").toUpperCase()}`;
 }
+

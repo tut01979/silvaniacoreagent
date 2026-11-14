@@ -115,7 +115,8 @@ export async function synthesizeEdgeTts(text: string, options: EdgeTtsOptions = 
   try {
     return await _synthesizeEdgeTtsOnce(text, options);
   } catch (err: any) {
-    if (err?.isClockSkewRetryable) {
+    const isTransient = err?.isClockSkewRetryable || /timeout|econnreset|etimedout|socket/i.test(err?.message || "");
+    if (isTransient) {
       return await _synthesizeEdgeTtsOnce(text, options);
     }
     throw err;
@@ -152,8 +153,8 @@ function _synthesizeEdgeTtsOnce(text: string, options: EdgeTtsOptions = {}): Pro
       if (settled) return;
       settled = true;
       try { ws.close(); } catch {}
-      reject(new Error("Timeout en síntesis Edge-TTS (30s)"));
-    }, 30000);
+      reject(new Error("Timeout en síntesis Edge-TTS (45s)"));
+    }, 45000);
 
     ws.on("unexpected-response", (_req: any, res: any) => {
       clearTimeout(timeout);
