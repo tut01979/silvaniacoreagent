@@ -534,9 +534,9 @@ Después de crear la skill, la instalas en el sistema y queda disponible para us
 - Nunca inventes enlaces.
 - PROHIBICIÓN ESTRICTA: Está TOTALMENTE PROHIBIDO usar drive_mkdir directamente para rutas silvania o silvania/* (ej: silvania, silvania/skills, silvania/historial, silvania/temas, silvania/prompts). Toda la estructura interna de 'silvania' es gestionada exclusivamente por el sistema canónico de carpetas. Solo usa drive_mkdir si el usuario te pide crear una carpeta personal externa explícita (ej: 'Mis Facturas', 'Proyectos').
 - Para carpetas anidadas:
-  1. Verificar existencia.
-  2. Crear si falta.
-  3. Confirmar con enlace final.
+  1. Verificar existencia llamando SIEMPRE en este turno a \`drive_list\` (que soporta rutas anidadas directas como \`parent_id: "familia/esposa"\`) o \`drive_search\`. NUNCA respondas que una carpeta no existe basándote en el historial de otra carpeta previa sin ejecutar \`drive_list\` primero.
+  2. Crear si falta (solo si el usuario pidió crearla).
+  3. Confirmar con el enlace exacto \`https://drive.google.com/drive/folders/<ID>\` o \`https://drive.google.com/file/d/<ID>/view\` devuelto por la herramienta (NUNCA enlaces de Sheets para carpetas de Drive).
 - Para mover archivos: Necesitas ID del archivo + ID de la carpeta destino.
 - Al crear o verificar carpetas con \`drive_mkdir\` o \`drive_search\`, la herramienta devuelve su ID y enlace web real. Usa SIEMPRE ese ID y enlace proporcionados; NUNCA digas 'Enlace no disponible' ni recurras solo a 'my-drive' cuando la herramienta te entregó el enlace a la carpeta.
 - Toda carpeta o archivo de transcripción debe crearse bajo la ruta canónica \`silvania/transcripciones\`.
@@ -1635,12 +1635,12 @@ export function filterFinalOutput(text: string, history?: any[]): string {
           const gmailMatch = strContent.match(/https:\/\/mail\.google\.com\/mail\/u\/0\/#inbox\/([a-zA-Z0-9_-]{8,65})/i);
           if (gmailMatch) verifiedGmailUrl = gmailMatch[0];
         }
-        if (!verifiedSheetsUrl) {
+        if (!verifiedSheetsUrl && isCurrentTurn) {
           const sheetsMatch = strContent.match(/https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]{20,80})/i);
           if (sheetsMatch) {
             verifiedSheetsUrl = `https://docs.google.com/spreadsheets/d/${sheetsMatch[1]}/edit`;
-          } else {
-            const idMatch = strContent.match(/(?:SPREADSHEET_ID=|spreadsheetId[*`"'=:\s]+|spreadsheet_id[*`"'=:\s]+|ID[*`"'=:\s]+)`?([a-zA-Z0-9_-]{20,80})`?/i);
+          } else if (msg.role === "tool") {
+            const idMatch = strContent.match(/(?:SPREADSHEET_ID=|spreadsheetId[*`"'=:\s]+|spreadsheet_id[*`"'=:\s]+)`?([a-zA-Z0-9_-]{20,80})`?/i);
             if (idMatch) {
               verifiedSheetsUrl = `https://docs.google.com/spreadsheets/d/${idMatch[1]}/edit`;
             }
@@ -1713,9 +1713,17 @@ export function filterFinalOutput(text: string, history?: any[]): string {
     gmailFullMarkdown ||
     (verifiedDriveUrl ? `[Carpeta en Google Drive](${verifiedDriveUrl})` : "");
 
-  // D) filterFinalOutput: si hay spreadsheetId en el turno, sustituir "Abrir en Google Sheets" por markdown con [título](https://docs.google.com/spreadsheets/d/ID/edit)
+  // D) filterFinalOutput: si hay spreadsheetId en el turno, sustituir "Abrir en Google Sheets" o "[Abrir](...)" roto/de Sheets por markdown con [título](https://docs.google.com/spreadsheets/d/ID/edit)
+  // IMPORTANTE: Nunca sobrescribir un "[Abrir](https://...)" que ya tenga una URL válida (ej. carpetas/archivos de Drive, Calendar, Gmail, web).
   if (verifiedSheetsUrl) {
-    cleaned = cleaned.replace(/\[(?:Abrir|Abrir en Google Sheets)\](?:\(([^)]*)\))?/gi, () => {
+    cleaned = cleaned.replace(/\[Abrir en Google Sheets\](?:\(([^)]*)\))?/gi, () => {
+      return sheetsFullMarkdown;
+    });
+    cleaned = cleaned.replace(/\[Abrir\]\(([^)]*)\)/gi, (full, href) => {
+      const h = (href || "").trim();
+      if (/^https?:\/\//i.test(h) && !/docs\.google\.com\/spreadsheets/i.test(h)) {
+        return full;
+      }
       return sheetsFullMarkdown;
     });
     cleaned = cleaned.replace(/(?:🔗\s*|·\s*)?(?<!\[)Abrir en Google Sheets(?!\s*\]|\s*\([^\s)]+\))/gi, () => {
@@ -1728,22 +1736,23 @@ export function filterFinalOutput(text: string, history?: any[]): string {
 
   // C. Reemplazar "[Abrir en Google Calendar](...)" o texto suelto "Abrir en Google Calendar" por [título](url_https_completa)
   if (calendarFullMarkdown) {
-    cleaned = cleaned.replace(/\[(?:Abrir|Abrir en Google Calendar|Ver en Google Calendar|Ver evento)\]\([^)]*\)/gi, () => calendarFullMarkdown);
+    cleaned = cleaned.replace(/\[(?:Abrir en Google Calendar|Ver en Google Calendar|Ver evento)\]\([^)]*\)/gi, () => calendarFullMarkdown);
     cleaned = cleaned.replace(/(?:🔗\s*|·\s*)?(?<!\[)Abrir en Google Calendar(?!\s*\]|\s*\([^\s)]+\))/gi, () => calendarFullMarkdown);
   } else {
     cleaned = cleaned.replace(/\[Abrir en Google Calendar\]\((?:null|undefined|\s*|\[Enlace no disponible[^)]*\])\)/gi, `[Google Calendar](https://calendar.google.com/calendar/u/0/)`);
   }
 
-  // C.2. Reemplazar "[Abrir](url_gmail)" o "[Abrir en Gmail](...)" por [asunto](url_https_completa)
+  // C.2. Reemplazar "[Abrir en Gmail](...)" por [asunto](url_https_completa)
   if (gmailFullMarkdown) {
-    cleaned = cleaned.replace(/\[(?:Abrir|Abrir en Gmail|Ver correo|Ver en Gmail)\]\([^)]*\)/gi, () => gmailFullMarkdown);
+    cleaned = cleaned.replace(/\[(?:Abrir en Gmail|Ver correo|Ver en Gmail)\]\([^)]*\)/gi, () => gmailFullMarkdown);
     cleaned = cleaned.replace(/(?:🔗\s*|·\s*)?(?<!\[)Abrir en Gmail(?!\s*\]|\s*\([^\s)]+\))/gi, () => gmailFullMarkdown);
   }
 
-  // D. Si hay "[Abrir]()", "[Abrir](null)", "[Abrir](undefined)", "[Abrir]([Enlace no disponible...])" o "[Abrir](url)":
+  // D. Si hay "[Abrir]()", "[Abrir](null)", "[Abrir](undefined)" o "[Abrir]([Enlace no disponible...])":
+  // Conservar SIEMPRE cualquier href https:// válido que ya venga en "[Abrir](https://...)".
   cleaned = cleaned.replace(/\[Abrir\]\(([^)]*)\)/gi, (_match, href) => {
+    if (href && /^https?:\/\//i.test(href.trim())) return `[Abrir](${href.trim()})`;
     if (primaryFallbackMarkdown) return primaryFallbackMarkdown;
-    if (href && /^https?:\/\//i.test(href.trim())) return `[Enlace directo](${href.trim()})`;
     return "";
   });
 

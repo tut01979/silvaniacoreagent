@@ -1376,8 +1376,8 @@ function correctTranscription(text: string): string {
   corrected = corrected.replace(/spania core/gi, "silvania core");
 
   // Correcciones fonéticas frecuentes de Whisper en español para Google Drive
-  corrected = corrected.replace(/\b(en\s+el|al|del|el)\s+(drag|drai|dray|dry)\b/gi, "$1 Drive");
-  corrected = corrected.replace(/\b(en\s+el)\s+trayecto\s+(carpeta|archivo|documento|familia|padre|silvania)\b/gi, "$1 Drive $2");
+  corrected = corrected.replace(/\b(en\s+el|al|del|el)\s+(drag|drai|dray|dry|trayo|tray|trai|trall|tralle)\b/gi, "$1 Drive");
+  corrected = corrected.replace(/\b(en\s+el)\s+trayecto\s+(carpeta|archivo|documento|familia|padre|esposa|hijo|madre|silvania)\b/gi, "$1 Drive $2");
   
   return corrected;
 }
