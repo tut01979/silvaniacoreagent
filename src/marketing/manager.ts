@@ -12,6 +12,7 @@ import { telegramReview } from "./telegramReview.js";
 import { config } from "../config/config.js";
 import { visualAssetSelector } from "./services/visualAssetSelector.js";
 import { musicAssetSelector } from "./services/musicAssetSelector.js";
+import { brandDriveAssets } from "./services/brandDriveAssets.js";
 
 export const marketingManager = {
   /**
@@ -46,29 +47,53 @@ export const marketingManager = {
 
     const targetProduct = visualAssetSelector.detectProduct(topic);
 
+    // 0. Revisar siempre Google Drive primero: verificar/crear carpetas canónicas y cargar marca/activos propios
+    const brandBundle = await brandDriveAssets.loadBrandContextAndAssets(
+      userId,
+      topic,
+      format === "social_post" ? 1 : 6
+    );
+    const brandParts: string[] = [];
+    if (brandBundle.intrinsicCount > 0) brandParts.push(`${brandBundle.intrinsicCount} intrínsecas`);
+    if (brandBundle.bankCount > 0) brandParts.push(`${brandBundle.bankCount} banco Drive`);
+    if (brandParts.length > 0) {
+      draft.brandDriveSummary = brandParts.join(" + ");
+    }
+
+    try {
     if (format === "social_post") {
       // 1. Redacción de Post y Prompt de Imagen (LLM) adaptado a la red elegida
       const targetPlatform = options.targetPlatform || "generic";
       draft.targetPlatform = targetPlatform;
-      const scriptRes = await scriptWriter.generateSocialPost(topic, undefined, targetPlatform);
+      const scriptRes = await scriptWriter.generateSocialPost(topic, undefined, targetPlatform, brandBundle.brandRulesText || undefined);
       draft.socialContent = scriptRes.data;
       draft.llmModel = scriptRes.llmModel;
 
-      // 2. Generación de Imagen (FLUX Free por defecto)
-      try {
-        const imgRes = await imageGenerator.generateImage(`${topic} ${scriptRes.data.imagePrompt}`, {
-          width: 1200,
-          height: 675,
-          sceneIndex: 1,
-          totalScenes: 1,
-          sceneTitle: scriptRes.data.title,
-          product: targetProduct,
-        });
-        draft.imageUrls.push(imgRes.filePath);
-        draft.imageProvider = imgRes.provider;
-      } catch (err: any) {
-        console.warn("⚠️ Falló generación de imagen:", err.message);
-        draft.imageError = err.message || "Error al generar imagen con FLUX";
+      // 2. Imagen: priorizar banco visual propio en Drive si existe; si no, FLUX / banco vectorial
+      if (brandBundle.bankImages.length > 0 && fs.existsSync(brandBundle.bankImages[0].localPath)) {
+        const tempMediaDir = path.resolve(process.cwd(), "temp_media");
+        fs.mkdirSync(tempMediaDir, { recursive: true });
+        const ext = path.extname(brandBundle.bankImages[0].localPath) || ".jpg";
+        const persistentPostImg = path.join(tempMediaDir, `mkt_drive_post_${Date.now()}${ext}`);
+        fs.copyFileSync(brandBundle.bankImages[0].localPath, persistentPostImg);
+        draft.imageUrls.push(persistentPostImg);
+        draft.imageProvider = "drive_banco_visual";
+      } else {
+        try {
+          const imgRes = await imageGenerator.generateImage(`${topic} ${scriptRes.data.imagePrompt}`, {
+            width: 1200,
+            height: 675,
+            sceneIndex: 1,
+            totalScenes: 1,
+            sceneTitle: scriptRes.data.title,
+            product: targetProduct,
+          });
+          draft.imageUrls.push(imgRes.filePath);
+          draft.imageProvider = imgRes.provider;
+        } catch (err: any) {
+          console.warn("⚠️ Falló generación de imagen:", err.message);
+          draft.imageError = err.message || "Error al generar imagen con FLUX";
+        }
       }
 
       // 3. Generación de Audio (Edge-TTS Free por defecto)
@@ -87,10 +112,10 @@ export const marketingManager = {
 
       // 1. Guión Estructurado (LLM)
       const scriptRes = isWhatsApp
-        ? await scriptWriter.generateWhatsAppVideoScript(topic)
+        ? await scriptWriter.generateWhatsAppVideoScript(topic, undefined, brandBundle.brandRulesText || undefined)
         : isTikTok
-          ? await scriptWriter.generateTikTokScript(topic)
-          : await scriptWriter.generateYouTubeScript(topic, minutes);
+          ? await scriptWriter.generateTikTokScript(topic, undefined, brandBundle.brandRulesText || undefined)
+          : await scriptWriter.generateYouTubeScript(topic, minutes, brandBundle.brandRulesText || undefined);
       draft.videoScript = scriptRes.data;
       draft.llmModel = scriptRes.llmModel;
 
@@ -195,6 +220,16 @@ export const marketingManager = {
       let localFallbackCount = 0;
       console.log(`🎨 [Marketing Video] Generando ${scenesToRender.length} imágenes para escenas (cap max: ${maxScenes})...`);
 
+      // Planificar todos los beats visuales primero para ubicar con precisión inicio, medio y cierre intrínsecos
+      const beatPlans: Array<{
+        sceneIdx: number;
+        beatIdxInScene: number;
+        beatCount: number;
+        beatDur: number;
+        scene: any;
+        beatSnippet: string;
+      }> = [];
+
       for (let i = 0; i < scenesToRender.length; i++) {
         const scene = scenesToRender[i];
         const baseDur = sceneDurations[i] || 8;
@@ -208,17 +243,51 @@ export const marketingManager = {
             narrationSentences.length > 0
               ? narrationSentences[Math.min(narrationSentences.length - 1, Math.floor((b / beatCount) * narrationSentences.length))]
               : scene.narration || "";
+          beatPlans.push({
+            sceneIdx: i,
+            beatIdxInScene: b,
+            beatCount,
+            beatDur,
+            scene,
+            beatSnippet,
+          });
+        }
+      }
+
+      const totalBeats = beatPlans.length;
+      const middleBeatIdx = Math.floor(totalBeats / 2);
+      const lastBeatIdx = totalBeats - 1;
+      let bankCursor = 0;
+
+      for (let idx = 0; idx < beatPlans.length; idx++) {
+        const plan = beatPlans[idx];
+        const { sceneIdx: i, beatIdxInScene: b, beatCount, beatDur, scene, beatSnippet } = plan;
+
+        let sceneImgPath: string | null = null;
+        if (idx === 0 && brandBundle.introImagePath && fs.existsSync(brandBundle.introImagePath)) {
+          sceneImgPath = brandBundle.introImagePath;
+          console.log(`🏷️ [BrandDrive] Beat ${idx + 1}/${totalBeats}: Imagen intrínseca 01_inicio aplicada.`);
+        } else if (idx === lastBeatIdx && brandBundle.outroImagePath && fs.existsSync(brandBundle.outroImagePath)) {
+          sceneImgPath = brandBundle.outroImagePath;
+          console.log(`🏷️ [BrandDrive] Beat ${idx + 1}/${totalBeats}: Imagen intrínseca 03_cierre aplicada.`);
+        } else if (totalBeats >= 3 && idx === middleBeatIdx && brandBundle.middleImagePath && fs.existsSync(brandBundle.middleImagePath)) {
+          sceneImgPath = brandBundle.middleImagePath;
+          console.log(`🏷️ [BrandDrive] Beat ${idx + 1}/${totalBeats}: Imagen intrínseca 02_medio aplicada.`);
+        } else if (bankCursor < brandBundle.bankImages.length && fs.existsSync(brandBundle.bankImages[bankCursor].localPath)) {
+          sceneImgPath = brandBundle.bankImages[bankCursor].localPath;
+          console.log(`📂 [BrandDrive] Beat ${idx + 1}/${totalBeats}: Imagen propia '${brandBundle.bankImages[bankCursor].name}'.`);
+          bankCursor++;
+        } else {
           const visualPrompt = scene.visualPrompt && scene.visualPrompt.trim().length > 0
             ? `${scriptRes.data.title}, ${scene.visualPrompt.trim()}, ${beatSnippet}`
             : `${scriptRes.data.title}, scene ${scene.sceneNumber || i + 1}, ${beatSnippet}`;
 
-          let sceneImgPath: string | null = null;
           try {
             const imgRes = await imageGenerator.generateImage(visualPrompt, {
               ...imgDimensions,
               seed: Math.floor(Math.random() * 1000000) + (i + 1) * 333 + b * 77,
               sceneIndex: sceneMediaList.length + 1,
-              totalScenes: scenesToRender.length * beatCount,
+              totalScenes: totalBeats,
               sceneTitle: scene.onScreenText || `Escena ${i + 1}`,
               onScreenText: scene.onScreenText,
               subtitle: beatSnippet || scene.narration,
@@ -239,16 +308,16 @@ export const marketingManager = {
           } catch (sceneImgErr: any) {
             console.warn(`⚠️ [Marketing Video] Falló generación escena ${i + 1}.${b + 1}: ${sceneImgErr.message}`);
           }
+        }
 
-          if (sceneImgPath && fs.existsSync(sceneImgPath)) {
-            sceneMediaList.push({
-              sceneNumber: sceneMediaList.length + 1,
-              narrationText: beatSnippet || scene.narration || "",
-              imagePath: sceneImgPath,
-              durationSeconds: beatDur,
-            });
-            console.log(`🖼️ [Marketing Video] Escena ${i + 1}.${b + 1}/${beatCount}: OK -> ${sceneImgPath} (${beatDur}s)`);
-          }
+        if (sceneImgPath && fs.existsSync(sceneImgPath)) {
+          sceneMediaList.push({
+            sceneNumber: sceneMediaList.length + 1,
+            narrationText: beatSnippet || scene.narration || "",
+            imagePath: sceneImgPath,
+            durationSeconds: beatDur,
+          });
+          console.log(`🖼️ [Marketing Video] Escena ${i + 1}.${b + 1}/${beatCount}: OK -> ${sceneImgPath} (${beatDur}s)`);
         }
       }
 
@@ -344,6 +413,9 @@ export const marketingManager = {
       } else if (draft.audioUrls.length === 0) {
         draft.videoError = "No se pudo generar la pista de audio requerida para el vídeo.";
       }
+    }
+    } finally {
+      brandBundle.cleanup();
     }
 
     // Persistir en SQLite

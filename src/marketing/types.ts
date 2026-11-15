@@ -59,6 +59,7 @@ export interface MarketingDraft {
   selectedMusicReason?: string;
   visualStyle?: string;
   visualEffectsSummary?: string;
+  brandDriveSummary?: string;
   videoError?: string;
   feedbackNote?: string;
   createdAt: string;

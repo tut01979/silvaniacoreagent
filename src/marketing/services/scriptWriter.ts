@@ -60,7 +60,8 @@ export const scriptWriter = {
   async generateSocialPost(
     topic: string,
     angle?: string,
-    platform: SocialPlatform = "generic"
+    platform: SocialPlatform = "generic",
+    brandRules?: string
   ): Promise<ScriptResult<SocialPost>> {
     let platformInstructions = "";
     if (platform === "linkedin") {
@@ -99,6 +100,7 @@ ${ECOSISTEMA_KNOWLEDGE}
 
 Tema del Post: "${topic}"
 ${angle ? `Ángulo específico: "${angle}"` : ""}
+${brandRules ? `\nREGLAS Y MARCA DEL USUARIO (DRIVE):\n${brandRules}\n` : ""}
 ${platformInstructions}
 
 Reglas obligatorias de redacción:
@@ -154,7 +156,7 @@ Responde ÚNICAMENTE con un JSON válido con esta estructura:
    * Genera un guión estructurado de YouTube con retención y desglose de escenas.
    * Admite hasta 30 escenas si se solicitan explícitamente y garantiza duración real >= 2 minutos por defecto.
    */
-  async generateYouTubeScript(topic: string, targetDurationMinutes: number = 2): Promise<ScriptResult<VideoScript>> {
+  async generateYouTubeScript(topic: string, targetDurationMinutes: number = 2, brandRules?: string): Promise<ScriptResult<VideoScript>> {
     const isShortTest = /3\s*escena|corto|short|prueba|test|60s/i.test(topic);
 
     // Detección de petición explícita de escenas (ej: "30 escenas", "20 imágenes", "15 fotos")
@@ -230,6 +232,7 @@ Responde ÚNICAMENTE con un JSON válido con esta estructura:
 Tu género objetivo para esta pieza es: ${genreName}.
 
 Tema Solicitado: "${topic}"
+${brandRules ? `\nREGLAS Y MARCA DEL USUARIO (DRIVE):\n${brandRules}\n` : ""}
 
 Instrucciones de Voz y Tono para este género:
 - ${toneInstruction}
@@ -300,7 +303,7 @@ Responde ÚNICAMENTE con un JSON:
   /**
    * Genera un guión estructurado para TikTok o formato vertical 9:16 con ganchos virales de alta retención.
    */
-  async generateTikTokScript(topic: string, angle?: string): Promise<ScriptResult<VideoScript>> {
+  async generateTikTokScript(topic: string, angle?: string, brandRules?: string): Promise<ScriptResult<VideoScript>> {
     const prompt = `Eres el Director de Contenido Vertical (TikTok y YouTube Shorts) de Silvania Marketing Studio.
 
 ${ECOSISTEMA_KNOWLEDGE}
@@ -308,6 +311,7 @@ ${ECOSISTEMA_KNOWLEDGE}
 Crea el guión completo para un video vertical (9:16) de TikTok de alto impacto y máxima retención (30 a 45 segundos) sobre:
 Tema: "${topic}"
 ${angle ? `Ángulo específico: "${angle}"` : ""}
+${brandRules ? `\nREGLAS Y MARCA DEL USUARIO (DRIVE):\n${brandRules}\n` : ""}
 
 Reglas obligatorias de TikTok:
 1. Hook demoledor en los primeros 3 segundos (pregunta provocadora o revelación visual).
@@ -374,7 +378,7 @@ Responde ÚNICAMENTE con un JSON válido con esta estructura:
   /**
    * Genera un guión vertical de 30 segundos optimizado para Estados, Grupos y Canales de WhatsApp con CTA final.
    */
-  async generateWhatsAppVideoScript(topic: string, angle?: string): Promise<ScriptResult<VideoScript>> {
+  async generateWhatsAppVideoScript(topic: string, angle?: string, brandRules?: string): Promise<ScriptResult<VideoScript>> {
     const prompt = `Eres el Director de Vídeo Directo para WhatsApp (Estados, Grupos y Canales) de Silvania Marketing Studio.
 
 ${ECOSISTEMA_KNOWLEDGE}
@@ -382,6 +386,7 @@ ${ECOSISTEMA_KNOWLEDGE}
 Crea el guión completo para un vídeo vertical (9:16) de EXACTAMENTE 30 segundos optimizado para compartir por WhatsApp sobre:
 Tema: "${topic}"
 ${angle ? `Ángulo específico: "${angle}"` : ""}
+${brandRules ? `\nREGLAS Y MARCA DEL USUARIO (DRIVE):\n${brandRules}\n` : ""}
 
 Reglas obligatorias para WhatsApp 30s:
 1. EXACTAMENTE 3 micro-escenas (10 segundos cada una, total 30 segundos).

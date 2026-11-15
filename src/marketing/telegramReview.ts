@@ -72,6 +72,9 @@ export const telegramReview = {
       const effectsLine = draft.visualEffectsSummary
         ? `\n✨ *Efectos:* ${draft.visualEffectsSummary}`
         : "";
+      const brandDriveLine = draft.brandDriveSummary
+        ? `\n📁 *Marca Drive:* ${draft.brandDriveSummary}`
+        : "";
       const whatsappCopyBlock = draft.format === "whatsapp_video" && draft.videoScript.description
         ? `\n\n💬 *Texto persuasivo listo para WhatsApp:*\n${draft.videoScript.description}`
         : "";
@@ -83,6 +86,7 @@ export const telegramReview = {
         videoStatus +
         musicLine +
         effectsLine +
+        brandDriveLine +
         `\n\n` +
         `🎣 *Hook:* "${draft.videoScript.hook}"` +
         whatsappCopyBlock +
@@ -515,6 +519,7 @@ export const telegramReview = {
           } catch {
             await ctx.reply(reportText.replace(/[*_`\\]/g, ""), { reply_markup: followUpKeyboard });
           }
+          cleanupDraftTempMedia(draft);
           return true;
         } catch (publishErr: any) {
           console.error("❌ Error publicando en canal de Telegram:", publishErr.message);
@@ -564,6 +569,7 @@ export const telegramReview = {
 
     if (action === "rej") {
       marketingDb.updateStatus(draftId, "rejected");
+      cleanupDraftTempMedia(draft);
       await ctx.answerCallbackQuery({ text: "❌ Descartado." }).catch(() => {});
       await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
       await ctx.reply(`❌ Borrador #${draftId.slice(0, 8)} descartado.`);
@@ -628,3 +634,20 @@ export const telegramReview = {
     }
   },
 };
+
+function cleanupDraftTempMedia(draft: MarketingDraft): void {
+  const candidates: string[] = [
+    ...(draft.imageUrls || []),
+    ...(draft.audioUrls || []),
+    ...(draft.videoPath ? [draft.videoPath] : []),
+  ];
+  for (const filePath of candidates) {
+    try {
+      if (filePath && filePath.includes("temp_media") && fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    } catch {
+      // ignore temp cleanup errors
+    }
+  }
+}

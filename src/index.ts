@@ -2551,6 +2551,7 @@ bot.command("marketing", async (ctx) => {
       "• `/marketing short [tiktok] [tema]` - Vídeo vertical 9:16 ágil (3-4 escenas condensadas, ~40s).\n" +
       "• `/marketing whatsapp [tema]` - Vídeo vertical 9:16 de 30s optimizado para Estados y chats de WhatsApp con CTA final.\n" +
       "• `/marketing post [linkedin|x|telegram] [tema]` - Post adaptado a la red con imagen y audio.\n" +
+      "• `/marketing setup` - Revisa y crea en tu Google Drive las carpetas de marca (`imagenes_intrinsecas`, `banco_visual`, `marca_y_reglas.md`).\n" +
       "• `/marketing draft [coreagent|eva|marketing]` - Borrador diario rotativo de producto para revisión HITL.\n" +
       "• `/marketing status` - Consulta el estado del último borrador generado.\n\n" +
       "_Ejemplos:_\n" +
@@ -2615,6 +2616,31 @@ bot.command("marketing", async (ctx) => {
       return;
     } catch (err: any) {
       return ctx.reply(`❌ Error generando borrador rotativo: ${err.message}`);
+    }
+  }
+
+  // Subcomando de inicialización / verificación de carpetas de marca en Google Drive
+  if (subCmd === "setup" || subCmd === "drive" || subCmd === "marca") {
+    await ctx.reply("📂 Revisando tu Google Drive y creando carpetas de marca si faltan...");
+    try {
+      const { brandDriveAssets } = await import("./marketing/services/brandDriveAssets.js");
+      const folders = await brandDriveAssets.ensureBrandDriveStructure(userId);
+      if (!folders) {
+        return ctx.reply("⚠️ No pude acceder a tu Google Drive. Verifica que tu cuenta esté vinculada con `/auth`.");
+      }
+      return ctx.reply(
+        `✅ *Estructura de Marca en Google Drive lista:*\n\n` +
+        `• 📁 [silvania/marketing](https://drive.google.com/drive/folders/${folders.rootFolderId})\n` +
+        `• 🏷️ [01_inicio](https://drive.google.com/drive/folders/${folders.inicioFolderId}) _(logo / intro fija)_\n` +
+        `• 🎯 [02_medio](https://drive.google.com/drive/folders/${folders.medioFolderId}) _(slogan / producto fijo)_\n` +
+        `• 🚀 [03_cierre](https://drive.google.com/drive/folders/${folders.cierreFolderId}) _(placa CTA final fija)_\n` +
+        `• 🖼️ [banco_visual](https://drive.google.com/drive/folders/${folders.bancoVisualFolderId}) _(tus fotos del negocio)_\n` +
+        `• 🎬 [videos](https://drive.google.com/drive/folders/${folders.videosFolderId})\n\n` +
+        `📝 Edita \`marca_y_reglas.md\` dentro de \`silvania/marketing\` para definir tu tono, slogan y enlaces propios.`,
+        { parse_mode: "Markdown" }
+      );
+    } catch (err: any) {
+      return ctx.reply(`❌ Error preparando carpetas en Drive: ${err.message}`);
     }
   }
 
