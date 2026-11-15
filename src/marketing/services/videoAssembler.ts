@@ -237,22 +237,38 @@ export const videoAssembler = {
       // Usar escala 2x antes de zoompan para evitar temblores y mantener nitidez en cualquier aspecto
       const upW = width * 2;
       const upH = height * 2;
+      const isPortrait = height > width;
       const baseScale = `scale=${upW}:${upH}:force_original_aspect_ratio=increase,crop=${upW}:${upH},setsar=1`;
       if (enableZoomPan) {
         inputArgs.push(`-i "${imgPath}"`);
         const mode = i % 4;
         const denom = Math.max(1, frames - 1);
         let zpExpr = "";
-        if (mode === 0) {
-          zpExpr = `zoompan=z='1.0+0.18*(on/${denom})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
-        } else if (mode === 1) {
-          zpExpr = `zoompan=z='1.18-0.18*(on/${denom})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
-        } else if (mode === 2) {
-          zpExpr = `zoompan=z='1.14':x='(iw-iw/zoom)*(on/${denom})':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
+        if (isPortrait) {
+          // En 9:16 vertical, evitar recortar los laterales de fotos horizontales:
+          // fondo difuminado + imagen completa centrada con zoom suave
+          zpExpr =
+            mode % 2 === 0
+              ? `zoompan=z='1.0+0.08*(on/${denom})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`
+              : `zoompan=z='1.08-0.08*(on/${denom})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
+          filterParts.push(
+            `[${i}:v]split[bg${i}][fg${i}];` +
+              `[bg${i}]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},boxblur=18:4,setsar=1[bgb${i}];` +
+              `[fg${i}]scale=${width}:${height}:force_original_aspect_ratio=decrease,setsar=1[fgb${i}];` +
+              `[bgb${i}][fgb${i}]overlay=(W-w)/2:(H-h)/2,scale=${upW}:${upH},setsar=1,${zpExpr},fps=${fps},settb=AVTB,setpts=PTS-STARTPTS,format=yuv420p[v${i}]`
+          );
         } else {
-          zpExpr = `zoompan=z='1.14':x='(iw-iw/zoom)*(1-(on/${denom}))':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
+          if (mode === 0) {
+            zpExpr = `zoompan=z='1.0+0.18*(on/${denom})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
+          } else if (mode === 1) {
+            zpExpr = `zoompan=z='1.18-0.18*(on/${denom})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
+          } else if (mode === 2) {
+            zpExpr = `zoompan=z='1.14':x='(iw-iw/zoom)*(on/${denom})':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
+          } else {
+            zpExpr = `zoompan=z='1.14':x='(iw-iw/zoom)*(1-(on/${denom}))':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
+          }
+          filterParts.push(`[${i}:v]${baseScale},${zpExpr},fps=${fps},settb=AVTB,setpts=PTS-STARTPTS,format=yuv420p[v${i}]`);
         }
-        filterParts.push(`[${i}:v]${baseScale},${zpExpr},fps=${fps},settb=AVTB,setpts=PTS-STARTPTS,format=yuv420p[v${i}]`);
       } else {
         inputArgs.push(`-loop 1 -t ${dur.toFixed(3)} -i "${imgPath}"`);
         filterParts.push(`[${i}:v]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},setsar=1,fps=${fps},settb=AVTB,setpts=PTS-STARTPTS,format=yuv420p[v${i}]`);

@@ -2915,6 +2915,74 @@ bot.on("message:photo", async (ctx) => {
   const photo = ctx.message.photo.pop();
   if (!photo) return;
 
+  const caption = (ctx.message.caption || "").trim();
+  if (/^\/marketing\b/i.test(caption)) {
+    const adminIds = config.marketing?.adminIds || [1572946817];
+    if (!adminIds.includes(userId)) {
+      return ctx.reply("❌ No tienes permisos para subir activos de marca a Silvania Marketing Studio.");
+    }
+    const lowerCap = caption.toLowerCase();
+    await ctx.reply("📤 Subiendo imagen a tu carpeta de marca en Google Drive...");
+    let tmpPhotoPath = "";
+    try {
+      const file = await ctx.api.getFile(photo.file_id);
+      const fileUrl = `https://api.telegram.org/file/bot${config.telegram.token}/${file.file_path}`;
+      const resp = await fetch(fileUrl);
+      const buf = Buffer.from(await resp.arrayBuffer());
+      const fsMod = await import("fs");
+      const pathMod = await import("path");
+      tmpPhotoPath = pathMod.default.resolve(process.cwd(), `temp_media/tg_brand_${userId}_${Date.now()}.jpg`);
+      fsMod.default.mkdirSync(pathMod.default.dirname(tmpPhotoPath), { recursive: true });
+      fsMod.default.writeFileSync(tmpPhotoPath, buf);
+
+      const { brandDriveAssets } = await import("./marketing/services/brandDriveAssets.js");
+      const { driveMemoryService } = await import("./services/driveMemory.js");
+      const folders = await brandDriveAssets.ensureBrandDriveStructure(userId);
+      if (!folders) {
+        return ctx.reply("⚠️ No pude acceder a tu Google Drive. Verifica `/auth`.");
+      }
+
+      let targetFolderId = folders.bancoVisualFolderId;
+      let folderLabel = "banco_visual";
+      let fileName = `brand_photo_${Date.now()}.jpg`;
+      if (/(inicio|logo|intro)/.test(lowerCap)) {
+        targetFolderId = folders.inicioFolderId;
+        folderLabel = "imagenes_intrinsecas/01_inicio";
+        fileName = "logo_inicio.jpg";
+      } else if (/(medio|slogan|producto)/.test(lowerCap)) {
+        targetFolderId = folders.medioFolderId;
+        folderLabel = "imagenes_intrinsecas/02_medio";
+        fileName = "placa_medio.jpg";
+      } else if (/(cierre|final|cta)/.test(lowerCap)) {
+        targetFolderId = folders.cierreFolderId;
+        folderLabel = "imagenes_intrinsecas/03_cierre";
+        fileName = "placa_cierre.jpg";
+      }
+
+      const uploadedId = await driveMemoryService.uploadOrReplace(userId, tmpPhotoPath, fileName, targetFolderId);
+      const driveUrl = uploadedId
+        ? `https://drive.google.com/file/d/${uploadedId}/view`
+        : `https://drive.google.com/drive/folders/${targetFolderId}`;
+      return ctx.reply(
+        `✅ *Imagen de marca guardada en Drive:*\n` +
+        `📁 Carpeta: \`silvania/marketing/${folderLabel}\`\n` +
+        `📄 Archivo: \`${fileName}\`\n` +
+        `🔗 [Ver en Drive](${driveUrl})\n\n` +
+        `_Al subirla desde aquí, el scope seguro \`drive.file\` ya la detecta automáticamente en tus próximos vídeos._`,
+        { parse_mode: "Markdown" }
+      );
+    } catch (err: any) {
+      return ctx.reply(`❌ Error subiendo imagen de marca: ${err.message}`);
+    } finally {
+      if (tmpPhotoPath) {
+        try {
+          const fsMod = await import("fs");
+          if (fsMod.default.existsSync(tmpPhotoPath)) fsMod.default.unlinkSync(tmpPhotoPath);
+        } catch {}
+      }
+    }
+  }
+
   await ctx.replyWithChatAction("typing");
   const typingInterval = setInterval(() => {
     ctx.replyWithChatAction("typing").catch(() => {});
