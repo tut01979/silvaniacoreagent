@@ -318,6 +318,10 @@ export const visualAssetSelector = {
         }
       }
 
+      console.log(
+        `🧠 [VisualVector] Producto=${product.toUpperCase()} -> [${bestChunk.product}/${bestChunk.category}] "${bestChunk.title}" (score=${bestScore.toFixed(2)}, emociones=[${bestMatchedEmotions.join(",")}], kw=[${bestMatchedKeywords.slice(0, 4).join(",")}])`
+      );
+
       const chosenAbsPath = path.resolve(process.cwd(), bestChunk.relPath);
       marketingDb.markAssetUsed("visual", bestChunk.id);
       const stats = marketingDb.getAssetPoolStats("visual");

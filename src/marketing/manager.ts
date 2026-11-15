@@ -278,8 +278,22 @@ export const marketingManager = {
           console.log(`📂 [BrandDrive] Beat ${idx + 1}/${totalBeats}: Imagen propia '${brandBundle.bankImages[bankCursor].name}'.`);
           bankCursor++;
         } else {
+          const sceneNarrativeContext = `${scene.onScreenText || ""} ${beatSnippet} ${scene.narration || ""}`.trim();
+          const normSceneCtx = sceneNarrativeContext
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "");
+          let sceneProduct = targetProduct;
+          if (/\bcoreagent\b|\bcore agent\b|gmail|calendar|google drive|ordenes por voz|asistente ejecutivo|productividad profesional/.test(normSceneCtx)) {
+            sceneProduct = "coreagent";
+          } else if (/\beva\b|ninos|jugando|escuela|escolar|profesora|fonema|logopedia|infantil/.test(normSceneCtx)) {
+            sceneProduct = "eva";
+          } else if (/marketing studio|marketing agent|campana|redes sociales|hitl/.test(normSceneCtx)) {
+            sceneProduct = "marketing";
+          }
+
           const visualPrompt = scene.visualPrompt && scene.visualPrompt.trim().length > 0
-            ? `${scriptRes.data.title}, ${scene.visualPrompt.trim()}, ${beatSnippet}`
+            ? `${beatSnippet}. ${scene.visualPrompt.trim()}`
             : `${scriptRes.data.title}, scene ${scene.sceneNumber || i + 1}, ${beatSnippet}`;
 
           try {
@@ -288,11 +302,11 @@ export const marketingManager = {
               seed: Math.floor(Math.random() * 1000000) + (i + 1) * 333 + b * 77,
               sceneIndex: sceneMediaList.length + 1,
               totalScenes: totalBeats,
-              sceneTitle: scene.onScreenText || `Escena ${i + 1}`,
+              sceneTitle: `${scene.onScreenText || `Escena ${i + 1}`} ${beatSnippet}`.trim(),
               onScreenText: scene.onScreenText,
               subtitle: beatSnippet || scene.narration,
               allowFallback: true,
-              product: targetProduct,
+              product: sceneProduct,
               usedImages,
             });
             sceneImgPath = imgRes.filePath;
