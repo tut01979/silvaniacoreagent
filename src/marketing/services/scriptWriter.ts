@@ -368,6 +368,82 @@ Responde ÚNICAMENTE con un JSON válido con esta estructura:
       return { data: ensureClosingCta(script, topic), llmModel: "llama-3.3-70b-versatile" };
     }
   },
+
+  /**
+   * Genera un guión vertical de 30 segundos optimizado para Estados, Grupos y Canales de WhatsApp con CTA final.
+   */
+  async generateWhatsAppVideoScript(topic: string, angle?: string): Promise<ScriptResult<VideoScript>> {
+    const prompt = `Eres el Director de Vídeo Directo para WhatsApp (Estados, Grupos y Canales) de Silvania Marketing Studio.
+
+${ECOSISTEMA_KNOWLEDGE}
+
+Crea el guión completo para un vídeo vertical (9:16) de EXACTAMENTE 30 segundos optimizado para compartir por WhatsApp sobre:
+Tema: "${topic}"
+${angle ? `Ángulo específico: "${angle}"` : ""}
+
+Reglas obligatorias para WhatsApp 30s:
+1. EXACTAMENTE 3 micro-escenas (10 segundos cada una, total 30 segundos).
+2. Ritmo conversacional, cercano y directo al grano: 18 a 24 palabras por escena (ni más ni menos, para que la locución dure ~30s reales).
+   - Escena 1 (00:00 - 00:10): Gancho cercano que conecte con un problema real o curiosidad inmediata.
+   - Escena 2 (00:10 - 00:20): Solución práctica y beneficio tangible de Silvania.
+   - Escena 3 (00:20 - 00:30): LLAMADA A LA ACCIÓN FINAL OBLIGATORIA en voz ("narration") y pantalla ("onScreenText") invitando a escribir por WhatsApp o entrar en silvania.ai. Si el tema trata sobre un producto "Próximamente" (Eva Agent o Marketing Agent), el cierre DEBE promover usar HOY **Silvania CoreAgent** (ya activo) en silvania.ai.
+3. Texto en pantalla (onScreenText) claro y legible en móvil (3 a 6 palabras en mayúsculas).
+4. Prompt visual fotorrealista en inglés para FLUX (formato 9:16 vertical cinematográfico).
+5. Texto persuasivo para WhatsApp ("description"): redacta un copy corto y muy persuasivo listo para copiar y pegar junto al vídeo en WhatsApp (gancho en la primera línea, 2-3 frases con beneficio claro usando *negritas* de WhatsApp y emojis moderados, y cierre con CTA directo a silvania.ai o a CoreAgent si el tema es un producto "Próximamente").
+
+Responde ÚNICAMENTE con un JSON válido con esta estructura:
+{
+  "title": "Título directo para WhatsApp",
+  "hook": "Gancho inicial de los primeros 3 segundos",
+  "description": "Texto persuasivo completo listo para enviar por WhatsApp junto al vídeo, con *negritas* y CTA final a silvania.ai",
+  "tags": ["#WhatsApp", "#SilvaniaAI", "#Productividad", "#IA"],
+  "totalEstimatedDurationSeconds": 30,
+  "scenes": [
+    {
+      "sceneNumber": 1,
+      "timestamp": "00:00 - 00:10",
+      "visualPrompt": "Vertical 9:16 cinematic shot, clean lighting, modern lifestyle, photorealistic",
+      "narration": "Locución natural de 18 a 24 palabras",
+      "onScreenText": "TEXTO EN PANTALLA"
+    }
+  ]
+}`;
+
+    const preferredModel = config.llm.openRouterModel || "google/gemini-2.5-flash";
+
+    try {
+      const completion = await openRouter.chat.completions.create({
+        model: preferredModel,
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.6,
+      });
+
+      const raw = completion.choices[0].message?.content || "{}";
+      const script = JSON.parse(raw) as VideoScript;
+      if (script.scenes && script.scenes.length > 3) {
+        script.scenes = script.scenes.slice(0, 3);
+      }
+      script.totalEstimatedDurationSeconds = 30;
+      return { data: ensureClosingCta(script, topic), llmModel: preferredModel };
+    } catch (err: any) {
+      console.warn("⚠️ Falló OpenRouter en WhatsAppVideoScript, usando Groq:", err.message);
+      const groqCompletion = await groq.chat.completions.create({
+        model: "llama-3.3-70b-versatile",
+        messages: [{ role: "user", content: prompt + "\n\nResponde SOLO con JSON válido." }],
+        temperature: 0.6,
+      });
+
+      const raw = groqCompletion.choices[0].message?.content || "{}";
+      const cleanJson = raw.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
+      const script = JSON.parse(cleanJson) as VideoScript;
+      if (script.scenes && script.scenes.length > 3) {
+        script.scenes = script.scenes.slice(0, 3);
+      }
+      script.totalEstimatedDurationSeconds = 30;
+      return { data: ensureClosingCta(script, topic), llmModel: "llama-3.3-70b-versatile" };
+    }
+  },
 };
 
 /**

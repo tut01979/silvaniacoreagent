@@ -2549,6 +2549,7 @@ bot.command("marketing", async (ctx) => {
       "• `/campaña [tema]` o `/marketing campaña [tema]` - Genera el pack omnicanal completo (YouTube + TikTok + LinkedIn + X + Telegram).\n" +
       "• `/marketing video [youtube] [tema]` - Vídeo 16:9 extendido (admite hasta 30 escenas y duración > 2-3 min).\n" +
       "• `/marketing short [tiktok] [tema]` - Vídeo vertical 9:16 ágil (3-4 escenas condensadas, ~40s).\n" +
+      "• `/marketing whatsapp [tema]` - Vídeo vertical 9:16 de 30s optimizado para Estados y chats de WhatsApp con CTA final.\n" +
       "• `/marketing post [linkedin|x|telegram] [tema]` - Post adaptado a la red con imagen y audio.\n" +
       "• `/marketing draft [coreagent|eva|marketing]` - Borrador diario rotativo de producto para revisión HITL.\n" +
       "• `/marketing status` - Consulta el estado del último borrador generado.\n\n" +
@@ -2677,6 +2678,9 @@ bot.command("marketing", async (ctx) => {
     }
   } else if (subCmd === "tiktok") {
     format = "tiktok";
+  } else if (subCmd === "whatsapp" || subCmd === "wa") {
+    format = "whatsapp_video";
+    targetPlatform = "whatsapp";
   } else if (subCmd === "linkedin") {
     format = "social_post";
     targetPlatform = "linkedin";

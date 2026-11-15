@@ -27,7 +27,7 @@ export const telegramReview = {
       .row()
       .text("📦 Pack Multirredes (X, LinkedIn, FB, TikTok)", `mkt_pack_${draft.id}`);
 
-    if (draft.format === "youtube_long" || draft.format === "youtube_short" || draft.format === "tiktok") {
+    if (draft.format === "youtube_long" || draft.format === "youtube_short" || draft.format === "tiktok" || draft.format === "whatsapp_video") {
       keyboard.text("📜 Ver Guión Detallado", `mkt_scr_${draft.id}`);
     }
 
@@ -47,7 +47,13 @@ export const telegramReview = {
         `🏷️ *Tags:* ${draft.socialContent.hashtags.join(" ")}` +
         techFooter;
     } else if (draft.videoScript) {
-      const formatLabel = draft.format === "youtube_long" ? "YouTube Largo (16:9)" : draft.format === "tiktok" ? "TikTok (9:16)" : "YouTube Short";
+      const formatLabel = draft.format === "youtube_long"
+        ? "YouTube Largo (16:9)"
+        : draft.format === "tiktok"
+          ? "TikTok (9:16)"
+          : draft.format === "whatsapp_video"
+            ? "WhatsApp 30s (9:16)"
+            : "YouTube Short";
       const scenesInScript = draft.videoScript.scenes.length;
       const imgBreakdown = formatImageBreakdown(draft);
       const realDurStr = draft.realDurationSeconds
@@ -66,6 +72,9 @@ export const telegramReview = {
       const effectsLine = draft.visualEffectsSummary
         ? `\n✨ *Efectos:* ${draft.visualEffectsSummary}`
         : "";
+      const whatsappCopyBlock = draft.format === "whatsapp_video" && draft.videoScript.description
+        ? `\n\n💬 *Texto persuasivo listo para WhatsApp:*\n${draft.videoScript.description}`
+        : "";
       summaryText =
         `🎬 *GUION DE VIDEO (${formatLabel})*\n\n` +
         `📌 *Título:* ${draft.videoScript.title}\n` +
@@ -76,6 +85,7 @@ export const telegramReview = {
         effectsLine +
         `\n\n` +
         `🎣 *Hook:* "${draft.videoScript.hook}"` +
+        whatsappCopyBlock +
         techFooter;
     } else {
       summaryText = `📢 *Borrador:* ${draft.topic}` + techFooter;
@@ -340,7 +350,7 @@ export const telegramReview = {
 
       // 2. Publicar en YouTube de forma nativa si hay vídeo MP4 y credenciales
       let publishedYoutubeUrl: string | undefined;
-      const isVideoFormat = draft.format === "youtube_long" || draft.format === "youtube_short" || draft.format === "tiktok";
+      const isVideoFormat = draft.format === "youtube_long" || draft.format === "youtube_short" || draft.format === "tiktok" || draft.format === "whatsapp_video";
       if (draft.videoPath || isVideoFormat) {
         if (draft.videoPath && fs.existsSync(draft.videoPath)) {
           if (config.marketing?.youtubeRefreshToken) {

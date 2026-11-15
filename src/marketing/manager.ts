@@ -79,27 +79,33 @@ export const marketingManager = {
       } catch (err: any) {
         console.warn("⚠️ Falló generación de audio:", err.message);
       }
-    } else if (format === "youtube_long" || format === "youtube_short" || format === "tiktok") {
+    } else if (format === "youtube_long" || format === "youtube_short" || format === "tiktok" || format === "whatsapp_video") {
       const isTikTok = format === "tiktok";
-      const isShort = format === "youtube_short" || isTikTok;
+      const isWhatsApp = format === "whatsapp_video";
+      const isShort = format === "youtube_short" || isTikTok || isWhatsApp;
       const minutes = format === "youtube_long" ? 2 : 1;
 
       // 1. Guión Estructurado (LLM)
-      const scriptRes = isTikTok
-        ? await scriptWriter.generateTikTokScript(topic)
-        : await scriptWriter.generateYouTubeScript(topic, minutes);
+      const scriptRes = isWhatsApp
+        ? await scriptWriter.generateWhatsAppVideoScript(topic)
+        : isTikTok
+          ? await scriptWriter.generateTikTokScript(topic)
+          : await scriptWriter.generateYouTubeScript(topic, minutes);
       draft.videoScript = scriptRes.data;
       draft.llmModel = scriptRes.llmModel;
 
       // Cap y selección de escenas según la red:
       // - YouTube (16:9): Capacidad extendida de hasta 30 escenas si se solicitan explícitamente (o 8 por defecto)
+      // - WhatsApp (9:16): 3 escenas ágiles (~30 segundos)
       // - TikTok / Short (9:16): Condensado ágil a 3-4 escenas de alto impacto
       const isShortTest = /3\s*escena|corto|short|prueba|test|60s/i.test(topic);
       const explicitScenesMatch = topic.match(/(?:(\d+))\s*(?:escenas?|im[aá]genes?|fotos?)/i);
       const parsedRequested = explicitScenesMatch ? parseInt(explicitScenesMatch[1], 10) : options.requestedScenes;
 
       let maxScenes = 5;
-      if (isTikTok || isShort) {
+      if (isWhatsApp) {
+        maxScenes = 3;
+      } else if (isTikTok || isShort) {
         maxScenes = 4;
       } else if (parsedRequested && parsedRequested > 0) {
         maxScenes = Math.min(30, Math.max(1, parsedRequested));

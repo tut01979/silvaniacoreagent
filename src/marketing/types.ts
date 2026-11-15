@@ -1,4 +1,4 @@
-export type ContentFormat = "social_post" | "youtube_long" | "youtube_short" | "tiktok" | "newsletter";
+export type ContentFormat = "social_post" | "youtube_long" | "youtube_short" | "tiktok" | "whatsapp_video" | "newsletter";
 
 export type DraftStatus = "pending_review" | "approved" | "approved_saved" | "regenerating" | "rejected" | "published";
 

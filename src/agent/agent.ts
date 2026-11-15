@@ -88,6 +88,7 @@ export async function runAgent(userId: number, userMessage: string) {
           "• `/campaña [tema]` o `/marketing campaña [tema]` - Genera el pack omnicanal completo.\n" +
           "• `/marketing video [youtube] [tema]` - Vídeo 16:9 extendido.\n" +
           "• `/marketing short [tiktok] [tema]` - Vídeo vertical 9:16 ágil.\n" +
+          "• `/marketing whatsapp [tema]` - Vídeo vertical 9:16 de 30s para WhatsApp con CTA final.\n" +
           "• `/marketing post [linkedin|x|telegram] [tema]` - Post adaptado a la red con imagen y audio.\n" +
           "• `/marketing draft [coreagent|eva|marketing]` - Borrador diario rotativo HITL.\n" +
           "• `/marketing status` - Consulta el estado del último borrador.";
