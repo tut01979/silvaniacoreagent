@@ -7,10 +7,11 @@ import { marketingDb } from "./database.js";
 import { scriptWriter } from "./services/scriptWriter.js";
 import { imageGenerator } from "./services/imageGenerator.js";
 import { voiceStudio } from "./services/voiceStudio.js";
-import { videoAssembler, SceneMediaInput, getAudioDuration, getFfmpegBinary } from "./services/videoAssembler.js";
+import { videoAssembler, SceneMediaInput, getAudioDuration, getFfmpegBinary, VisualStylePreset } from "./services/videoAssembler.js";
 import { telegramReview } from "./telegramReview.js";
 import { config } from "../config/config.js";
 import { visualAssetSelector } from "./services/visualAssetSelector.js";
+import { musicAssetSelector } from "./services/musicAssetSelector.js";
 
 export const marketingManager = {
   /**
@@ -264,7 +265,27 @@ export const marketingManager = {
         draft.videoError = errorMsg;
       } else if (draft.audioUrls.length > 0 && fs.existsSync(draft.audioUrls[0]) && sceneMediaList.length > 0) {
         try {
-          console.log(`🎬 [Marketing Video] Ensamblando MP4 con ${sceneMediaList.length} escenas (${distinctImages.size} imágenes distintas, ${networkImageCount} red, ${localFallbackCount} local)...`);
+          const fullNarrationText = scenesToRender.map((s: any) => s.narration || "").join(" ");
+          const selectedMusic = musicAssetSelector.selectMusicForScript({
+            product: targetProduct,
+            topic,
+            scriptText: fullNarrationText,
+          });
+          if (selectedMusic) {
+            console.log(`🎵 [Marketing Video] Música seleccionada: ${selectedMusic.matchReason}`);
+          }
+
+          const lowerTopic = topic.toLowerCase();
+          let visualStyle: VisualStylePreset = "cinema_warm";
+          if (/(pelicula vieja|vintage|retro|sepia|antiguo|clasico)/.test(lowerTopic)) {
+            visualStyle = "vintage_film";
+          } else if (targetProduct === "eva") {
+            visualStyle = "modern_clean";
+          } else if (targetProduct === "coreagent") {
+            visualStyle = "high_contrast_tech";
+          }
+
+          console.log(`🎬 [Marketing Video] Ensamblando MP4 con ${sceneMediaList.length} escenas (${distinctImages.size} imágenes distintas, estilo=${visualStyle}, zoom+xfade activos)...`);
           const videoRes = await videoAssembler.assembleVideo(
             sceneMediaList,
             draft.audioUrls[0],
@@ -273,6 +294,11 @@ export const marketingManager = {
               width: imgDimensions.width,
               height: imgDimensions.height,
               timeoutMs: Math.max(150000, scenesToRender.length * 15000),
+              musicTrackPath: selectedMusic?.filePath,
+              musicVolume: 0.14,
+              visualStyle,
+              enableZoomPan: true,
+              transitionStyle: "auto",
             }
           );
           draft.videoPath = videoRes.videoPath;

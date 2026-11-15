@@ -1,0 +1,612 @@
+[
+  {
+    "id": "mus_victoria_01",
+    "category": "victoria",
+    "relPath": "src/marketing/assets/music/victoria/triunfo_corporativo_01.mp3",
+    "title": "Triunfo Corporativo Ascendente",
+    "description": "Acordes mayores luminosos con pulso enérgico y metales cálidos para celebrar logros y resultados.",
+    "emotions": [
+      "victoria",
+      "exito",
+      "triunfo",
+      "optimismo",
+      "energia"
+    ],
+    "products": [
+      "coreagent",
+      "marketing",
+      "eva"
+    ],
+    "objective": "Acompañar casos de éxito, cierres de venta y metas superadas.",
+    "keywords": [
+      "victoria",
+      "triunfo",
+      "exito",
+      "logro",
+      "ganador",
+      "resultados"
+    ],
+    "bpm": 112,
+    "durationSec": 28,
+    "copyrightStatus": "royalty_free_original"
+  },
+  {
+    "id": "mus_victoria_02",
+    "category": "victoria",
+    "relPath": "src/marketing/assets/music/victoria/cima_alcanzada_02.mp3",
+    "title": "Cima Alcanzada",
+    "description": "Progresión heroica en Re mayor con arpegios brillantes que transmiten superación.",
+    "emotions": [
+      "victoria",
+      "orgullo",
+      "superacion",
+      "alegria"
+    ],
+    "products": [
+      "marketing",
+      "coreagent",
+      "eva"
+    ],
+    "objective": "Reforzar mensajes de transformación positiva y récords.",
+    "keywords": [
+      "cima",
+      "victoria",
+      "record",
+      "superacion",
+      "celebracion"
+    ],
+    "bpm": 118,
+    "durationSec": 28,
+    "copyrightStatus": "royalty_free_original"
+  },
+  {
+    "id": "mus_victoria_03",
+    "category": "victoria",
+    "relPath": "src/marketing/assets/music/victoria/pulso_campeon_03.mp3",
+    "title": "Pulso de Campeón",
+    "description": "Ritmo firme y positivo con campanas suaves y base armónica sólida.",
+    "emotions": [
+      "victoria",
+      "determinacion",
+      "confianza",
+      "impulso"
+    ],
+    "products": [
+      "coreagent",
+      "marketing"
+    ],
+    "objective": "Ideal para llamadas a la acción finales y cierres inspiradores.",
+    "keywords": [
+      "campeon",
+      "victoria",
+      "impulso",
+      "cta",
+      "cierre"
+    ],
+    "bpm": 116,
+    "durationSec": 28,
+    "copyrightStatus": "royalty_free_original"
+  },
+  {
+    "id": "mus_gloria_01",
+    "category": "gloria",
+    "relPath": "src/marketing/assets/music/gloria/horizonte_epico_01.mp3",
+    "title": "Horizonte Épico de Gloria",
+    "description": "Cuerdas amplias y majestuosas con resonancia cinematográfica para lanzamientos estrella.",
+    "emotions": [
+      "gloria",
+      "grandeza",
+      "asombro",
+      "inspiracion",
+      "majestad"
+    ],
+    "products": [
+      "coreagent",
+      "marketing",
+      "eva"
+    ],
+    "objective": "Elevar la percepción de marca en lanzamientos y visiones de futuro.",
+    "keywords": [
+      "gloria",
+      "epico",
+      "majestuoso",
+      "grandeza",
+      "lanzamiento",
+      "cine"
+    ],
+    "bpm": 88,
+    "durationSec": 30,
+    "copyrightStatus": "royalty_free_original"
+  },
+  {
+    "id": "mus_gloria_02",
+    "category": "gloria",
+    "relPath": "src/marketing/assets/music/gloria/amanecer_dorado_02.mp3",
+    "title": "Amanecer Dorado",
+    "description": "Textura orquestal cálida que crece suavemente evocando prestigio y éxito duradero.",
+    "emotions": [
+      "gloria",
+      "prestigio",
+      "lujo",
+      "esperanza"
+    ],
+    "products": [
+      "coreagent",
+      "marketing"
+    ],
+    "objective": "Acompañar escenas de oficinas de lujo, liderazgo y expansión.",
+    "keywords": [
+      "amanecer",
+      "gloria",
+      "lujo",
+      "prestigio",
+      "expansion"
+    ],
+    "bpm": 84,
+    "durationSec": 30,
+    "copyrightStatus": "royalty_free_original"
+  },
+  {
+    "id": "mus_gloria_03",
+    "category": "gloria",
+    "relPath": "src/marketing/assets/music/gloria/legado_luminoso_03.mp3",
+    "title": "Legado Luminoso",
+    "description": "Armonía amplia y solemne con destellos agudos que transmiten trascendencia.",
+    "emotions": [
+      "gloria",
+      "orgullo",
+      "trascendencia",
+      "emocion"
+    ],
+    "products": [
+      "eva",
+      "coreagent",
+      "marketing"
+    ],
+    "objective": "Impactar emocionalmente en historias de propósito y visión.",
+    "keywords": [
+      "legado",
+      "gloria",
+      "proposito",
+      "emocion",
+      "historia"
+    ],
+    "bpm": 90,
+    "durationSec": 30,
+    "copyrightStatus": "royalty_free_original"
+  },
+  {
+    "id": "mus_desc_01",
+    "category": "descubrimientos",
+    "relPath": "src/marketing/assets/music/descubrimientos/chispa_innovacion_01.mp3",
+    "title": "Chispa de Descubrimiento",
+    "description": "Campanas cristalinas y arpegios curiosos sobre colchón armónico cálido.",
+    "emotions": [
+      "descubrimiento",
+      "curiosidad",
+      "asombro",
+      "innovacion",
+      "inteligencia"
+    ],
+    "products": [
+      "coreagent",
+      "marketing",
+      "eva"
+    ],
+    "objective": "Ilustrar revelaciones de IA, búsqueda inteligente y nuevas ideas.",
+    "keywords": [
+      "descubrimiento",
+      "curiosidad",
+      "innovacion",
+      "revelacion",
+      "ia",
+      "idea"
+    ],
+    "bpm": 104,
+    "durationSec": 28,
+    "copyrightStatus": "royalty_free_original"
+  },
+  {
+    "id": "mus_desc_02",
+    "category": "descubrimientos",
+    "relPath": "src/marketing/assets/music/descubrimientos/exploracion_digital_02.mp3",
+    "title": "Exploración Digital",
+    "description": "Motivo rítmico curioso de marimba electrónica ideal para explicar tecnología.",
+    "emotions": [
+      "descubrimiento",
+      "claridad",
+      "ciencia",
+      "progreso"
+    ],
+    "products": [
+      "coreagent",
+      "marketing"
+    ],
+    "objective": "Explicar cómo funcionan los flujos de datos y analítica sin aburrir.",
+    "keywords": [
+      "exploracion",
+      "datos",
+      "tecnologia",
+      "descubrimiento",
+      "explicacion"
+    ],
+    "bpm": 108,
+    "durationSec": 28,
+    "copyrightStatus": "royalty_free_original"
+  },
+  {
+    "id": "mus_desc_03",
+    "category": "descubrimientos",
+    "relPath": "src/marketing/assets/music/descubrimientos/nuevo_mundo_03.mp3",
+    "title": "Ventana a un Nuevo Mundo",
+    "description": "Melodía suave de descubrimiento infantil y científico con atmósfera abierta.",
+    "emotions": [
+      "descubrimiento",
+      "maravilla",
+      "esperanza",
+      "aprendizaje"
+    ],
+    "products": [
+      "eva",
+      "coreagent"
+    ],
+    "objective": "Perfecta para escenas educativas de Eva o demostraciones sorprendentes.",
+    "keywords": [
+      "maravilla",
+      "aprendizaje",
+      "descubrimiento",
+      "futuro",
+      "eva"
+    ],
+    "bpm": 98,
+    "durationSec": 28,
+    "copyrightStatus": "royalty_free_original"
+  },
+  {
+    "id": "mus_susp_01",
+    "category": "suspense",
+    "relPath": "src/marketing/assets/music/suspense/tension_problema_01.mp3",
+    "title": "Tensión del Problema Oculto",
+    "description": "Sub-bajo pulsante y acordes menores contenidos para presentar el dolor o riesgo.",
+    "emotions": [
+      "suspense",
+      "urgencia",
+      "problema",
+      "intriga",
+      "alerta"
+    ],
+    "products": [
+      "coreagent",
+      "marketing"
+    ],
+    "objective": "Abrir ganchos de vídeo exponiendo caos, pérdida de tiempo o competencia.",
+    "keywords": [
+      "suspense",
+      "tension",
+      "problema",
+      "urgencia",
+      "caos",
+      "riesgo"
+    ],
+    "bpm": 96,
+    "durationSec": 28,
+    "copyrightStatus": "royalty_free_original"
+  },
+  {
+    "id": "mus_susp_02",
+    "category": "suspense",
+    "relPath": "src/marketing/assets/music/suspense/reloj_corriendo_02.mp3",
+    "title": "Reloj Corriendo",
+    "description": "Pulso rítmico misterioso en modo menor que genera expectativa inmediata.",
+    "emotions": [
+      "suspense",
+      "expectativa",
+      "misterio",
+      "enfoque"
+    ],
+    "products": [
+      "coreagent",
+      "marketing"
+    ],
+    "objective": "Mantener atención durante diagnósticos o preguntas retóricas.",
+    "keywords": [
+      "misterio",
+      "expectativa",
+      "suspense",
+      "reloj",
+      "atencion"
+    ],
+    "bpm": 105,
+    "durationSec": 28,
+    "copyrightStatus": "royalty_free_original"
+  },
+  {
+    "id": "mus_susp_03",
+    "category": "suspense",
+    "relPath": "src/marketing/assets/music/suspense/umbral_cambio_03.mp3",
+    "title": "En el Umbral del Cambio",
+    "description": "Atmósfera cinematográfica tensa que prepara el giro hacia la solución.",
+    "emotions": [
+      "suspense",
+      "intriga",
+      "profundidad",
+      "drama"
+    ],
+    "products": [
+      "coreagent",
+      "marketing",
+      "eva"
+    ],
+    "objective": "Crear contraste dramático justo antes de revelar la solución Silvania.",
+    "keywords": [
+      "drama",
+      "intriga",
+      "suspense",
+      "giro",
+      "contraste"
+    ],
+    "bpm": 90,
+    "durationSec": 28,
+    "copyrightStatus": "royalty_free_original"
+  },
+  {
+    "id": "mus_insp_01",
+    "category": "inspiracion",
+    "relPath": "src/marketing/assets/music/inspiracion/calma_inspiradora_01.mp3",
+    "title": "Calma Inspiradora",
+    "description": "Piano suave y pads cálidos para historias humanas, empatía y propósito.",
+    "emotions": [
+      "inspiracion",
+      "calma",
+      "esperanza",
+      "empatia",
+      "confianza"
+    ],
+    "products": [
+      "eva",
+      "coreagent",
+      "marketing"
+    ],
+    "objective": "Acompañar testimonios, historias de docentes y mensajes humanos.",
+    "keywords": [
+      "inspiracion",
+      "calma",
+      "esperanza",
+      "humano",
+      "empatia",
+      "piano"
+    ],
+    "bpm": 86,
+    "durationSec": 30,
+    "copyrightStatus": "royalty_free_original"
+  },
+  {
+    "id": "mus_insp_02",
+    "category": "inspiracion",
+    "relPath": "src/marketing/assets/music/inspiracion/nuevo_comienzo_02.mp3",
+    "title": "Nuevo Comienzo",
+    "description": "Progresión serena y luminosa que transmite alivio y claridad mental.",
+    "emotions": [
+      "alivio",
+      "paz",
+      "inspiracion",
+      "claridad"
+    ],
+    "products": [
+      "coreagent",
+      "eva"
+    ],
+    "objective": "Mostrar el descanso y equilibrio recuperados tras automatizar.",
+    "keywords": [
+      "alivio",
+      "paz",
+      "equilibrio",
+      "comienzo",
+      "inspiracion"
+    ],
+    "bpm": 92,
+    "durationSec": 30,
+    "copyrightStatus": "royalty_free_original"
+  },
+  {
+    "id": "mus_insp_03",
+    "category": "inspiracion",
+    "relPath": "src/marketing/assets/music/inspiracion/futuro_humano_03.mp3",
+    "title": "Futuro Humano",
+    "description": "Armonía envolvente cálida ideal para visiones educativas y de bienestar.",
+    "emotions": [
+      "esperanza",
+      "ternura",
+      "futuro",
+      "confianza"
+    ],
+    "products": [
+      "eva",
+      "coreagent",
+      "marketing"
+    ],
+    "objective": "Conectar tecnología con impacto humano positivo.",
+    "keywords": [
+      "futuro",
+      "humano",
+      "esperanza",
+      "bienestar",
+      "inspiracion"
+    ],
+    "bpm": 88,
+    "durationSec": 30,
+    "copyrightStatus": "royalty_free_original"
+  },
+  {
+    "id": "mus_corp_01",
+    "category": "productividad_corporativa",
+    "relPath": "src/marketing/assets/music/productividad_corporativa/flujo_ejecutivo_01.mp3",
+    "title": "Flujo Ejecutivo Moderno",
+    "description": "Groove minimalista limpio y profesional para demos B2B y automatización.",
+    "emotions": [
+      "productividad",
+      "profesionalismo",
+      "eficiencia",
+      "control",
+      "orden"
+    ],
+    "products": [
+      "coreagent",
+      "marketing"
+    ],
+    "objective": "Fondo neutro moderno para explicar CoreAgent, Google Workspace y flujos.",
+    "keywords": [
+      "corporativo",
+      "productividad",
+      "b2b",
+      "ejecutivo",
+      "automatizacion",
+      "moderno"
+    ],
+    "bpm": 114,
+    "durationSec": 28,
+    "copyrightStatus": "royalty_free_original"
+  },
+  {
+    "id": "mus_corp_02",
+    "category": "productividad_corporativa",
+    "relPath": "src/marketing/assets/music/productividad_corporativa/enfoque_tecnologico_02.mp3",
+    "title": "Enfoque Tecnológico",
+    "description": "Pulso constante y elegante que mantiene el ritmo sin distraer de la voz.",
+    "emotions": [
+      "enfoque",
+      "velocidad",
+      "precision",
+      "confianza"
+    ],
+    "products": [
+      "coreagent",
+      "marketing"
+    ],
+    "objective": "Sostener explicaciones técnicas o tutoriales corporativos.",
+    "keywords": [
+      "enfoque",
+      "tecnologia",
+      "ritmo",
+      "precision",
+      "tutorial"
+    ],
+    "bpm": 118,
+    "durationSec": 28,
+    "copyrightStatus": "royalty_free_original"
+  },
+  {
+    "id": "mus_corp_03",
+    "category": "productividad_corporativa",
+    "relPath": "src/marketing/assets/music/productividad_corporativa/oficina_inteligente_03.mp3",
+    "title": "Oficina Inteligente",
+    "description": "Textura limpia y sofisticada con notas cristalinas de alta gama.",
+    "emotions": [
+      "sofisticacion",
+      "orden",
+      "productividad",
+      "calidad"
+    ],
+    "products": [
+      "coreagent",
+      "marketing"
+    ],
+    "objective": "Ambientar presentaciones ejecutivas y campañas B2B premium.",
+    "keywords": [
+      "oficina",
+      "lujo",
+      "sofisticacion",
+      "corporativo",
+      "workspace"
+    ],
+    "bpm": 110,
+    "durationSec": 28,
+    "copyrightStatus": "royalty_free_original"
+  },
+  {
+    "id": "mus_eva_01",
+    "category": "infantil_eva",
+    "relPath": "src/marketing/assets/music/infantil_eva/sonrisa_aula_01.mp3",
+    "title": "Sonrisa en el Aula",
+    "description": "Melodía dulce tipo xilófono y cajita musical alegre para educación infantil.",
+    "emotions": [
+      "alegria",
+      "ternura",
+      "juego",
+      "diversion",
+      "calidez"
+    ],
+    "products": [
+      "eva"
+    ],
+    "objective": "Acompañar vídeos de aulas escolares, niños felices y juegos educativos.",
+    "keywords": [
+      "infantil",
+      "eva",
+      "niños",
+      "colegio",
+      "xilofono",
+      "juego",
+      "ternura"
+    ],
+    "bpm": 108,
+    "durationSec": 28,
+    "copyrightStatus": "royalty_free_original"
+  },
+  {
+    "id": "mus_eva_02",
+    "category": "infantil_eva",
+    "relPath": "src/marketing/assets/music/infantil_eva/cuento_magico_02.mp3",
+    "title": "Cuento Mágico de Eva",
+    "description": "Arpegio suave y encantador que evoca imaginación, paciencia y aprendizaje feliz.",
+    "emotions": [
+      "magia",
+      "ternura",
+      "imaginacion",
+      "paciencia"
+    ],
+    "products": [
+      "eva"
+    ],
+    "objective": "Ideal para escenas de profesora robot, cuentos y terapia del habla.",
+    "keywords": [
+      "cuento",
+      "magia",
+      "eva",
+      "profesora",
+      "habla",
+      "infantil"
+    ],
+    "bpm": 96,
+    "durationSec": 28,
+    "copyrightStatus": "royalty_free_original"
+  },
+  {
+    "id": "mus_eva_03",
+    "category": "infantil_eva",
+    "relPath": "src/marketing/assets/music/infantil_eva/pasos_pequeños_03.mp3",
+    "title": "Pequeños Grandes Pasos",
+    "description": "Música optimista y amigable que celebra cada avance de los niños.",
+    "emotions": [
+      "alegria",
+      "orgullo",
+      "superacion",
+      "amistad"
+    ],
+    "products": [
+      "eva"
+    ],
+    "objective": "Reforzar logros escolares y colaboración entre maestra humana, robot y alumnos.",
+    "keywords": [
+      "avances",
+      "niños",
+      "escuela",
+      "logros",
+      "eva",
+      "amistad"
+    ],
+    "bpm": 104,
+    "durationSec": 28,
+    "copyrightStatus": "royalty_free_original"
+  }
+]

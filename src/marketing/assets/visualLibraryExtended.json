@@ -1,0 +1,3266 @@
+[
+  {
+    "id": "ca_auto_01",
+    "product": "coreagent",
+    "category": "automation",
+    "relPath": "coreagent/automation/ca_auto_01.jpg",
+    "title": "Orquestación Autónoma de Flujos IA",
+    "description": "Interfaz holográfica azul y dorada conectando nodos de automatización empresarial sin intervención humana.",
+    "emotions": [
+      "eficiencia",
+      "control",
+      "poder",
+      "descubrimiento",
+      "futuro"
+    ],
+    "objective": "Demostrar cómo CoreAgent automatiza tareas repetitivas de principio a fin.",
+    "keywords": [
+      "automatizacion",
+      "flujos",
+      "nodos",
+      "ia",
+      "coreagent",
+      "orquestacion",
+      "workflow"
+    ],
+    "prompt": "Futuristic corporate automation workflow hologram floating above a sleek dark glass desk, glowing cyan and gold connected nodes, photorealistic, 8k, ultra sharp, modern tech aesthetic, no text"
+  },
+  {
+    "id": "ca_auto_02",
+    "product": "coreagent",
+    "category": "automation",
+    "relPath": "coreagent/automation/ca_auto_02.jpg",
+    "title": "Ejecutivo Liberado por la Automatización",
+    "description": "Directivo relajado tomando café mientras pantallas transparentes muestran procesos ejecutándose automáticamente.",
+    "emotions": [
+      "alivio",
+      "calma",
+      "victoria",
+      "productividad",
+      "libertad"
+    ],
+    "objective": "Mostrar el ahorro de tiempo y tranquilidad operativa al delegar en CoreAgent.",
+    "keywords": [
+      "alivio",
+      "ejecutivo",
+      "tiempo libre",
+      "automatizacion",
+      "cafe",
+      "tranquilidad"
+    ],
+    "prompt": "Confident business executive relaxing with espresso in a luxury modern office while translucent glass screens execute automated workflows in the background, warm sunlight, photorealistic, editorial photography, no text"
+  },
+  {
+    "id": "ca_auto_03",
+    "product": "coreagent",
+    "category": "automation",
+    "relPath": "coreagent/automation/ca_auto_03.jpg",
+    "title": "Tuberías de Datos Inteligentes",
+    "description": "Flujo luminoso de información viajando entre aplicaciones corporativas en un entorno minimalista.",
+    "emotions": [
+      "velocidad",
+      "precision",
+      "claridad",
+      "innovacion"
+    ],
+    "objective": "Ilustrar sincronización instantánea entre herramientas de negocio.",
+    "keywords": [
+      "datos",
+      "sincronizacion",
+      "velocidad",
+      "pipeline",
+      "automatizacion",
+      "conectividad"
+    ],
+    "prompt": "Abstract photorealistic 3D visualization of luminous data streams flowing cleanly through crystal glass pipelines in a bright minimalist architectural space, cyan and white light, 8k, no text"
+  },
+  {
+    "id": "ca_auto_04",
+    "product": "coreagent",
+    "category": "automation",
+    "relPath": "coreagent/automation/ca_auto_04.jpg",
+    "title": "Engranajes Digitales de Precisión",
+    "description": "Mecanismo futurista de cristal y luz representando procesos empresariales sincronizados.",
+    "emotions": [
+      "confianza",
+      "precision",
+      "ingenieria",
+      "solidez"
+    ],
+    "objective": "Transmitir fiabilidad técnica y ejecución exacta sin errores.",
+    "keywords": [
+      "engranajes",
+      "precision",
+      "sistema",
+      "confianza",
+      "automatizacion"
+    ],
+    "prompt": "Sleek translucent glass and brushed titanium digital gears interlocking seamlessly with soft blue neon rim light, macro photography, clean corporate technology background, no text"
+  },
+  {
+    "id": "ca_auto_05",
+    "product": "coreagent",
+    "category": "automation",
+    "relPath": "coreagent/automation/ca_auto_05.jpg",
+    "title": "Comando por Voz en Movimiento",
+    "description": "Ondas de sonido doradas activando múltiples tareas en una oficina moderna al anochecer.",
+    "emotions": [
+      "facilidad",
+      "rapidez",
+      "magia",
+      "poder"
+    ],
+    "objective": "Destacar el control del negocio mediante mensajes de voz en Telegram.",
+    "keywords": [
+      "voz",
+      "telegram",
+      "comando",
+      "ondas",
+      "rapidez",
+      "manos libres"
+    ],
+    "prompt": "Glowing golden soundwave ripples emerging from a sleek smartphone on an executive desk, triggering floating holographic task icons, evening city skyline, photorealistic, no text"
+  },
+  {
+    "id": "ca_auto_06",
+    "product": "coreagent",
+    "category": "automation",
+    "relPath": "coreagent/automation/ca_auto_06.jpg",
+    "title": "Centro de Control Operativo 24/7",
+    "description": "Sala de operaciones limpia y silenciosa donde la IA supervisa operaciones globales.",
+    "emotions": [
+      "seguridad",
+      "omnipresencia",
+      "gloria",
+      "profesionalismo"
+    ],
+    "objective": "Proyectar capacidad de operación continua 24 horas sin descanso.",
+    "keywords": [
+      "24/7",
+      "control",
+      "operaciones",
+      "centro",
+      "monitoreo",
+      "ia"
+    ],
+    "prompt": "Minimalist high-tech executive command center with panoramic curved displays showing clean abstract status bars and global map lights, calm blue ambiance, photorealistic, no text"
+  },
+  {
+    "id": "ca_auto_07",
+    "product": "coreagent",
+    "category": "automation",
+    "relPath": "coreagent/automation/ca_auto_07.jpg",
+    "title": "De Caos Manual a Orden Automático",
+    "description": "Transición visual de notas desordenadas a una cuadrícula digital luminosa y ordenada.",
+    "emotions": [
+      "transformacion",
+      "alivio",
+      "claridad",
+      "victoria"
+    ],
+    "objective": "Contrastar el antes y después de implementar automatización IA.",
+    "keywords": [
+      "orden",
+      "caos",
+      "transformacion",
+      "organizacion",
+      "antes y despues"
+    ],
+    "prompt": "Split conceptual photography showing cluttered messy papers transforming into clean glowing organized geometric light blocks on a sleek desk, dramatic lighting, photorealistic, no text"
+  },
+  {
+    "id": "ca_auto_08",
+    "product": "coreagent",
+    "category": "automation",
+    "relPath": "coreagent/automation/ca_auto_08.jpg",
+    "title": "Asistente IA Trabajando de Noche",
+    "description": "Oficina vacía iluminada suavemente por un núcleo de IA procesando reportes nocturnos.",
+    "emotions": [
+      "tranquilidad",
+      "confianza",
+      "misterio",
+      "progreso"
+    ],
+    "objective": "Mostrar que CoreAgent trabaja mientras el dueño descansa.",
+    "keywords": [
+      "noche",
+      "descanso",
+      "reportes",
+      "asistente",
+      "autonomo"
+    ],
+    "prompt": "Serene luxury office at night with city lights outside window, a subtle glowing sapphire AI core on the desk quietly processing holographic charts, cinematic photorealistic, no text"
+  },
+  {
+    "id": "ca_auto_09",
+    "product": "coreagent",
+    "category": "automation",
+    "relPath": "coreagent/automation/ca_auto_09.jpg",
+    "title": "Automatización de Facturas y Reportes",
+    "description": "Documentos digitales ordenándose en carpetas luminosas con sellos de verificación verde.",
+    "emotions": [
+      "seguridad",
+      "cumplimiento",
+      "alivio",
+      "eficiencia"
+    ],
+    "objective": "Comunicar automatización administrativa y contable sin fricción.",
+    "keywords": [
+      "facturas",
+      "reportes",
+      "administracion",
+      "verificacion",
+      "automatizacion"
+    ],
+    "prompt": "Clean futuristic holographic document cards sliding neatly into glowing emerald verified slots over a modern marble desk, crisp studio lighting, photorealistic, no text"
+  },
+  {
+    "id": "ca_auto_10",
+    "product": "coreagent",
+    "category": "automation",
+    "relPath": "coreagent/automation/ca_auto_10.jpg",
+    "title": "Salto Cuántico Operativo",
+    "description": "Haz de luz ascendente conectando dispositivos móviles y servidores en la nube.",
+    "emotions": [
+      "gloria",
+      "expansion",
+      "ambicion",
+      "velocidad"
+    ],
+    "objective": "Inspirar escalabilidad empresarial mediante agentes autónomos.",
+    "keywords": [
+      "escala",
+      "nube",
+      "velocidad",
+      "crecimiento",
+      "automatizacion"
+    ],
+    "prompt": "Architectural photography of a modern glass atrium with an upward beam of clean cyan and gold light connecting sleek laptops and cloud servers, inspiring, photorealistic, no text"
+  },
+  {
+    "id": "ca_docs_01",
+    "product": "coreagent",
+    "category": "stacked_documents",
+    "relPath": "coreagent/stacked_documents/ca_docs_01.jpg",
+    "title": "Montañas de Papeles Abrumadoras",
+    "description": "Grandes pilas de documentos y carpetas acumuladas sobre un escritorio corporativo.",
+    "emotions": [
+      "saturacion",
+      "urgencia",
+      "estres",
+      "problema"
+    ],
+    "objective": "Representar el dolor de la carga administrativa manual antes de la IA.",
+    "keywords": [
+      "documentos apilados",
+      "papeles",
+      "burocracia",
+      "estres",
+      "archivo",
+      "carpetas"
+    ],
+    "prompt": "Tall overwhelming stacks of paper documents and manila folders piled high on a corporate wooden desk, moody window light, shallow depth of field, photorealistic, no text"
+  },
+  {
+    "id": "ca_docs_02",
+    "product": "coreagent",
+    "category": "stacked_documents",
+    "relPath": "coreagent/stacked_documents/ca_docs_02.jpg",
+    "title": "Digitalización Instantánea de Archivos",
+    "description": "Pila de documentos físicos disolviéndose en partículas digitales hacia la nube.",
+    "emotions": [
+      "alivio",
+      "liberacion",
+      "modernidad",
+      "descubrimiento"
+    ],
+    "objective": "Mostrar cómo CoreAgent indexa y digitaliza documentación física.",
+    "keywords": [
+      "digitalizacion",
+      "documentos",
+      "nube",
+      "particulas",
+      "archivo",
+      "drive"
+    ],
+    "prompt": "Stack of paper files on a sleek desk magically dissolving upwards into glowing blue digital data particles, clean modern office, cinematic lighting, photorealistic, no text"
+  },
+  {
+    "id": "ca_docs_03",
+    "product": "coreagent",
+    "category": "stacked_documents",
+    "relPath": "coreagent/stacked_documents/ca_docs_03.jpg",
+    "title": "Archivo Legal y Contratos Organizados",
+    "description": "Carpetas elegantes perfectamente alineadas junto a una tableta con índice inteligente.",
+    "emotions": [
+      "orden",
+      "confianza",
+      "seriedad",
+      "control"
+    ],
+    "objective": "Transmitir gestión documental impecable para despachos y empresas.",
+    "keywords": [
+      "contratos",
+      "legal",
+      "carpetas",
+      "orden",
+      "archivo",
+      "documentos"
+    ],
+    "prompt": "Neatly organized dark navy and leather document binders aligned on an executive shelf beside a glowing sleek tablet, warm architectural lighting, photorealistic, no text"
+  },
+  {
+    "id": "ca_docs_04",
+    "product": "coreagent",
+    "category": "stacked_documents",
+    "relPath": "coreagent/stacked_documents/ca_docs_04.jpg",
+    "title": "Búsqueda Semántica en Miles de Documentos",
+    "description": "Lupa luminosa encontrando el documento exacto entre cientos de archivos flotantes.",
+    "emotions": [
+      "claridad",
+      "descubrimiento",
+      "alivio",
+      "precision"
+    ],
+    "objective": "Ilustrar la búsqueda instantánea de archivos en Google Drive con IA.",
+    "keywords": [
+      "busqueda",
+      "drive",
+      "archivos",
+      "encontrar",
+      "lupa",
+      "documentos"
+    ],
+    "prompt": "Holographic golden search beam illuminating one crisp glowing file card among hundreds of floating translucent documents in dark blue space, photorealistic 3D, no text"
+  },
+  {
+    "id": "ca_docs_05",
+    "product": "coreagent",
+    "category": "stacked_documents",
+    "relPath": "coreagent/stacked_documents/ca_docs_05.jpg",
+    "title": "Ejecutivo Superado por Papeleo",
+    "description": "Profesional cansado detrás de torres de documentos pidiendo una solución urgente.",
+    "emotions": [
+      "cansancio",
+      "frustracion",
+      "necesidad",
+      "empatia"
+    ],
+    "objective": "Conectar emocionalmente con el problema de perder horas buscando papeles.",
+    "keywords": [
+      "papeleo",
+      "cansancio",
+      "escritorio",
+      "documentos",
+      "oficina"
+    ],
+    "prompt": "Stressed office professional sitting behind tall stacks of paperwork rubbing forehead, late afternoon office light, authentic candid corporate photography, no text"
+  },
+  {
+    "id": "ca_docs_06",
+    "product": "coreagent",
+    "category": "stacked_documents",
+    "relPath": "coreagent/stacked_documents/ca_docs_06.jpg",
+    "title": "Escritorio Cero Papeles",
+    "description": "Mesa ejecutiva impecable con un solo portátil elegante y luz natural.",
+    "emotions": [
+      "paz",
+      "victoria",
+      "minimalismo",
+      "libertad"
+    ],
+    "objective": "Mostrar el resultado final de una oficina sin papel gracias a CoreAgent.",
+    "keywords": [
+      "cero papeles",
+      "minimalista",
+      "escritorio limpio",
+      "paz",
+      "productividad"
+    ],
+    "prompt": "Ultra clean minimalist oak executive desk with only a sleek silver laptop, ceramic cup, and warm morning sunlight through floor-to-ceiling windows, photorealistic, no text"
+  },
+  {
+    "id": "ca_docs_07",
+    "product": "coreagent",
+    "category": "stacked_documents",
+    "relPath": "coreagent/stacked_documents/ca_docs_07.jpg",
+    "title": "Biblioteca Documental en la Nube",
+    "description": "Pasillo futurista de archivos luminosos indexados por inteligencia artificial.",
+    "emotions": [
+      "asombro",
+      "grandeza",
+      "orden",
+      "memoria"
+    ],
+    "objective": "Visualizar la memoria vectorial de documentos de la empresa.",
+    "keywords": [
+      "memoria",
+      "biblioteca",
+      "archivos",
+      "vectorial",
+      "nube",
+      "indice"
+    ],
+    "prompt": "Futuristic bright architectural archive hall with glowing translucent floating file panels arranged in symmetrical rows, soft white and cyan light, photorealistic, no text"
+  },
+  {
+    "id": "ca_docs_08",
+    "product": "coreagent",
+    "category": "stacked_documents",
+    "relPath": "coreagent/stacked_documents/ca_docs_08.jpg",
+    "title": "Lectura y Resumen Automático de PDFs",
+    "description": "Documento extenso condensándose en tres tarjetas clave brillantes sobre una pantalla.",
+    "emotions": [
+      "inteligencia",
+      "rapidez",
+      "claridad",
+      "eficiencia"
+    ],
+    "objective": "Mostrar capacidad de resumir informes largos en segundos.",
+    "keywords": [
+      "resumen",
+      "pdf",
+      "lectura",
+      "informe",
+      "rapidez",
+      "documentos"
+    ],
+    "prompt": "Sleek modern monitor showing a thick stack of paper sheets visually condensing into three clean glowing summary cards, studio desk lighting, photorealistic, no text"
+  },
+  {
+    "id": "ca_docs_09",
+    "product": "coreagent",
+    "category": "stacked_documents",
+    "relPath": "coreagent/stacked_documents/ca_docs_09.jpg",
+    "title": "Carpeta Segura y Respaldada",
+    "description": "Bóveda digital cristalina protegiendo documentos corporativos importantes.",
+    "emotions": [
+      "seguridad",
+      "proteccion",
+      "confianza",
+      "tranquilidad"
+    ],
+    "objective": "Transmitir privacidad y resguardo seguro de archivos empresariales.",
+    "keywords": [
+      "seguridad",
+      "boveda",
+      "privacidad",
+      "documentos",
+      "respaldo"
+    ],
+    "prompt": "Crystal glass digital vault glowing softly around neat holographic document folders in a sleek dark navy environment, luxury tech aesthetic, photorealistic, no text"
+  },
+  {
+    "id": "ca_bot_01",
+    "product": "coreagent",
+    "category": "robots",
+    "relPath": "coreagent/robots/ca_bot_01.jpg",
+    "title": "Robot Asistente Ejecutivo Elegante",
+    "description": "Robot humanoide blanco y cromo revisando métricas en una oficina de cristal.",
+    "emotions": [
+      "futuro",
+      "confianza",
+      "sofisticacion",
+      "colaboracion"
+    ],
+    "objective": "Personificar a CoreAgent como un asistente ejecutivo incansable.",
+    "keywords": [
+      "robot",
+      "asistente",
+      "humanoide",
+      "oficina",
+      "coreagent",
+      "ia"
+    ],
+    "prompt": "Sleek white and brushed aluminum humanoid AI assistant robot standing calmly in a luxury glass office analyzing a glowing tablet, warm natural light, photorealistic, no text"
+  },
+  {
+    "id": "ca_bot_02",
+    "product": "coreagent",
+    "category": "robots",
+    "relPath": "coreagent/robots/ca_bot_02.jpg",
+    "title": "Apretón de Manos Humano y Robot",
+    "description": "Mano humana y mano robótica elegante sellando una alianza de productividad.",
+    "emotions": [
+      "alianza",
+      "confianza",
+      "esperanza",
+      "progreso"
+    ],
+    "objective": "Simbolizar la colaboración armoniosa entre el empresario y la IA.",
+    "keywords": [
+      "alianza",
+      "robot",
+      "humano",
+      "colaboracion",
+      "confianza",
+      "futuro"
+    ],
+    "prompt": "Close-up cinematic photograph of a human business hand and a sleek white robotic hand about to shake in a warm sunlit modern office, shallow depth of field, photorealistic, no text"
+  },
+  {
+    "id": "ca_bot_03",
+    "product": "coreagent",
+    "category": "robots",
+    "relPath": "coreagent/robots/ca_bot_03.jpg",
+    "title": "Robot Organizando Documentos y Agenda",
+    "description": "Robot amigable ordenando carpetas digitales flotantes frente a un escritorio limpio.",
+    "emotions": [
+      "eficiencia",
+      "orden",
+      "alivio",
+      "simpatia"
+    ],
+    "objective": "Mostrar al agente IA poniendo en orden la agenda y archivos.",
+    "keywords": [
+      "robot",
+      "organizando",
+      "agenda",
+      "archivos",
+      "eficiencia"
+    ],
+    "prompt": "Friendly minimalist white AI robot sitting at a clean modern desk gently organizing floating holographic calendar and folder icons, bright airy office, photorealistic, no text"
+  },
+  {
+    "id": "ca_bot_04",
+    "product": "coreagent",
+    "category": "robots",
+    "relPath": "coreagent/robots/ca_bot_04.jpg",
+    "title": "Núcleo Robótico de Alta Precisión",
+    "description": "Retrato de perfil de un androide futurista con iluminación azul cian sutil.",
+    "emotions": [
+      "inteligencia",
+      "tecnologia",
+      "poder",
+      "vanguardia"
+    ],
+    "objective": "Reforzar el posicionamiento tecnológico de vanguardia.",
+    "keywords": [
+      "androide",
+      "inteligencia",
+      "tecnologia",
+      "perfil",
+      "robot"
+    ],
+    "prompt": "Profile portrait of a high-end futuristic matte white and titanium AI robot with subtle glowing cyan optical sensor, dark studio background, ultra sharp 8k photorealistic, no text"
+  },
+  {
+    "id": "ca_bot_05",
+    "product": "coreagent",
+    "category": "robots",
+    "relPath": "coreagent/robots/ca_bot_05.jpg",
+    "title": "Robot Presentando Resultados en Sala de Juntas",
+    "description": "Androide moderno proyectando gráficos ascendentes frente a directivos.",
+    "emotions": [
+      "exito",
+      "victoria",
+      "innovacion",
+      "liderazgo"
+    ],
+    "objective": "Mostrar cómo la IA aporta claridad estratégica en reuniones.",
+    "keywords": [
+      "reunion",
+      "junta",
+      "robot",
+      "graficos",
+      "resultados",
+      "presentacion"
+    ],
+    "prompt": "Modern white humanoid robot gesturing toward a glowing upward holographic chart in a luxury glass boardroom with blurred executives listening, photorealistic, no text"
+  },
+  {
+    "id": "ca_bot_06",
+    "product": "coreagent",
+    "category": "robots",
+    "relPath": "coreagent/robots/ca_bot_06.jpg",
+    "title": "Pequeño Robot Compañero de Escritorio",
+    "description": "Robot compacto y expresivo sobre el escritorio acompañando el trabajo diario.",
+    "emotions": [
+      "cercania",
+      "simpatia",
+      "apoyo",
+      "productividad"
+    ],
+    "objective": "Hacer cercana y amigable la adopción de inteligencia artificial.",
+    "keywords": [
+      "robot",
+      "compañero",
+      "escritorio",
+      "amigable",
+      "cercania"
+    ],
+    "prompt": "Cute sleek desktop companion robot with warm glowing eyes sitting next to a laptop and coffee mug on a sunny wooden desk, photorealistic product photography, no text"
+  },
+  {
+    "id": "ca_bot_07",
+    "product": "coreagent",
+    "category": "robots",
+    "relPath": "coreagent/robots/ca_bot_07.jpg",
+    "title": "Equipo de Agentes Robóticos Sincronizados",
+    "description": "Tres robots minimalistas trabajando en armonía en diferentes tareas digitales.",
+    "emotions": [
+      "escala",
+      "equipo",
+      "poder",
+      "orquestacion"
+    ],
+    "objective": "Visualizar un ecosistema multi-agente trabajando en paralelo.",
+    "keywords": [
+      "multiagente",
+      "equipo",
+      "robots",
+      "ecosistema",
+      "paralelo"
+    ],
+    "prompt": "Three sleek futuristic white AI assistant robots working harmoniously at minimalist glass workstations in a bright modern tech hub, architectural lighting, photorealistic, no text"
+  },
+  {
+    "id": "ca_bot_08",
+    "product": "coreagent",
+    "category": "robots",
+    "relPath": "coreagent/robots/ca_bot_08.jpg",
+    "title": "Robot Atendiendo Mensajes Instantáneos",
+    "description": "Robot moderno respondiendo comunicaciones en tiempo real sobre una interfaz limpia.",
+    "emotions": [
+      "rapidez",
+      "disponibilidad",
+      "servicio",
+      "confianza"
+    ],
+    "objective": "Representar atención automática y respuesta inmediata.",
+    "keywords": [
+      "mensajes",
+      "chat",
+      "respuesta",
+      "robot",
+      "atencion"
+    ],
+    "prompt": "Modern humanoid robot typing effortlessly on a floating translucent holographic keyboard with soft glowing chat bubbles, clean bright studio, photorealistic, no text"
+  },
+  {
+    "id": "ca_bot_09",
+    "product": "coreagent",
+    "category": "robots",
+    "relPath": "coreagent/robots/ca_bot_09.jpg",
+    "title": "Despertar de la Inteligencia Autónoma",
+    "description": "Ojo óptico robótico encendiéndose con luz dorada y azul ante un horizonte urbano.",
+    "emotions": [
+      "descubrimiento",
+      "asombro",
+      "gloria",
+      "inicio"
+    ],
+    "objective": "Abrir vídeos de lanzamiento con impacto visual cinematográfico.",
+    "keywords": [
+      "despertar",
+      "lanzamiento",
+      "robot",
+      "ojo",
+      "amanecer",
+      "ia"
+    ],
+    "prompt": "Cinematic macro shot of a sleek AI robot face reflecting a golden sunrise over a modern city skyline, awe-inspiring sci-fi realism, 8k, no text"
+  },
+  {
+    "id": "ca_bot_10",
+    "product": "coreagent",
+    "category": "robots",
+    "relPath": "coreagent/robots/ca_bot_10.jpg",
+    "title": "Robot Guardián de la Productividad",
+    "description": "Robot elegante sosteniendo un escudo luminoso sobre el flujo de trabajo.",
+    "emotions": [
+      "proteccion",
+      "seguridad",
+      "solidez",
+      "control"
+    ],
+    "objective": "Comunicar fiabilidad y control total sin fallos.",
+    "keywords": [
+      "guardian",
+      "seguridad",
+      "robot",
+      "escudo",
+      "control"
+    ],
+    "prompt": "Sleek silver and white AI robot standing beside a glowing blue geometric shield protecting digital workspace icons, luxury dark background, photorealistic, no text"
+  },
+  {
+    "id": "ca_off_01",
+    "product": "coreagent",
+    "category": "luxury_offices",
+    "relPath": "coreagent/luxury_offices/ca_off_01.jpg",
+    "title": "Despacho Ejecutivo en Rascacielos al Atardecer",
+    "description": "Oficina de lujo con ventanales panorámicos, mármol y vista dorada de la ciudad.",
+    "emotions": [
+      "gloria",
+      "exito",
+      "estatus",
+      "ambicion",
+      "victoria"
+    ],
+    "objective": "Posicionar a Silvania para empresas y líderes de alto nivel.",
+    "keywords": [
+      "oficina de lujo",
+      "rascacielos",
+      "ejecutivo",
+      "atardecer",
+      "exito",
+      "ciudad"
+    ],
+    "prompt": "Ultra luxury corner executive office in a glass skyscraper at golden sunset, Italian marble desk, panoramic skyline view, warm architectural lighting, photorealistic, no text"
+  },
+  {
+    "id": "ca_off_02",
+    "product": "coreagent",
+    "category": "luxury_offices",
+    "relPath": "coreagent/luxury_offices/ca_off_02.jpg",
+    "title": "Sala de Juntas Panorámica Minimalista",
+    "description": "Mesa de madera noble y cristal rodeada de vistas urbanas luminosas.",
+    "emotions": [
+      "liderazgo",
+      "claridad",
+      "prestigio",
+      "serenidad"
+    ],
+    "objective": "Ambientar escenas de toma de decisiones estratégicas.",
+    "keywords": [
+      "sala de juntas",
+      "lujo",
+      "minimalista",
+      "directiva",
+      "reunion"
+    ],
+    "prompt": "High-end minimalist corporate boardroom with long walnut table, ergonomic leather chairs, floor-to-ceiling windows overlooking modern skyline, natural daylight, photorealistic, no text"
+  },
+  {
+    "id": "ca_off_03",
+    "product": "coreagent",
+    "category": "luxury_offices",
+    "relPath": "coreagent/luxury_offices/ca_off_03.jpg",
+    "title": "Lounge Corporativo de Diseño",
+    "description": "Espacio elegante de arquitectura contemporánea para reuniones informales de alto valor.",
+    "emotions": [
+      "bienestar",
+      "sofisticacion",
+      "calma",
+      "inspiracion"
+    ],
+    "objective": "Transmitir cultura empresarial moderna y sin estrés.",
+    "keywords": [
+      "lounge",
+      "arquitectura",
+      "diseño",
+      "oficina",
+      "moderno"
+    ],
+    "prompt": "Luxury modern corporate lounge with curved beige sofas, warm oak paneling, indoor plants, soft daylight, architectural digest style photography, no text"
+  },
+  {
+    "id": "ca_off_04",
+    "product": "coreagent",
+    "category": "luxury_offices",
+    "relPath": "coreagent/luxury_offices/ca_off_04.jpg",
+    "title": "Escritorio CEO Nocturno con Luces de Ciudad",
+    "description": "Ambiente sofisticado de noche con iluminación cálida de lámpara y skyline brillante.",
+    "emotions": [
+      "enfoque",
+      "poder",
+      "exclusividad",
+      "ambicion"
+    ],
+    "objective": "Crear atmósfera de alto rendimiento ejecutivo.",
+    "keywords": [
+      "ceo",
+      "noche",
+      "escritorio",
+      "lujo",
+      "skyline",
+      "enfoque"
+    ],
+    "prompt": "Sophisticated CEO office at night with warm brass desk lamp, dark wood desk, sleek laptop, sparkling city lights through giant windows, cinematic photorealistic, no text"
+  },
+  {
+    "id": "ca_off_05",
+    "product": "coreagent",
+    "category": "luxury_offices",
+    "relPath": "coreagent/luxury_offices/ca_off_05.jpg",
+    "title": "Atrio Tecnológico de Cristal y Mármol",
+    "description": "Vestíbulo corporativo luminoso que refleja innovación y solidez financiera.",
+    "emotions": [
+      "grandeza",
+      "gloria",
+      "confianza",
+      "modernidad"
+    ],
+    "objective": "Dar escala institucional y prestigio a la marca.",
+    "keywords": [
+      "atrio",
+      "cristal",
+      "marmol",
+      "corporativo",
+      "edificio"
+    ],
+    "prompt": "Grand modern corporate headquarters atrium with white marble floors, glass elevators, warm sunlight beams, luxury architectural photography, no text"
+  },
+  {
+    "id": "ca_off_06",
+    "product": "coreagent",
+    "category": "luxury_offices",
+    "relPath": "coreagent/luxury_offices/ca_off_06.jpg",
+    "title": "Terraza Ejecutiva con Café y Tablet",
+    "description": "Pausa productiva en terraza corporativa con vistas verdes y ciudad.",
+    "emotions": [
+      "libertad",
+      "calma",
+      "equilibrio",
+      "victoria"
+    ],
+    "objective": "Mostrar que la automatización permite disfrutar de tu tiempo.",
+    "keywords": [
+      "terraza",
+      "cafe",
+      "libertad",
+      "equilibrio",
+      "ejecutivo"
+    ],
+    "prompt": "Luxury rooftop office terrace with modern outdoor lounge seating, laptop, espresso cup, lush greenery and city skyline in soft morning light, photorealistic, no text"
+  },
+  {
+    "id": "ca_off_07",
+    "product": "coreagent",
+    "category": "luxury_offices",
+    "relPath": "coreagent/luxury_offices/ca_off_07.jpg",
+    "title": "Estudio Privado de Arquitectura Moderna",
+    "description": "Despacho con estanterías iluminadas, arte abstracto y tecnología discreta.",
+    "emotions": [
+      "elegancia",
+      "creatividad",
+      "orden",
+      "prestigio"
+    ],
+    "objective": "Atraer a consultores, agencias y despachos premium.",
+    "keywords": [
+      "estudio",
+      "arquitectura",
+      "elegancia",
+      "consultoria",
+      "lujo"
+    ],
+    "prompt": "Designer private office with warm backlit wooden shelving, minimalist abstract sculpture, clean travertine desk, soft daylight, photorealistic interior photography, no text"
+  },
+  {
+    "id": "ca_off_08",
+    "product": "coreagent",
+    "category": "luxury_offices",
+    "relPath": "coreagent/luxury_offices/ca_off_08.jpg",
+    "title": "Pasillo Corporativo Futurista Luminoso",
+    "description": "Corredor de cristal y acero pulido con líneas de luz LED elegantes.",
+    "emotions": [
+      "progreso",
+      "vanguardia",
+      "velocidad",
+      "limpieza"
+    ],
+    "objective": "Transiciones dinámicas entre escenas corporativas.",
+    "keywords": [
+      "pasillo",
+      "futurista",
+      "cristal",
+      "tecnologia",
+      "empresa"
+    ],
+    "prompt": "Sleek futuristic corporate glass corridor with warm recessed LED light strips and polished concrete floor, symmetrical perspective, photorealistic, no text"
+  },
+  {
+    "id": "ca_off_09",
+    "product": "coreagent",
+    "category": "luxury_offices",
+    "relPath": "coreagent/luxury_offices/ca_off_09.jpg",
+    "title": "Reunión Privada de Alto Nivel",
+    "description": "Dos directivos conversando relajadamente en una oficina soleada de cristal.",
+    "emotions": [
+      "confianza",
+      "acuerdo",
+      "exito",
+      "calidez"
+    ],
+    "objective": "Mostrar cierre de acuerdos y liderazgo sereno.",
+    "keywords": [
+      "directivos",
+      "acuerdo",
+      "oficina",
+      "reunion",
+      "confianza"
+    ],
+    "prompt": "Two well-dressed business leaders having an engaging positive conversation in a sunlit luxury glass office, candid editorial corporate photography, no text"
+  },
+  {
+    "id": "ca_prod_01",
+    "product": "coreagent",
+    "category": "productivity",
+    "relPath": "coreagent/productivity/ca_prod_01.jpg",
+    "title": "Flujo de Trabajo Profundo (Deep Work)",
+    "description": "Profesional concentrado frente a un monitor ultrapanorámico con interfaz limpia.",
+    "emotions": [
+      "enfoque",
+      "productividad",
+      "claridad",
+      "rendimiento"
+    ],
+    "objective": "Mostrar concentración máxima sin distracciones operativas.",
+    "keywords": [
+      "productividad",
+      "enfoque",
+      "monitor",
+      "deep work",
+      "concentracion"
+    ],
+    "prompt": "Focused tech founder working at an ultrawide curved monitor in a calm sunlit minimalist workspace, clean abstract UI glow, photorealistic, no text"
+  },
+  {
+    "id": "ca_prod_02",
+    "product": "coreagent",
+    "category": "productivity",
+    "relPath": "coreagent/productivity/ca_prod_02.jpg",
+    "title": "Reloj de Tiempo Recuperado",
+    "description": "Cronómetro minimalista junto a tareas completadas brillando en verde.",
+    "emotions": [
+      "tiempo",
+      "alivio",
+      "eficiencia",
+      "victoria"
+    ],
+    "objective": "Cuantificar el ahorro de horas semanales con IA.",
+    "keywords": [
+      "tiempo",
+      "ahorro",
+      "reloj",
+      "productividad",
+      "eficiencia"
+    ],
+    "prompt": "Sleek luxury minimalist desk clock beside glowing emerald checkmark light icons on a clean glass surface, bright morning light, photorealistic, no text"
+  },
+  {
+    "id": "ca_prod_03",
+    "product": "coreagent",
+    "category": "productivity",
+    "relPath": "coreagent/productivity/ca_prod_03.jpg",
+    "title": "Movilidad Total desde el Smartphone",
+    "description": "Empresario gestionando toda su empresa desde el móvil mientras camina por la ciudad.",
+    "emotions": [
+      "libertad",
+      "agilidad",
+      "independencia",
+      "control"
+    ],
+    "objective": "Destacar el control total de CoreAgent desde Telegram móvil.",
+    "keywords": [
+      "movil",
+      "smartphone",
+      "movilidad",
+      "telegram",
+      "libertad",
+      "ciudad"
+    ],
+    "prompt": "Stylish entrepreneur walking in a bright modern financial district checking a sleek smartphone with a confident smile, morning sun flare, photorealistic, no text"
+  },
+  {
+    "id": "ca_prod_04",
+    "product": "coreagent",
+    "category": "productivity",
+    "relPath": "coreagent/productivity/ca_prod_04.jpg",
+    "title": "Mañana Productiva con Café y Agenda Clara",
+    "description": "Primera hora de la mañana con portátil abierto y lista de prioridades resueltas.",
+    "emotions": [
+      "energia",
+      "claridad",
+      "optimismo",
+      "inicio"
+    ],
+    "objective": "Transmitir arranque de día organizado y sin agobios.",
+    "keywords": [
+      "mañana",
+      "cafe",
+      "agenda",
+      "energia",
+      "organizacion"
+    ],
+    "prompt": "Bright morning home office desk with fresh cappuccino, open sleek laptop, notebook and warm sunlight streaming across, inspiring lifestyle photography, no text"
+  },
+  {
+    "id": "ca_prod_05",
+    "product": "coreagent",
+    "category": "productivity",
+    "relPath": "coreagent/productivity/ca_prod_05.jpg",
+    "title": "Equipo Ágil Celebrando Metas Cumplidas",
+    "description": "Pequeño equipo moderno sonriendo frente a un tablero de objetivos completados.",
+    "emotions": [
+      "victoria",
+      "alegria",
+      "equipo",
+      "logro"
+    ],
+    "objective": "Mostrar impacto positivo en la productividad del equipo.",
+    "keywords": [
+      "equipo",
+      "metas",
+      "victoria",
+      "logro",
+      "productividad"
+    ],
+    "prompt": "Diverse modern startup team of three smiling and celebrating around a sleek glass table with laptops in a bright loft office, authentic natural light, photorealistic, no text"
+  },
+  {
+    "id": "ca_prod_06",
+    "product": "coreagent",
+    "category": "productivity",
+    "relPath": "coreagent/productivity/ca_prod_06.jpg",
+    "title": "Velocidad de Ejecución Instantánea",
+    "description": "Estelas de luz limpia atravesando una estación de trabajo moderna.",
+    "emotions": [
+      "velocidad",
+      "impulso",
+      "dinamismo",
+      "poder"
+    ],
+    "objective": "Ilustrar respuestas y acciones en segundos.",
+    "keywords": [
+      "velocidad",
+      "rapidez",
+      "impulso",
+      "ejecucion",
+      "productividad"
+    ],
+    "prompt": "Dynamic long-exposure style photograph of clean cyan light streaks flowing around a sleek dark workstation, sense of extreme speed and efficiency, photorealistic, no text"
+  },
+  {
+    "id": "ca_prod_07",
+    "product": "coreagent",
+    "category": "productivity",
+    "relPath": "coreagent/productivity/ca_prod_07.jpg",
+    "title": "Priorización Inteligente de Tareas",
+    "description": "Bloques geométricos flotantes ordenándose automáticamente por importancia.",
+    "emotions": [
+      "claridad",
+      "estrategia",
+      "orden",
+      "control"
+    ],
+    "objective": "Mostrar cómo el agente prioriza lo urgente e importante.",
+    "keywords": [
+      "prioridades",
+      "tareas",
+      "orden",
+      "estrategia",
+      "gestion"
+    ],
+    "prompt": "Minimalist 3D visualization of glowing amber and blue glass task blocks neatly stacking in order of priority over a clean desk, studio lighting, photorealistic, no text"
+  },
+  {
+    "id": "ca_prod_08",
+    "product": "coreagent",
+    "category": "productivity",
+    "relPath": "coreagent/productivity/ca_prod_08.jpg",
+    "title": "Cero Distracciones, Máximo Rendimiento",
+    "description": "Auriculares premium y teclado minimalista en un ambiente sereno.",
+    "emotions": [
+      "calma",
+      "enfoque",
+      "calidad",
+      "silencio"
+    ],
+    "objective": "Evocar flujo de trabajo sin interrupciones.",
+    "keywords": [
+      "enfoque",
+      "auriculares",
+      "minimalismo",
+      "calma",
+      "rendimiento"
+    ],
+    "prompt": "Minimalist matte black mechanical keyboard, wireless studio headphones and sleek tablet on a clean grey stone desk, soft diffused daylight, photorealistic, no text"
+  },
+  {
+    "id": "ca_prod_09",
+    "product": "coreagent",
+    "category": "productivity",
+    "relPath": "coreagent/productivity/ca_prod_09.jpg",
+    "title": "Cierre de Jornada Exitoso",
+    "description": "Profesional cerrando el portátil satisfecho al final de una tarde soleada.",
+    "emotions": [
+      "satisfaccion",
+      "victoria",
+      "equilibrio",
+      "descanso"
+    ],
+    "objective": "Mostrar que con CoreAgent terminas tu trabajo a tiempo.",
+    "keywords": [
+      "cierre",
+      "satisfaccion",
+      "equilibrio",
+      "tiempo",
+      "exito"
+    ],
+    "prompt": "Smiling business owner gently closing a sleek laptop at golden hour in a modern office, feeling accomplished and relaxed, warm cinematic photography, no text"
+  },
+  {
+    "id": "ca_gw_01",
+    "product": "coreagent",
+    "category": "google_workspace",
+    "relPath": "coreagent/google_workspace/ca_gw_01.jpg",
+    "title": "Ecosistema Cloud Unificado",
+    "description": "Cuatro esferas luminosas de colores azul, rojo, amarillo y verde conectadas en la nube.",
+    "emotions": [
+      "conexion",
+      "armonia",
+      "integracion",
+      "modernidad"
+    ],
+    "objective": "Representar la integración nativa con Google Workspace.",
+    "keywords": [
+      "google",
+      "workspace",
+      "nube",
+      "integracion",
+      "ecosistema",
+      "cloud"
+    ],
+    "prompt": "Four sleek glowing glass spheres in Google colors blue red yellow and green connected by fine light filaments floating above a modern white desk, photorealistic 3D, no text"
+  },
+  {
+    "id": "ca_gw_02",
+    "product": "coreagent",
+    "category": "google_workspace",
+    "relPath": "coreagent/google_workspace/ca_gw_02.jpg",
+    "title": "Bandeja de Entrada Cero (Gmail Limpio)",
+    "description": "Sobre luminoso flotando sobre una interfaz de correo completamente despejada.",
+    "emotions": [
+      "alivio",
+      "paz",
+      "orden",
+      "victoria"
+    ],
+    "objective": "Mostrar gestión inteligente de correos y respuestas automáticas.",
+    "keywords": [
+      "gmail",
+      "correo",
+      "email",
+      "bandeja",
+      "inbox zero",
+      "workspace"
+    ],
+    "prompt": "Clean glowing translucent envelope icon floating peacefully above an uncluttered white glass tablet on a sunlit desk, calm minimal aesthetic, photorealistic, no text"
+  },
+  {
+    "id": "ca_gw_03",
+    "product": "coreagent",
+    "category": "google_workspace",
+    "relPath": "coreagent/google_workspace/ca_gw_03.jpg",
+    "title": "Calendario Inteligente Sincronizado",
+    "description": "Cuadrícula de calendario holográfica perfectamente organizada por bloques de color.",
+    "emotions": [
+      "orden",
+      "puntualidad",
+      "control",
+      "claridad"
+    ],
+    "objective": "Ilustrar creación y consulta de citas en Google Calendar por voz.",
+    "keywords": [
+      "calendar",
+      "calendario",
+      "citas",
+      "agenda",
+      "reuniones",
+      "workspace"
+    ],
+    "prompt": "Holographic minimalist weekly calendar grid with neat pastel blue and emerald time blocks floating above a sleek desk, soft daylight, photorealistic, no text"
+  },
+  {
+    "id": "ca_gw_04",
+    "product": "coreagent",
+    "category": "google_workspace",
+    "relPath": "coreagent/google_workspace/ca_gw_04.jpg",
+    "title": "Hojas de Cálculo y Datos Vivos",
+    "description": "Tablas luminosas transformándose en gráficos claros sobre una pantalla moderna.",
+    "emotions": [
+      "claridad",
+      "analisis",
+      "precision",
+      "descubrimiento"
+    ],
+    "objective": "Mostrar lectura y actualización automática de Google Sheets.",
+    "keywords": [
+      "sheets",
+      "hojas de calculo",
+      "excel",
+      "tablas",
+      "datos",
+      "workspace"
+    ],
+    "prompt": "Modern glass monitor displaying clean glowing green and white spreadsheet grid cells seamlessly morphing into 3D bar charts, bright studio office, photorealistic, no text"
+  },
+  {
+    "id": "ca_gw_05",
+    "product": "coreagent",
+    "category": "google_workspace",
+    "relPath": "coreagent/google_workspace/ca_gw_05.jpg",
+    "title": "Carpetas en la Nube de Google Drive",
+    "description": "Estructura cristalina de carpetas flotantes conectadas por rayos suaves de luz.",
+    "emotions": [
+      "organizacion",
+      "acceso",
+      "seguridad",
+      "rapidez"
+    ],
+    "objective": "Representar búsqueda y organización de archivos en Google Drive.",
+    "keywords": [
+      "drive",
+      "carpetas",
+      "archivos",
+      "nube",
+      "google",
+      "workspace"
+    ],
+    "prompt": "Glowing translucent glass file folders arranged in a clean tree hierarchy floating in a bright modern digital space, crisp blue and gold accents, photorealistic, no text"
+  },
+  {
+    "id": "ca_gw_06",
+    "product": "coreagent",
+    "category": "google_workspace",
+    "relPath": "coreagent/google_workspace/ca_gw_06.jpg",
+    "title": "Colaboración en Documentos en Tiempo Real",
+    "description": "Equipo trabajando conectado alrededor de documentos compartidos en la nube.",
+    "emotions": [
+      "colaboracion",
+      "fluidez",
+      "equipo",
+      "progreso"
+    ],
+    "objective": "Destacar creación y edición colaborativa en Google Docs.",
+    "keywords": [
+      "docs",
+      "documentos",
+      "colaboracion",
+      "equipo",
+      "google",
+      "workspace"
+    ],
+    "prompt": "Two professionals smiling while collaborating over sleek laptops in a bright glass workspace with soft glowing cloud connection lines, photorealistic, no text"
+  },
+  {
+    "id": "ca_gw_07",
+    "product": "coreagent",
+    "category": "google_workspace",
+    "relPath": "coreagent/google_workspace/ca_gw_07.jpg",
+    "title": "Reunión Virtual sin Fricción",
+    "description": "Videollamada ejecutiva nítida con agenda y notas generadas automáticamente.",
+    "emotions": [
+      "conexion",
+      "profesionalismo",
+      "claridad",
+      "eficiencia"
+    ],
+    "objective": "Mostrar preparación y seguimiento automático de reuniones.",
+    "keywords": [
+      "meet",
+      "videollamada",
+      "reunion",
+      "notas",
+      "workspace"
+    ],
+    "prompt": "Executive in a bright modern office on a crisp video conference call on an ultrawide screen with subtle floating abstract note icons, photorealistic, no text"
+  },
+  {
+    "id": "ca_gw_08",
+    "product": "coreagent",
+    "category": "google_workspace",
+    "relPath": "coreagent/google_workspace/ca_gw_08.jpg",
+    "title": "Búsqueda Instantánea Multi-App",
+    "description": "Puente luminoso uniendo correo, calendario y documentos en un solo gesto.",
+    "emotions": [
+      "unidad",
+      "velocidad",
+      "simplicidad",
+      "poder"
+    ],
+    "objective": "Mostrar que un solo mensaje en Telegram consulta todo Workspace.",
+    "keywords": [
+      "unificado",
+      "busqueda",
+      "correo",
+      "calendario",
+      "drive",
+      "workspace"
+    ],
+    "prompt": "Sleek smartphone projecting three clean glowing holographic beams connecting email, calendar and cloud folder icons simultaneously, modern desk, photorealistic, no text"
+  },
+  {
+    "id": "ca_gw_09",
+    "product": "coreagent",
+    "category": "google_workspace",
+    "relPath": "coreagent/google_workspace/ca_gw_09.jpg",
+    "title": "Arquitectura Cloud Empresarial",
+    "description": "Centros de datos limpios y luminosos simbolizando disponibilidad global.",
+    "emotions": [
+      "confianza",
+      "escala",
+      "solidez",
+      "futuro"
+    ],
+    "objective": "Respaldar la infraestructura robusta detrás de CoreAgent.",
+    "keywords": [
+      "cloud",
+      "infraestructura",
+      "google",
+      "servidores",
+      "confianza"
+    ],
+    "prompt": "Clean bright futuristic cloud data center corridor with soft blue and white ambient lighting and glass panels, minimalist architectural photography, no text"
+  },
+  {
+    "id": "mk_adv_01",
+    "product": "marketing",
+    "category": "advertising",
+    "relPath": "marketing/advertising/mk_adv_01.jpg",
+    "title": "Estudio de Publicidad y Producción Creativa",
+    "description": "Set de grabación profesional con cámaras, luces cálidas y creatividad en acción.",
+    "emotions": [
+      "creatividad",
+      "impacto",
+      "profesionalismo",
+      "energia"
+    ],
+    "objective": "Mostrar la potencia audiovisual de Marketing Agent.",
+    "keywords": [
+      "publicidad",
+      "estudio",
+      "produccion",
+      "camara",
+      "luces",
+      "anuncios"
+    ],
+    "prompt": "Modern creative advertising production studio with cinema camera on gimbal, softbox studio lighting, sleek dark backdrop, vibrant cyan and magenta accent lights, photorealistic, no text"
+  },
+  {
+    "id": "mk_adv_02",
+    "product": "marketing",
+    "category": "advertising",
+    "relPath": "marketing/advertising/mk_adv_02.jpg",
+    "title": "Valla Publicitaria Digital de Alto Impacto",
+    "description": "Pantalla gigante luminosa en avenida moderna captando la atención del público.",
+    "emotions": [
+      "visibilidad",
+      "gloria",
+      "impacto",
+      "grandeza"
+    ],
+    "objective": "Simbolizar alcance masivo y presencia de marca inolvidable.",
+    "keywords": [
+      "publicidad",
+      "valla",
+      "impacto",
+      "marca",
+      "visibilidad",
+      "ciudad"
+    ],
+    "prompt": "Sleek glowing digital billboard on a modern architectural building in a bustling cosmopolitan avenue at dusk, vibrant abstract color visuals, photorealistic, no text"
+  },
+  {
+    "id": "mk_adv_03",
+    "product": "marketing",
+    "category": "advertising",
+    "relPath": "marketing/advertising/mk_adv_03.jpg",
+    "title": "Megáfono Digital y Alcance Viral",
+    "description": "Ondas vibrantes expandiéndose desde un centro creativo hacia toda la audiencia.",
+    "emotions": [
+      "expansion",
+      "energia",
+      "entusiasmo",
+      "alcance"
+    ],
+    "objective": "Representar difusión de campañas publicitarias en múltiples canales.",
+    "keywords": [
+      "megafono",
+      "alcance",
+      "viral",
+      "difusion",
+      "publicidad",
+      "campaña"
+    ],
+    "prompt": "Stylized sleek glowing glass megaphone emitting vibrant coral and electric blue light waves in a clean modern studio, 3D photorealistic art, no text"
+  },
+  {
+    "id": "mk_adv_04",
+    "product": "marketing",
+    "category": "advertising",
+    "relPath": "marketing/advertising/mk_adv_04.jpg",
+    "title": "Dirección de Arte y Guionización",
+    "description": "Mesa creativa con paletas de color, storyboard luminoso y diseño visual.",
+    "emotions": [
+      "inspiracion",
+      "arte",
+      "cuidado",
+      "creatividad"
+    ],
+    "objective": "Mostrar que cada vídeo sigue un guion y dirección visual cuidada.",
+    "keywords": [
+      "guion",
+      "storyboard",
+      "arte",
+      "creatividad",
+      "diseño",
+      "publicidad"
+    ],
+    "prompt": "Overhead shot of a creative director desk with sleek tablet displaying abstract visual storyboard frames, color swatches, cinema lens and coffee, warm lighting, photorealistic, no text"
+  },
+  {
+    "id": "mk_adv_05",
+    "product": "marketing",
+    "category": "advertising",
+    "relPath": "marketing/advertising/mk_adv_05.jpg",
+    "title": "Anuncio que Enamora en Pantalla",
+    "description": "Usuario sonriendo cautivado frente a una pantalla con un vídeo publicitario vibrante.",
+    "emotions": [
+      "atraccion",
+      "alegria",
+      "interes",
+      "conexion"
+    ],
+    "objective": "Demostrar capacidad de captar atención en los primeros 3 segundos.",
+    "keywords": [
+      "atencion",
+      "espectador",
+      "video",
+      "sonrisa",
+      "publicidad",
+      "hook"
+    ],
+    "prompt": "Young woman smiling warmly illuminated by a vibrant video playing on her sleek tablet in a cozy modern cafe, shallow depth of field, authentic lifestyle photography, no text"
+  },
+  {
+    "id": "mk_adv_06",
+    "product": "marketing",
+    "category": "advertising",
+    "relPath": "marketing/advertising/mk_adv_06.jpg",
+    "title": "Lanzamiento de Producto bajo Reflectores",
+    "description": "Escenario elegante iluminado con haces dramáticos listo para presentar una marca.",
+    "emotions": [
+      "gloria",
+      "expectacion",
+      "lujo",
+      "triunfo"
+    ],
+    "objective": "Ideal para lanzamientos de nuevos servicios o campañas estrella.",
+    "keywords": [
+      "lanzamiento",
+      "reflectores",
+      "escenario",
+      "marca",
+      "publicidad"
+    ],
+    "prompt": "Dramatic modern product launch stage with warm golden and crisp blue spotlight beams cutting through subtle mist, luxury minimalist aesthetic, photorealistic, no text"
+  },
+  {
+    "id": "mk_adv_07",
+    "product": "marketing",
+    "category": "advertising",
+    "relPath": "marketing/advertising/mk_adv_07.jpg",
+    "title": "Copywriting Persuasivo en Acción",
+    "description": "Pluma estilográfica moderna junto a teclado luminoso creando mensajes irresistibles.",
+    "emotions": [
+      "ingenio",
+      "claridad",
+      "persuasion",
+      "elegancia"
+    ],
+    "objective": "Representar generación de textos y guiones de alta conversión.",
+    "keywords": [
+      "copywriting",
+      "guion",
+      "texto",
+      "persuasion",
+      "publicidad"
+    ],
+    "prompt": "Close-up of a sleek fountain pen resting beside a glowing minimalist wireless keyboard and warm desk lamp, editorial creative studio vibe, photorealistic, no text"
+  },
+  {
+    "id": "mk_adv_08",
+    "product": "marketing",
+    "category": "advertising",
+    "relPath": "marketing/advertising/mk_adv_08.jpg",
+    "title": "Producción Audiovisual Automatizada",
+    "description": "Línea de tiempo de edición de vídeo flotando en cristal con transiciones doradas.",
+    "emotions": [
+      "velocidad",
+      "magia",
+      "profesionalismo",
+      "eficiencia"
+    ],
+    "objective": "Mostrar creación automática de vídeos con voz, música e imágenes.",
+    "keywords": [
+      "edicion",
+      "video",
+      "timeline",
+      "automatizado",
+      "produccion"
+    ],
+    "prompt": "Holographic video editing timeline with glowing golden audio waveforms and crisp visual frame thumbnails floating over a dark studio desk, photorealistic, no text"
+  },
+  {
+    "id": "mk_adv_09",
+    "product": "marketing",
+    "category": "advertising",
+    "relPath": "marketing/advertising/mk_adv_09.jpg",
+    "title": "Diferenciación de Marca Única",
+    "description": "Esfera dorada brillante destacando entre docenas de esferas grises.",
+    "emotions": [
+      "diferenciacion",
+      "liderazgo",
+      "orgullo",
+      "victoria"
+    ],
+    "objective": "Comunicar cómo destacar frente a la competencia saturada.",
+    "keywords": [
+      "diferenciacion",
+      "competencia",
+      "destacar",
+      "marca",
+      "oro"
+    ],
+    "prompt": "One radiant glowing golden glass sphere standing out in sharp focus among rows of matte grey spheres, dramatic studio lighting, conceptual photorealistic, no text"
+  },
+  {
+    "id": "mk_adv_10",
+    "product": "marketing",
+    "category": "advertising",
+    "relPath": "marketing/advertising/mk_adv_10.jpg",
+    "title": "Agencia Creativa Colaborando",
+    "description": "Equipo creativo joven revisando bocetos y campañas en pantalla grande.",
+    "emotions": [
+      "entusiasmo",
+      "equipo",
+      "dinamismo",
+      "innovacion"
+    ],
+    "objective": "Transmitir energía creativa y ejecución profesional.",
+    "keywords": [
+      "agencia",
+      "equipo",
+      "creativos",
+      "campaña",
+      "publicidad"
+    ],
+    "prompt": "Energetic modern marketing team gathered around a large bright display reviewing vibrant campaign visuals in a sunlit industrial loft, candid photorealistic, no text"
+  },
+  {
+    "id": "mk_str_01",
+    "product": "marketing",
+    "category": "marketing_strategy",
+    "relPath": "marketing/marketing_strategy/mk_str_01.jpg",
+    "title": "Estrategia de Marca en Cristal",
+    "description": "Estratega dibujando mapas de crecimiento sobre una pizarra de vidrio transparente.",
+    "emotions": [
+      "vision",
+      "estrategia",
+      "claridad",
+      "liderazgo"
+    ],
+    "objective": "Mostrar planificación estratégica basada en datos e IA.",
+    "keywords": [
+      "estrategia",
+      "marca",
+      "planificacion",
+      "pizarra",
+      "crecimiento"
+    ],
+    "prompt": "Marketing strategist sketching clean geometric growth diagrams on a transparent glass board in a bright modern office, natural daylight, photorealistic, no text"
+  },
+  {
+    "id": "mk_str_02",
+    "product": "marketing",
+    "category": "marketing_strategy",
+    "relPath": "marketing/marketing_strategy/mk_str_02.jpg",
+    "title": "Embudo de Conversión Luminoso",
+    "description": "Visualización 3D de un embudo cristalino transformando visitantes en clientes.",
+    "emotions": [
+      "precision",
+      "conversion",
+      "exito",
+      "orden"
+    ],
+    "objective": "Explicar captación de leads y conversión comercial.",
+    "keywords": [
+      "embudo",
+      "funnel",
+      "conversion",
+      "leads",
+      "clientes",
+      "marketing"
+    ],
+    "prompt": "Sleek 3D translucent glass funnel floating in dark studio space, glowing blue particles entering top and concentrated bright gold spheres exiting bottom, photorealistic, no text"
+  },
+  {
+    "id": "mk_str_03",
+    "product": "marketing",
+    "category": "marketing_strategy",
+    "relPath": "marketing/marketing_strategy/mk_str_03.jpg",
+    "title": "Diana de Segmentación Perfecta",
+    "description": "Flecha luminosa acertando en el centro exacto de una diana de cristal.",
+    "emotions": [
+      "precision",
+      "acierto",
+      "victoria",
+      "enfoque"
+    ],
+    "objective": "Mostrar segmentación exacta del cliente ideal.",
+    "keywords": [
+      "segmentacion",
+      "cliente ideal",
+      "target",
+      "precision",
+      "marketing"
+    ],
+    "prompt": "Glowing cyan light arrow hitting the exact center of a sleek crystal glass target bullseye, dramatic dark blue studio background, photorealistic, no text"
+  },
+  {
+    "id": "mk_str_04",
+    "product": "marketing",
+    "category": "marketing_strategy",
+    "relPath": "marketing/marketing_strategy/mk_str_04.jpg",
+    "title": "Brújula de Posicionamiento",
+    "description": "Brújula moderna de aluminio y luz señalando el rumbo del mercado.",
+    "emotions": [
+      "direccion",
+      "seguridad",
+      "descubrimiento",
+      "vision"
+    ],
+    "objective": "Orientar campañas hacia objetivos comerciales claros.",
+    "keywords": [
+      "brujula",
+      "rumbo",
+      "posicionamiento",
+      "mercado",
+      "estrategia"
+    ],
+    "prompt": "Luxury brushed titanium compass with a subtle glowing blue needle resting on a dark slate architectural plan, macro studio photography, no text"
+  },
+  {
+    "id": "mk_str_05",
+    "product": "marketing",
+    "category": "marketing_strategy",
+    "relPath": "marketing/marketing_strategy/mk_str_05.jpg",
+    "title": "Conexión Emocional con la Audiencia",
+    "description": "Puente luminoso uniendo dos siluetas de cristal en armonía.",
+    "emotions": [
+      "empatia",
+      "conexion",
+      "confianza",
+      "calidez"
+    ],
+    "objective": "Resaltar que el marketing efectivo conecta emociones reales.",
+    "keywords": [
+      "audiencia",
+      "emocion",
+      "conexion",
+      "puente",
+      "marketing"
+    ],
+    "prompt": "Warm golden light bridge connecting two minimalist glowing silhouettes across a serene reflective surface, artistic conceptual photography, no text"
+  },
+  {
+    "id": "mk_str_06",
+    "product": "marketing",
+    "category": "marketing_strategy",
+    "relPath": "marketing/marketing_strategy/mk_str_06.jpg",
+    "title": "Ajedrez Estratégico Corporativo",
+    "description": "Pieza reina de cristal iluminada liderando el tablero de mercado.",
+    "emotions": [
+      "inteligencia",
+      "estrategia",
+      "poder",
+      "ventaja"
+    ],
+    "objective": "Comunicar ventaja competitiva inteligente.",
+    "keywords": [
+      "ajedrez",
+      "ventaja",
+      "competitiva",
+      "estrategia",
+      "liderazgo"
+    ],
+    "prompt": "Minimalist frosted glass chess pieces on a sleek dark marble board with the queen glowing softly in warm gold light, shallow depth of field, photorealistic, no text"
+  },
+  {
+    "id": "mk_str_07",
+    "product": "marketing",
+    "category": "marketing_strategy",
+    "relPath": "marketing/marketing_strategy/mk_str_07.jpg",
+    "title": "Calendario Editorial de Contenidos",
+    "description": "Bloques creativos perfectamente programados a lo largo de la semana.",
+    "emotions": [
+      "constancia",
+      "orden",
+      "tranquilidad",
+      "profesionalismo"
+    ],
+    "objective": "Mostrar publicación constante y planificada sin esfuerzo.",
+    "keywords": [
+      "calendario editorial",
+      "contenido",
+      "programacion",
+      "constancia"
+    ],
+    "prompt": "Clean modern desk setup with sleek tablet showing colorful organized content blocks and studio accessories in bright morning light, photorealistic, no text"
+  },
+  {
+    "id": "mk_str_08",
+    "product": "marketing",
+    "category": "marketing_strategy",
+    "relPath": "marketing/marketing_strategy/mk_str_08.jpg",
+    "title": "Imán de Atracción de Clientes",
+    "description": "Imán minimalista metálico atrayendo esferas doradas brillantes.",
+    "emotions": [
+      "atraccion",
+      "exito",
+      "magnetismo",
+      "crecimiento"
+    ],
+    "objective": "Visualizar inbound marketing y atracción orgánica de leads.",
+    "keywords": [
+      "inbound",
+      "atraccion",
+      "iman",
+      "leads",
+      "clientes"
+    ],
+    "prompt": "Sleek brushed steel horseshoe magnet smoothly attracting glowing golden spheres across a clean white surface, minimalist 3D studio render, photorealistic, no text"
+  },
+  {
+    "id": "mk_str_09",
+    "product": "marketing",
+    "category": "marketing_strategy",
+    "relPath": "marketing/marketing_strategy/mk_str_09.jpg",
+    "title": "Expansión Global de Marca",
+    "description": "Globo terráqueo cristalino con arcos dorados conectando continentes.",
+    "emotions": [
+      "gloria",
+      "expansion",
+      "ambicion",
+      "alcance"
+    ],
+    "objective": "Mostrar proyección internacional y crecimiento sin fronteras.",
+    "keywords": [
+      "global",
+      "expansion",
+      "mundo",
+      "internacional",
+      "marca"
+    ],
+    "prompt": "Translucent glass globe resting on a modern desk with delicate glowing gold network arcs connecting continents, soft ambient blue background, photorealistic, no text"
+  },
+  {
+    "id": "mk_acc_01",
+    "product": "marketing",
+    "category": "acceptance_approval",
+    "relPath": "marketing/acceptance_approval/mk_acc_01.jpg",
+    "title": "Aprobación Entusiasta del Cliente",
+    "description": "Cliente sonriendo y asintiendo satisfecho al ver la propuesta en pantalla.",
+    "emotions": [
+      "aceptacion",
+      "alegria",
+      "confianza",
+      "victoria"
+    ],
+    "objective": "Mostrar la aceptación inmediata de campañas generadas por IA.",
+    "keywords": [
+      "aceptacion",
+      "aprobacion",
+      "cliente",
+      "sonrisa",
+      "satisfaccion"
+    ],
+    "prompt": "Happy business client smiling warmly and giving subtle thumbs up while reviewing a sleek laptop presentation with a consultant, bright modern office, photorealistic, no text"
+  },
+  {
+    "id": "mk_acc_02",
+    "product": "marketing",
+    "category": "acceptance_approval",
+    "relPath": "marketing/acceptance_approval/mk_acc_02.jpg",
+    "title": "Cinco Estrellas de Excelencia",
+    "description": "Cinco estrellas doradas cristalinas flotando sobre una escena cálida.",
+    "emotions": [
+      "orgullo",
+      "calidad",
+      "aceptacion",
+      "gloria"
+    ],
+    "objective": "Reforzar prueba social y satisfacción garantizada.",
+    "keywords": [
+      "estrellas",
+      "reseñas",
+      "calidad",
+      "aceptacion",
+      "excelencia"
+    ],
+    "prompt": "Five radiant polished golden glass stars floating in a gentle arc over a clean warm beige pedestal, soft studio lighting, photorealistic 3D, no text"
+  },
+  {
+    "id": "mk_acc_03",
+    "product": "marketing",
+    "category": "acceptance_approval",
+    "relPath": "marketing/acceptance_approval/mk_acc_03.jpg",
+    "title": "Aplauso y Celebración de Equipo",
+    "description": "Personas aplaudiendo con sonrisas genuinas tras una presentación brillante.",
+    "emotions": [
+      "victoria",
+      "aceptacion",
+      "entusiasmo",
+      "gloria"
+    ],
+    "objective": "Capturar el momento de éxito tras lanzar una campaña.",
+    "keywords": [
+      "aplauso",
+      "celebracion",
+      "exito",
+      "equipo",
+      "victoria"
+    ],
+    "prompt": "Group of modern diverse professionals clapping and smiling warmly in a bright sunlit auditorium conference room, authentic joyful emotion, photorealistic, no text"
+  },
+  {
+    "id": "mk_acc_04",
+    "product": "marketing",
+    "category": "acceptance_approval",
+    "relPath": "marketing/acceptance_approval/mk_acc_04.jpg",
+    "title": "Sello Verde de Campaña Aprobada",
+    "description": "Botón cristalino esmeralda iluminado simbolizando luz verde inmediata.",
+    "emotions": [
+      "aprobacion",
+      "seguridad",
+      "alivio",
+      "avance"
+    ],
+    "objective": "Representar el flujo de aprobación rápida con un clic.",
+    "keywords": [
+      "aprobado",
+      "luz verde",
+      "check",
+      "aceptacion",
+      "confirmado"
+    ],
+    "prompt": "Glowing emerald green glass checkmark emblem floating softly above a sleek dark glass touchscreen surface, luxury UI photography, no text"
+  },
+  {
+    "id": "mk_acc_05",
+    "product": "marketing",
+    "category": "acceptance_approval",
+    "relPath": "marketing/acceptance_approval/mk_acc_05.jpg",
+    "title": "Reacción Positiva en Comunidad",
+    "description": "Corazones y destellos suaves elevándose sobre un móvil sostenido con alegría.",
+    "emotions": [
+      "aceptacion",
+      "cariño",
+      "viralidad",
+      "alegria"
+    ],
+    "objective": "Mostrar recepción cálida y orgánica en redes sociales.",
+    "keywords": [
+      "likes",
+      "aceptacion",
+      "comunidad",
+      "corazones",
+      "redes"
+    ],
+    "prompt": "Close-up of hands holding a sleek smartphone with soft glowing warm coral light orbs and subtle floating heart reflections rising above the screen, cozy bokeh, photorealistic, no text"
+  },
+  {
+    "id": "mk_acc_06",
+    "product": "marketing",
+    "category": "acceptance_approval",
+    "relPath": "marketing/acceptance_approval/mk_acc_06.jpg",
+    "title": "Acuerdo Cerrado con Sonrisa",
+    "description": "Dos socios chocando manos o cerrando trato en cafetería ejecutiva luminosa.",
+    "emotions": [
+      "confianza",
+      "aceptacion",
+      "cierre",
+      "optimismo"
+    ],
+    "objective": "Mostrar conversión comercial y cierre de ventas.",
+    "keywords": [
+      "trato",
+      "cierre",
+      "venta",
+      "acuerdo",
+      "confianza"
+    ],
+    "prompt": "Two smiling professionals shaking hands across a clean cafe table with laptop and espresso in warm natural sunlight, authentic business photography, no text"
+  },
+  {
+    "id": "mk_acc_07",
+    "product": "marketing",
+    "category": "acceptance_approval",
+    "relPath": "marketing/acceptance_approval/mk_acc_07.jpg",
+    "title": "Testimonio Auténtico de Cliente Feliz",
+    "description": "Retrato cálido de empresaria satisfecha en su negocio mirando a cámara.",
+    "emotions": [
+      "confianza",
+      "autenticidad",
+      "alegria",
+      "respaldo"
+    ],
+    "objective": "Humanizar resultados reales con clientes satisfechos.",
+    "keywords": [
+      "testimonio",
+      "cliente",
+      "feliz",
+      "empresaria",
+      "confianza"
+    ],
+    "prompt": "Warm authentic portrait of a smiling boutique business owner standing in her bright modern shop looking confidently at camera, natural light, photorealistic, no text"
+  },
+  {
+    "id": "mk_acc_08",
+    "product": "marketing",
+    "category": "acceptance_approval",
+    "relPath": "marketing/acceptance_approval/mk_acc_08.jpg",
+    "title": "Lluvia de Mensajes de Interés",
+    "description": "Notificaciones luminosas llegando suavemente a una tablet ejecutiva.",
+    "emotions": [
+      "aceptacion",
+      "demanda",
+      "exito",
+      "entusiasmo"
+    ],
+    "objective": "Ilustrar alta respuesta de prospectos interesados.",
+    "keywords": [
+      "mensajes",
+      "leads",
+      "interes",
+      "demanda",
+      "respuestas"
+    ],
+    "prompt": "Sleek modern tablet on a clean oak desk surrounded by soft glowing blue notification light pulses, bright morning atmosphere, photorealistic, no text"
+  },
+  {
+    "id": "mk_acc_09",
+    "product": "marketing",
+    "category": "acceptance_approval",
+    "relPath": "marketing/acceptance_approval/mk_acc_09.jpg",
+    "title": "Brindis por Récord de Campaña",
+    "description": "Equipo celebrando con tazas y sonrisas un hito de aceptación récord.",
+    "emotions": [
+      "gloria",
+      "victoria",
+      "union",
+      "celebracion"
+    ],
+    "objective": "Cerrar vídeos motivacionales con sensación de triunfo.",
+    "keywords": [
+      "record",
+      "celebracion",
+      "triunfo",
+      "equipo",
+      "victoria"
+    ],
+    "prompt": "Small creative team clinking coffee mugs in celebration in front of a bright window overlooking city skyline, warm golden hour glow, photorealistic, no text"
+  },
+  {
+    "id": "mk_soc_01",
+    "product": "marketing",
+    "category": "social_media",
+    "relPath": "marketing/social_media/mk_soc_01.jpg",
+    "title": "Creadora Grabando Reels y Shorts",
+    "description": "Creadora con aro de luz y smartphone en trípode produciendo contenido dinámico.",
+    "emotions": [
+      "energia",
+      "creatividad",
+      "cercania",
+      "modernidad"
+    ],
+    "objective": "Mostrar creación de vídeos cortos verticales para redes sociales.",
+    "keywords": [
+      "reels",
+      "shorts",
+      "tiktok",
+      "redes sociales",
+      "creador",
+      "video"
+    ],
+    "prompt": "Charismatic young creator filming vertical video on a smartphone mounted on a sleek ring light tripod in a stylish modern studio, vibrant soft lighting, photorealistic, no text"
+  },
+  {
+    "id": "mk_soc_02",
+    "product": "marketing",
+    "category": "social_media",
+    "relPath": "marketing/social_media/mk_soc_02.jpg",
+    "title": "Red de Conexiones Sociales Brillantes",
+    "description": "Constelación luminosa de perfiles y nodos conectados en tiempo real.",
+    "emotions": [
+      "conexion",
+      "alcance",
+      "viralidad",
+      "comunidad"
+    ],
+    "objective": "Visualizar propagación orgánica en redes sociales.",
+    "keywords": [
+      "red",
+      "comunidad",
+      "conexiones",
+      "viral",
+      "redes sociales"
+    ],
+    "prompt": "Glowing 3D network constellation of vibrant coral, cyan and gold light nodes interconnected over a sleek dark glass globe, modern digital art, photorealistic, no text"
+  },
+  {
+    "id": "mk_soc_03",
+    "product": "marketing",
+    "category": "social_media",
+    "relPath": "marketing/social_media/mk_soc_03.jpg",
+    "title": "Feed Visual Dinámico en Smartphone",
+    "description": "Teléfono elegante mostrando tarjetas visuales coloridas de alto engagement.",
+    "emotions": [
+      "dinamismo",
+      "atractivo",
+      "modernidad",
+      "interes"
+    ],
+    "objective": "Mostrar estética profesional del contenido publicado.",
+    "keywords": [
+      "smartphone",
+      "feed",
+      "instagram",
+      "linkedin",
+      "contenido"
+    ],
+    "prompt": "Close-up of a sleek frameless smartphone held over a marble table showing glowing vibrant abstract video cards, soft pastel studio bokeh, photorealistic, no text"
+  },
+  {
+    "id": "mk_soc_04",
+    "product": "marketing",
+    "category": "social_media",
+    "relPath": "marketing/social_media/mk_soc_04.jpg",
+    "title": "Podcast y Contenido Multimedia",
+    "description": "Micrófono profesional con luz cálida creando autoridad de marca.",
+    "emotions": [
+      "autoridad",
+      "cercania",
+      "voz",
+      "confianza"
+    ],
+    "objective": "Representar formatos de voz, vídeo y storytelling.",
+    "keywords": [
+      "podcast",
+      "microfono",
+      "audio",
+      "contenido",
+      "autoridad"
+    ],
+    "prompt": "High-end broadcast condenser microphone in a stylish acoustic studio with warm amber and cool blue rim lights, shallow depth of field, photorealistic, no text"
+  },
+  {
+    "id": "mk_soc_05",
+    "product": "marketing",
+    "category": "social_media",
+    "relPath": "marketing/social_media/mk_soc_05.jpg",
+    "title": "Publicación Multicanal Simultánea",
+    "description": "Un vídeo central multiplicándose hacia múltiples pantallas y plataformas.",
+    "emotions": [
+      "eficiencia",
+      "escala",
+      "velocidad",
+      "alcance"
+    ],
+    "objective": "Mostrar publicación simultánea en Instagram, TikTok, LinkedIn y YouTube.",
+    "keywords": [
+      "multicanal",
+      "plataformas",
+      "publicacion",
+      "redes",
+      "escala"
+    ],
+    "prompt": "One radiant glowing central video frame projecting clean light beams onto four sleek floating screens arranged in an arc, dark studio, photorealistic, no text"
+  },
+  {
+    "id": "mk_soc_06",
+    "product": "marketing",
+    "category": "social_media",
+    "relPath": "marketing/social_media/mk_soc_06.jpg",
+    "title": "Engagement Real en Movimiento",
+    "description": "Personas interactuando felices con contenido desde una cafetería urbana.",
+    "emotions": [
+      "cercania",
+      "vida",
+      "conexion",
+      "alegria"
+    ],
+    "objective": "Mostrar consumo real de redes sociales en el día a día.",
+    "keywords": [
+      "engagement",
+      "personas",
+      "movil",
+      "interaccion",
+      "redes"
+    ],
+    "prompt": "Friends smiling together at an outdoor sunny cafe looking at an engaging video on a smartphone, natural candid lifestyle photography, no text"
+  },
+  {
+    "id": "mk_soc_07",
+    "product": "marketing",
+    "category": "social_media",
+    "relPath": "marketing/social_media/mk_soc_07.jpg",
+    "title": "Estudio Doméstico Profesional",
+    "description": "Setup limpio de creador con cámara web 4K, luz suave y fondo estético.",
+    "emotions": [
+      "accesibilidad",
+      "calidad",
+      "profesionalismo",
+      "orden"
+    ],
+    "objective": "Inspirar a emprendedores a proyectar imagen de gran marca.",
+    "keywords": [
+      "setup",
+      "creador",
+      "emprendedor",
+      "camara",
+      "redes"
+    ],
+    "prompt": "Clean modern creator desk setup with mirrorless camera, soft LED key light, plants and warm wood shelving, crisp architectural lighting, photorealistic, no text"
+  },
+  {
+    "id": "mk_soc_08",
+    "product": "marketing",
+    "category": "social_media",
+    "relPath": "marketing/social_media/mk_soc_08.jpg",
+    "title": "Tendencia en Ascenso",
+    "description": "Cohete minimalista de cristal despegando entre partículas luminosas.",
+    "emotions": [
+      "impulso",
+      "viralidad",
+      "gloria",
+      "entusiasmo"
+    ],
+    "objective": "Visualizar crecimiento acelerado de seguidores y visualizaciones.",
+    "keywords": [
+      "viral",
+      "tendencia",
+      "despegue",
+      "cohete",
+      "crecimiento"
+    ],
+    "prompt": "Minimalist frosted glass rocket launching upward leaving a trail of sparkling cyan and gold light particles against deep blue backdrop, photorealistic 3D, no text"
+  },
+  {
+    "id": "mk_soc_09",
+    "product": "marketing",
+    "category": "social_media",
+    "relPath": "marketing/social_media/mk_soc_09.jpg",
+    "title": "Comunidad Fiel Conectada",
+    "description": "Círculo luminoso de personas colaborando en un espacio moderno abierto.",
+    "emotions": [
+      "pertenencia",
+      "comunidad",
+      "confianza",
+      "calidez"
+    ],
+    "objective": "Mostrar fidelización de comunidad alrededor de la marca.",
+    "keywords": [
+      "comunidad",
+      "fidelidad",
+      "audiencia",
+      "grupo",
+      "marca"
+    ],
+    "prompt": "Warm overhead view of diverse people gathered in a bright modern lounge space connected in lively conversation, sunlit architectural photography, no text"
+  },
+  {
+    "id": "mk_ana_01",
+    "product": "marketing",
+    "category": "analytics_campaigns",
+    "relPath": "marketing/analytics_campaigns/mk_ana_01.jpg",
+    "title": "Gráfico de Crecimiento ROI Ascendente",
+    "description": "Curva luminosa dorada y esmeralda subiendo con fuerza sobre fondo oscuro elegante.",
+    "emotions": [
+      "victoria",
+      "rentabilidad",
+      "exito",
+      "gloria"
+    ],
+    "objective": "Demostrar retorno de inversión y aumento de ventas.",
+    "keywords": [
+      "roi",
+      "crecimiento",
+      "grafico",
+      "ventas",
+      "analitica",
+      "subida"
+    ],
+    "prompt": "Sleek 3D glowing emerald and gold upward growth line chart floating above a dark brushed glass surface, sharp focus, luxury fintech aesthetic, photorealistic, no text"
+  },
+  {
+    "id": "mk_ana_02",
+    "product": "marketing",
+    "category": "analytics_campaigns",
+    "relPath": "marketing/analytics_campaigns/mk_ana_02.jpg",
+    "title": "Panel de Métricas en Tiempo Real",
+    "description": "Pantalla ultranítida con indicadores limpios de rendimiento de campaña.",
+    "emotions": [
+      "control",
+      "claridad",
+      "inteligencia",
+      "confianza"
+    ],
+    "objective": "Mostrar seguimiento claro de clics, leads y conversiones.",
+    "keywords": [
+      "metricas",
+      "dashboard",
+      "panel",
+      "analitica",
+      "campañas"
+    ],
+    "prompt": "Clean modern glass display showing minimalist glowing bar charts and circular progress rings in cyan and coral without legible text, dark studio desk, photorealistic, no text"
+  },
+  {
+    "id": "mk_ana_03",
+    "product": "marketing",
+    "category": "analytics_campaigns",
+    "relPath": "marketing/analytics_campaigns/mk_ana_03.jpg",
+    "title": "Optimización Basada en Datos",
+    "description": "Analista ajustando controles luminosos para maximizar el rendimiento.",
+    "emotions": [
+      "precision",
+      "maestria",
+      "mejora",
+      "enfoque"
+    ],
+    "objective": "Explicar mejora continua de campañas mediante IA.",
+    "keywords": [
+      "optimizacion",
+      "datos",
+      "analista",
+      "rendimiento",
+      "ia"
+    ],
+    "prompt": "Marketing analyst adjusting sleek holographic sliders on a bright glass desk in a modern office, focused expression, cinematic lighting, photorealistic, no text"
+  },
+  {
+    "id": "mk_ana_04",
+    "product": "marketing",
+    "category": "analytics_campaigns",
+    "relPath": "marketing/analytics_campaigns/mk_ana_04.jpg",
+    "title": "Barras de Crecimiento Tridimensionales",
+    "description": "Columnas de cristal iluminadas creciendo escalonadamente hacia la cima.",
+    "emotions": [
+      "progreso",
+      "solidez",
+      "victoria",
+      "ambicion"
+    ],
+    "objective": "Representar crecimiento sostenido mes a mes.",
+    "keywords": [
+      "barras",
+      "crecimiento",
+      "escalado",
+      "metricas",
+      "exito"
+    ],
+    "prompt": "Ascending translucent crystal glass bar chart columns illuminated from within by warm gold and cyan light on a reflective dark surface, photorealistic, no text"
+  },
+  {
+    "id": "mk_ana_05",
+    "product": "marketing",
+    "category": "analytics_campaigns",
+    "relPath": "marketing/analytics_campaigns/mk_ana_05.jpg",
+    "title": "Descubrimiento de Oportunidades Ocultas",
+    "description": "Lente cristalina revelando un patrón brillante de oportunidades en los datos.",
+    "emotions": [
+      "descubrimiento",
+      "curiosidad",
+      "inteligencia",
+      "asombro"
+    ],
+    "objective": "Mostrar cómo la IA detecta nichos y tendencias antes que nadie.",
+    "keywords": [
+      "oportunidades",
+      "tendencias",
+      "descubrimiento",
+      "datos",
+      "nicho"
+    ],
+    "prompt": "Polished optical glass lens magnifying a glowing golden cluster inside a field of soft blue data points, macro studio photography, no text"
+  },
+  {
+    "id": "mk_ana_06",
+    "product": "marketing",
+    "category": "analytics_campaigns",
+    "relPath": "marketing/analytics_campaigns/mk_ana_06.jpg",
+    "title": "Pruebas A/B Inteligentes",
+    "description": "Dos rutas luminosas comparándose donde la ganadora brilla con intensidad dorada.",
+    "emotions": [
+      "claridad",
+      "eleccion",
+      "precision",
+      "victoria"
+    ],
+    "objective": "Ilustrar selección automática de los mejores anuncios.",
+    "keywords": [
+      "ab testing",
+      "comparacion",
+      "ganador",
+      "optimizacion",
+      "campaña"
+    ],
+    "prompt": "Two sleek glowing light paths diverging on a dark glass surface, one bright radiant gold winning path and one soft dim silver path, minimalist 3D, photorealistic, no text"
+  },
+  {
+    "id": "mk_ana_07",
+    "product": "marketing",
+    "category": "analytics_campaigns",
+    "relPath": "marketing/analytics_campaigns/mk_ana_07.jpg",
+    "title": "Equipo Celebrando Resultados Trimestrales",
+    "description": "Directivos revisando con satisfacción el salto en ventas del trimestre.",
+    "emotions": [
+      "orgullo",
+      "victoria",
+      "confianza",
+      "gloria"
+    ],
+    "objective": "Mostrar impacto real en facturación.",
+    "keywords": [
+      "ventas",
+      "resultados",
+      "trimestre",
+      "directivos",
+      "exito"
+    ],
+    "prompt": "Two smiling business executives looking at an upward glowing chart on a sleek laptop in a sunlit glass conference room, photorealistic, no text"
+  },
+  {
+    "id": "mk_ana_08",
+    "product": "marketing",
+    "category": "analytics_campaigns",
+    "relPath": "marketing/analytics_campaigns/mk_ana_08.jpg",
+    "title": "Radar de Mercado en Tiempo Real",
+    "description": "Escáner circular luminoso detectando demanda activa alrededor.",
+    "emotions": [
+      "alerta",
+      "precision",
+      "descubrimiento",
+      "velocidad"
+    ],
+    "objective": "Representar detección temprana de intención de compra.",
+    "keywords": [
+      "radar",
+      "mercado",
+      "demanda",
+      "deteccion",
+      "leads"
+    ],
+    "prompt": "Sleek dark blue holographic radar sweep illuminating bright warm gold signal dots on a glass surface, futuristic fintech aesthetic, photorealistic, no text"
+  },
+  {
+    "id": "mk_ana_09",
+    "product": "marketing",
+    "category": "analytics_campaigns",
+    "relPath": "marketing/analytics_campaigns/mk_ana_09.jpg",
+    "title": "Multiplicador de Alcance Orgánico",
+    "description": "Prisma de cristal dividiendo un haz de luz en múltiples rayos vibrantes.",
+    "emotions": [
+      "multiplicacion",
+      "creatividad",
+      "gloria",
+      "energia"
+    ],
+    "objective": "Simbolizar cómo una idea se multiplica en decenas de piezas.",
+    "keywords": [
+      "prisma",
+      "multiplicar",
+      "contenido",
+      "alcance",
+      "energia"
+    ],
+    "prompt": "Crystal glass prism on a sleek dark surface splitting a single pure white beam into vibrant cyan, gold and coral light rays, studio photography, no text"
+  },
+  {
+    "id": "eva_cls_01",
+    "product": "eva",
+    "category": "school_classes",
+    "relPath": "eva/school_classes/eva_cls_01.jpg",
+    "title": "Aula Escolar Luminosa y Alegre",
+    "description": "Niños sonrientes levantando la mano en una clase moderna llena de luz natural.",
+    "emotions": [
+      "alegria",
+      "entusiasmo",
+      "aprendizaje",
+      "esperanza"
+    ],
+    "objective": "Mostrar un entorno escolar motivador donde Eva potencia la participación.",
+    "keywords": [
+      "clase escolar",
+      "niños",
+      "colegio",
+      "aula",
+      "aprendizaje",
+      "eva"
+    ],
+    "prompt": "Bright cheerful modern elementary school classroom with smiling young children raising hands happily at colorful wooden desks, warm sunlight, authentic photography, no text"
+  },
+  {
+    "id": "eva_cls_02",
+    "product": "eva",
+    "category": "school_classes",
+    "relPath": "eva/school_classes/eva_cls_02.jpg",
+    "title": "Niños Descubriendo la Lectura",
+    "description": "Pequeños estudiantes leyendo juntos un libro ilustrado con rostros de asombro.",
+    "emotions": [
+      "descubrimiento",
+      "ternura",
+      "curiosidad",
+      "alegria"
+    ],
+    "objective": "Conectar con el desarrollo del lenguaje y la lectura infantil.",
+    "keywords": [
+      "lectura",
+      "niños",
+      "libro",
+      "descubrimiento",
+      "lenguaje",
+      "escuela"
+    ],
+    "prompt": "Two young elementary students leaning over a colorful picture book with expressions of wonder and joy in a sunny school library, warm editorial photography, no text"
+  },
+  {
+    "id": "eva_cls_03",
+    "product": "eva",
+    "category": "school_classes",
+    "relPath": "eva/school_classes/eva_cls_03.jpg",
+    "title": "Clase Interactiva con Pizarra Digital",
+    "description": "Alumnos participando activamente frente a una pantalla interactiva colorida.",
+    "emotions": [
+      "participacion",
+      "diversion",
+      "innovacion",
+      "progreso"
+    ],
+    "objective": "Integrar tecnología educativa amigable en el aula.",
+    "keywords": [
+      "pizarra digital",
+      "clase",
+      "interactiva",
+      "alumnos",
+      "tecnologia"
+    ],
+    "prompt": "Young elementary students gathered happily in front of a bright colorful interactive classroom screen with playful shapes, warm natural light, photorealistic, no text"
+  },
+  {
+    "id": "eva_cls_04",
+    "product": "eva",
+    "category": "school_classes",
+    "relPath": "eva/school_classes/eva_cls_04.jpg",
+    "title": "Trabajo en Equipo en Mesa Escolar",
+    "description": "Niños colaborando con bloques de letras y colores en el aula.",
+    "emotions": [
+      "colaboracion",
+      "amistad",
+      "alegria",
+      "inclusion"
+    ],
+    "objective": "Promover aprendizaje inclusivo y social en el aula.",
+    "keywords": [
+      "equipo",
+      "inclusion",
+      "niños",
+      "aula",
+      "colaboracion"
+    ],
+    "prompt": "Diverse group of happy young children working together with colorful wooden letter blocks at a round classroom table, bright airy school room, photorealistic, no text"
+  },
+  {
+    "id": "eva_cls_05",
+    "product": "eva",
+    "category": "school_classes",
+    "relPath": "eva/school_classes/eva_cls_05.jpg",
+    "title": "Niño Celebrando su Primer Logro al Hablar",
+    "description": "Pequeño sonriendo orgulloso tras completar un ejercicio frente a su clase.",
+    "emotions": [
+      "victoria",
+      "orgullo",
+      "superacion",
+      "ternura"
+    ],
+    "objective": "Mostrar la emoción de superar barreras del habla.",
+    "keywords": [
+      "logro",
+      "habla",
+      "superacion",
+      "niño",
+      "orgullo",
+      "victoria"
+    ],
+    "prompt": "Proud smiling 7-year-old boy clapping happily at his desk in a sunlit elementary classroom after succeeding at an exercise, heartwarming candid photography, no text"
+  },
+  {
+    "id": "eva_cls_06",
+    "product": "eva",
+    "category": "school_classes",
+    "relPath": "eva/school_classes/eva_cls_06.jpg",
+    "title": "Rincón Creativo de Educación Infantil",
+    "description": "Espacio escolar acogedor con colores suaves, cojines y material didáctico.",
+    "emotions": [
+      "calma",
+      "seguridad",
+      "ternura",
+      "bienestar"
+    ],
+    "objective": "Transmitir un ambiente seguro y sin presión para niños.",
+    "keywords": [
+      "educacion infantil",
+      "aula",
+      "acogedor",
+      "seguridad",
+      "colegio"
+    ],
+    "prompt": "Cozy sunlit kindergarten reading and speech corner with soft pastel cushions, wooden shelves, picture books and warm plants, welcoming atmosphere, photorealistic, no text"
+  },
+  {
+    "id": "eva_cls_07",
+    "product": "eva",
+    "category": "school_classes",
+    "relPath": "eva/school_classes/eva_cls_07.jpg",
+    "title": "Estudiantes Usando Tablets Educativas",
+    "description": "Niños practicando ejercicios de voz con auriculares infantiles y tablets.",
+    "emotions": [
+      "enfoque",
+      "diversion",
+      "autonomia",
+      "modernidad"
+    ],
+    "objective": "Mostrar uso práctico de Eva en aulas o en casa.",
+    "keywords": [
+      "tablets",
+      "auriculares",
+      "niños",
+      "practica",
+      "educacion"
+    ],
+    "prompt": "Happy young girl wearing pastel blue kids headphones speaking gently into a colorful tablet in a bright classroom, shallow depth of field, photorealistic, no text"
+  },
+  {
+    "id": "eva_cls_08",
+    "product": "eva",
+    "category": "school_classes",
+    "relPath": "eva/school_classes/eva_cls_08.jpg",
+    "title": "Mañana de Llegada al Colegio Feliz",
+    "description": "Niños con mochilas entrando alegres a un colegio moderno y luminoso.",
+    "emotions": [
+      "ilusión",
+      "esperanza",
+      "inicio",
+      "alegria"
+    ],
+    "objective": "Evocar ilusión por aprender cada día.",
+    "keywords": [
+      "colegio",
+      "mochila",
+      "niños",
+      "alegria",
+      "escuela"
+    ],
+    "prompt": "Cheerful young schoolchildren with colorful backpacks walking happily into a bright modern school entrance in morning sunlight, authentic lifestyle photography, no text"
+  },
+  {
+    "id": "eva_cls_09",
+    "product": "eva",
+    "category": "school_classes",
+    "relPath": "eva/school_classes/eva_cls_09.jpg",
+    "title": "Clase de Expresión Oral y Cuentos",
+    "description": "Niños sentados en círculo escuchando atentos una historia mágica.",
+    "emotions": [
+      "asombro",
+      "escucha",
+      "imaginacion",
+      "calidez"
+    ],
+    "objective": "Conectar con la narrativa oral y comprensión infantil.",
+    "keywords": [
+      "cuentos",
+      "expresion oral",
+      "circulo",
+      "niños",
+      "imaginacion"
+    ],
+    "prompt": "Young schoolchildren sitting in a circle on a colorful rug listening attentively with wide eyes in a sunlit classroom, heartwarming photography, no text"
+  },
+  {
+    "id": "eva_cls_10",
+    "product": "eva",
+    "category": "school_classes",
+    "relPath": "eva/school_classes/eva_cls_10.jpg",
+    "title": "Graduación o Premio Escolar de Progreso",
+    "description": "Niños felices mostrando dibujos y estrellas de logro en clase.",
+    "emotions": [
+      "victoria",
+      "gloria",
+      "orgullo",
+      "alegria"
+    ],
+    "objective": "Celebrar avances reales de los alumnos con Eva.",
+    "keywords": [
+      "premio",
+      "progreso",
+      "logro",
+      "niños",
+      "escuela",
+      "victoria"
+    ],
+    "prompt": "Smiling elementary students holding colorful star stickers and drawings proudly in a bright classroom, joyful celebration, photorealistic, no text"
+  },
+  {
+    "id": "eva_hum_01",
+    "product": "eva",
+    "category": "human_teacher",
+    "relPath": "eva/human_teacher/eva_hum_01.jpg",
+    "title": "Profesora Humana Guiando con Ternura",
+    "description": "Maestra sonriente inclinada junto a un niño ayudándole a pronunciar y leer.",
+    "emotions": [
+      "ternura",
+      "paciencia",
+      "confianza",
+      "vocacion"
+    ],
+    "objective": "Mostrar que la IA acompaña y potencia la labor humana del docente.",
+    "keywords": [
+      "profesora humana",
+      "maestra",
+      "niño",
+      "ayuda",
+      "ternura",
+      "educacion"
+    ],
+    "prompt": "Warm smiling female elementary teacher kneeling beside a young student desk gently helping him read from a colorful book, sunlit classroom, authentic photography, no text"
+  },
+  {
+    "id": "eva_hum_02",
+    "product": "eva",
+    "category": "human_teacher",
+    "relPath": "eva/human_teacher/eva_hum_02.jpg",
+    "title": "Logopeda en Sesión Individualizada",
+    "description": "Especialista del habla trabajando cara a cara con una niña mediante tarjetas visuales.",
+    "emotions": [
+      "cuidado",
+      "empatia",
+      "progreso",
+      "esperanza"
+    ],
+    "objective": "Mostrar el valor clínico de Eva para logopedas y terapeutas.",
+    "keywords": [
+      "logopeda",
+      "terapia del habla",
+      "profesora",
+      "niña",
+      "sesion"
+    ],
+    "prompt": "Kind female speech therapist sitting across a small table from a smiling 6-year-old girl using colorful picture flashcards in a bright cozy clinic room, photorealistic, no text"
+  },
+  {
+    "id": "eva_hum_03",
+    "product": "eva",
+    "category": "human_teacher",
+    "relPath": "eva/human_teacher/eva_hum_03.jpg",
+    "title": "Maestra Celebrando el Avance del Alumno",
+    "description": "Profesora chocando los cinco con un estudiante tras un ejercicio exitoso.",
+    "emotions": [
+      "victoria",
+      "alegria",
+      "motivacion",
+      "cariño"
+    ],
+    "objective": "Transmitir refuerzo positivo y logros compartidos.",
+    "keywords": [
+      "profesora",
+      "chocar cinco",
+      "logro",
+      "motivacion",
+      "alumno"
+    ],
+    "prompt": "Joyful female teacher giving an encouraging high-five to a smiling young student in a bright modern classroom, warm natural light, authentic photography, no text"
+  },
+  {
+    "id": "eva_hum_04",
+    "product": "eva",
+    "category": "human_teacher",
+    "relPath": "eva/human_teacher/eva_hum_04.jpg",
+    "title": "Profesora Revisando Progreso en Tablet",
+    "description": "Educadora analizando métricas claras de evolución de sus alumnos.",
+    "emotions": [
+      "claridad",
+      "control",
+      "tranquilidad",
+      "profesionalismo"
+    ],
+    "objective": "Mostrar informes clínicos y escolares automáticos para docentes.",
+    "keywords": [
+      "profesora",
+      "progreso",
+      "tablet",
+      "informe",
+      "evaluacion"
+    ],
+    "prompt": "Smiling modern female teacher holding a sleek tablet showing colorful progress charts in a sunlit classroom, shallow depth of field, photorealistic, no text"
+  },
+  {
+    "id": "eva_hum_05",
+    "product": "eva",
+    "category": "human_teacher",
+    "relPath": "eva/human_teacher/eva_hum_05.jpg",
+    "title": "Docente Explicando con Entusiasmo",
+    "description": "Profesora dinámica gesticulando con calidez frente a su grupo de niños.",
+    "emotions": [
+      "entusiasmo",
+      "inspiracion",
+      "energia",
+      "vocacion"
+    ],
+    "objective": "Mostrar pasión docente liberada de tareas burocráticas.",
+    "keywords": [
+      "profesora",
+      "clase",
+      "explicacion",
+      "entusiasmo",
+      "docente"
+    ],
+    "prompt": "Engaging young female teacher smiling and gesturing expressively while telling a story to attentive children in a bright classroom, candid photography, no text"
+  },
+  {
+    "id": "eva_hum_06",
+    "product": "eva",
+    "category": "human_teacher",
+    "relPath": "eva/human_teacher/eva_hum_06.jpg",
+    "title": "Reunión Cercana de Profesora y Padres",
+    "description": "Maestra compartiendo buenas noticias de evolución con madre y padre.",
+    "emotions": [
+      "tranquilidad",
+      "confianza",
+      "esperanza",
+      "union"
+    ],
+    "objective": "Mostrar tranquilidad para las familias al ver progreso medible.",
+    "keywords": [
+      "padres",
+      "profesora",
+      "familia",
+      "progreso",
+      "confianza"
+    ],
+    "prompt": "Warm elementary teacher showing positive progress on a tablet to smiling parents in a sunlit school meeting room, reassuring atmosphere, photorealistic, no text"
+  },
+  {
+    "id": "eva_hum_07",
+    "product": "eva",
+    "category": "human_teacher",
+    "relPath": "eva/human_teacher/eva_hum_07.jpg",
+    "title": "Terapeuta Jugando con Bloques Fonéticos",
+    "description": "Especialista guiando un juego lúdico de palabras sobre una mesa luminosa.",
+    "emotions": [
+      "juego",
+      "paciencia",
+      "descubrimiento",
+      "calidez"
+    ],
+    "objective": "Unir terapia profesional con juego divertido.",
+    "keywords": [
+      "terapeuta",
+      "juego",
+      "fonetica",
+      "bloques",
+      "logopedia"
+    ],
+    "prompt": "Friendly speech specialist playing with colorful wooden letter cubes alongside a young child in a warm sunlit therapy studio, photorealistic, no text"
+  },
+  {
+    "id": "eva_hum_08",
+    "product": "eva",
+    "category": "human_teacher",
+    "relPath": "eva/human_teacher/eva_hum_08.jpg",
+    "title": "Profesora Escuchando con Atención Plena",
+    "description": "Retrato cercano de maestra escuchando con sonrisa serena a un alumno.",
+    "emotions": [
+      "empatia",
+      "escucha",
+      "respeto",
+      "ternura"
+    ],
+    "objective": "Poner en valor la escucha empática que Eva respeta y complementa.",
+    "keywords": [
+      "escucha",
+      "empatia",
+      "profesora",
+      "paciencia",
+      "atencion"
+    ],
+    "prompt": "Close-up authentic photo of a kind female teacher listening attentively with a warm encouraging smile to a young child speaking, soft classroom light, photorealistic, no text"
+  },
+  {
+    "id": "eva_hum_09",
+    "product": "eva",
+    "category": "human_teacher",
+    "relPath": "eva/human_teacher/eva_hum_09.jpg",
+    "title": "Maestra Preparando Clase en Minutos",
+    "description": "Profesora relajada tomando té mientras su asistente digital organiza materiales.",
+    "emotions": [
+      "alivio",
+      "calma",
+      "tiempo libre",
+      "bienestar"
+    ],
+    "objective": "Mostrar cómo la IA ahorra horas de preparación docente.",
+    "keywords": [
+      "preparacion",
+      "profesora",
+      "ahorro de tiempo",
+      "calma",
+      "docente"
+    ],
+    "prompt": "Relaxed female teacher enjoying a cup of herbal tea at her sunlit desk with an open sleek laptop and neat colorful lesson materials, photorealistic, no text"
+  },
+  {
+    "id": "eva_hum_10",
+    "product": "eva",
+    "category": "human_teacher",
+    "relPath": "eva/human_teacher/eva_hum_10.jpg",
+    "title": "Alianza Profesora y Tecnología",
+    "description": "Docente sosteniendo tablet educativa en un aula moderna y humana.",
+    "emotions": [
+      "futuro",
+      "equilibrio",
+      "confianza",
+      "innovacion"
+    ],
+    "objective": "Resumir la sinergia entre educación humana e inteligencia artificial.",
+    "keywords": [
+      "alianza",
+      "profesora",
+      "tecnologia",
+      "innovacion",
+      "educacion"
+    ],
+    "prompt": "Confident smiling female teacher standing in a bright modern classroom holding a sleek tablet with blurred happy students behind, warm editorial photography, no text"
+  },
+  {
+    "id": "eva_rbt_01",
+    "product": "eva",
+    "category": "robot_teacher",
+    "relPath": "eva/robot_teacher/eva_rbt_01.jpg",
+    "title": "Profesora Robot Amigable en el Aula",
+    "description": "Robot educativo blanco y pastel con ojos cálidos enseñando junto a una pizarra.",
+    "emotions": [
+      "asombro",
+      "simpatia",
+      "futuro",
+      "curiosidad"
+    ],
+    "objective": "Presentar a Eva como compañera educativa entrañable.",
+    "keywords": [
+      "profesora robot",
+      "robot educativo",
+      "eva",
+      "aula",
+      "amigable"
+    ],
+    "prompt": "Cute friendly educational AI robot teacher with smooth white rounded design and warm glowing turquoise eyes standing in a bright elementary classroom, photorealistic, no text"
+  },
+  {
+    "id": "eva_rbt_02",
+    "product": "eva",
+    "category": "robot_teacher",
+    "relPath": "eva/robot_teacher/eva_rbt_02.jpg",
+    "title": "Niños Fascinados con Robot Tutor",
+    "description": "Pequeños alumnos sonriendo alrededor de un robot tutor gentil.",
+    "emotions": [
+      "ilusion",
+      "descubrimiento",
+      "alegria",
+      "magia"
+    ],
+    "objective": "Mostrar la alta motivación infantil al practicar con Eva.",
+    "keywords": [
+      "niños",
+      "robot tutor",
+      "ilusion",
+      "motivacion",
+      "aprendizaje"
+    ],
+    "prompt": "Three happy young elementary students smiling with fascination around a friendly white educational robot on a classroom table, warm sunlight, photorealistic, no text"
+  },
+  {
+    "id": "eva_rbt_03",
+    "product": "eva",
+    "category": "robot_teacher",
+    "relPath": "eva/robot_teacher/eva_rbt_03.jpg",
+    "title": "Robot Enseñando Pronunciación en Casa",
+    "description": "Robot compacto acompañando a una niña en su escritorio de estudio en casa.",
+    "emotions": [
+      "cercania",
+      "paciencia",
+      "confianza",
+      "ternura"
+    ],
+    "objective": "Mostrar práctica diaria divertida en el hogar.",
+    "keywords": [
+      "casa",
+      "practica",
+      "robot",
+      "niña",
+      "pronunciacion",
+      "estudio"
+    ],
+    "prompt": "Friendly compact white AI learning robot sitting on a child study desk beside a smiling 7-year-old girl practicing with picture cards in a cozy bright bedroom, photorealistic, no text"
+  },
+  {
+    "id": "eva_rbt_04",
+    "product": "eva",
+    "category": "robot_teacher",
+    "relPath": "eva/robot_teacher/eva_rbt_04.jpg",
+    "title": "Profesora Robot Leyendo Cuentos",
+    "description": "Robot expresivo sosteniendo un libro ilustrado con luz cálida alrededor.",
+    "emotions": [
+      "ternura",
+      "imaginacion",
+      "calma",
+      "encanto"
+    ],
+    "objective": "Evocar narración interactiva y paciencia infinita.",
+    "keywords": [
+      "cuentos",
+      "robot",
+      "lectura",
+      "paciencia",
+      "imaginacion"
+    ],
+    "prompt": "Gentle rounded educational robot holding an open colorful storybook with warm golden light illuminating a cozy classroom corner, Pixar-meets-photorealism style, no text"
+  },
+  {
+    "id": "eva_rbt_05",
+    "product": "eva",
+    "category": "robot_teacher",
+    "relPath": "eva/robot_teacher/eva_rbt_05.jpg",
+    "title": "Choque de Puños Niño y Robot Tutor",
+    "description": "Niño sonriente chocando el puño con un robot tras superar un reto.",
+    "emotions": [
+      "victoria",
+      "amistad",
+      "diversion",
+      "logro"
+    ],
+    "objective": "Celebrar cada pequeño avance del niño con refuerzo positivo.",
+    "keywords": [
+      "victoria",
+      "amistad",
+      "robot",
+      "niño",
+      "logro",
+      "juego"
+    ],
+    "prompt": "Smiling young boy playfully fist-bumping a friendly white educational robot in a bright modern learning studio, joyful energy, photorealistic, no text"
+  },
+  {
+    "id": "eva_rbt_06",
+    "product": "eva",
+    "category": "robot_teacher",
+    "relPath": "eva/robot_teacher/eva_rbt_06.jpg",
+    "title": "Robot Proyectando Mundos Mágicos de Aprendizaje",
+    "description": "Pequeño robot proyectando hologramas coloridos de letras y animales.",
+    "emotions": [
+      "asombro",
+      "descubrimiento",
+      "creatividad",
+      "magia"
+    ],
+    "objective": "Mostrar el enfoque lúdico de los mundos de Eva.",
+    "keywords": [
+      "mundos",
+      "holograma",
+      "robot",
+      "magia",
+      "aprendizaje"
+    ],
+    "prompt": "Cute white educational robot projecting soft glowing colorful holographic stars, animals and floating bubbles in a bright room, photorealistic 3D, no text"
+  },
+  {
+    "id": "eva_rbt_07",
+    "product": "eva",
+    "category": "robot_teacher",
+    "relPath": "eva/robot_teacher/eva_rbt_07.jpg",
+    "title": "Profesora Humana y Profesora Robot Juntas",
+    "description": "Maestra humana sonriendo junto al robot educativo en un aula armónica.",
+    "emotions": [
+      "armonia",
+      "colaboracion",
+      "confianza",
+      "futuro"
+    ],
+    "objective": "Dejar claro que Eva apoya al docente humano, nunca lo reemplaza.",
+    "keywords": [
+      "profesora humana",
+      "profesora robot",
+      "equipo",
+      "aula",
+      "armonia"
+    ],
+    "prompt": "Warm smiling female teacher standing side-by-side with a friendly white educational robot in a sunlit modern classroom, inspiring teamwork, photorealistic, no text"
+  },
+  {
+    "id": "eva_rbt_08",
+    "product": "eva",
+    "category": "robot_teacher",
+    "relPath": "eva/robot_teacher/eva_rbt_08.jpg",
+    "title": "Robot con Paciencia Infinita",
+    "description": "Retrato cercano de robot educativo con expresión dulce y acogedora.",
+    "emotions": [
+      "paciencia",
+      "dulzura",
+      "seguridad",
+      "calma"
+    ],
+    "objective": "Transmitir un entorno libre de juicios donde el niño se atreve a hablar.",
+    "keywords": [
+      "paciencia",
+      "dulzura",
+      "robot",
+      "seguridad",
+      "confianza"
+    ],
+    "prompt": "Close-up portrait of a cute rounded educational robot with soft pastel mint accents and warm friendly glowing eyes in a sunlit room, ultra clean photorealistic, no text"
+  },
+  {
+    "id": "eva_rbt_09",
+    "product": "eva",
+    "category": "robot_teacher",
+    "relPath": "eva/robot_teacher/eva_rbt_09.jpg",
+    "title": "Aula del Futuro Centrada en el Niño",
+    "description": "Niños felices jugando y aprendiendo en espacio luminoso asistidos por robot.",
+    "emotions": [
+      "esperanza",
+      "futuro",
+      "alegria",
+      "inclusion"
+    ],
+    "objective": "Cerrar presentaciones de Eva con visión inspiradora.",
+    "keywords": [
+      "futuro",
+      "educacion",
+      "niños",
+      "robot",
+      "inclusion"
+    ],
+    "prompt": "Bright futuristic inclusive elementary learning space with smiling children, wooden play tables, indoor greenery and a gentle white robot assistant, photorealistic, no text"
+  },
+  {
+    "id": "eva_gam_01",
+    "product": "eva",
+    "category": "learning_games",
+    "relPath": "eva/learning_games/eva_gam_01.jpg",
+    "title": "Juego Interactivo de Sonidos y Letras",
+    "description": "Bloques coloridos luminosos flotando sobre una tablet infantil.",
+    "emotions": [
+      "diversion",
+      "curiosidad",
+      "descubrimiento",
+      "alegria"
+    ],
+    "objective": "Mostrar aprendizaje gamificado del habla y fonética.",
+    "keywords": [
+      "juegos",
+      "fonetica",
+      "letras",
+      "diversion",
+      "infantil",
+      "eva"
+    ],
+    "prompt": "Colorful glossy 3D wooden and glass toy blocks floating playfully above a pastel tablet on a sunlit table, cheerful educational aesthetic, photorealistic, no text"
+  },
+  {
+    "id": "eva_gam_02",
+    "product": "eva",
+    "category": "learning_games",
+    "relPath": "eva/learning_games/eva_gam_02.jpg",
+    "title": "Aventura Mágica de Recompensas",
+    "description": "Cofre luminoso de estrellas doradas abriéndose tras completar un nivel.",
+    "emotions": [
+      "victoria",
+      "recompensa",
+      "entusiasmo",
+      "magia"
+    ],
+    "objective": "Ilustrar el sistema de logros y motivación infantil.",
+    "keywords": [
+      "recompensa",
+      "estrellas",
+      "juego",
+      "nivel",
+      "victoria"
+    ],
+    "prompt": "Whimsical glowing treasure chest opening softly to release golden floating stars and pastel sparkles on a bright wooden desk, joyful 3D photorealistic, no text"
+  },
+  {
+    "id": "eva_gam_03",
+    "product": "eva",
+    "category": "learning_games",
+    "relPath": "eva/learning_games/eva_gam_03.jpg",
+    "title": "Niña Jugando y Aprendiendo Feliz en Casa",
+    "description": "Pequeña riendo con entusiasmo frente a una pantalla interactiva en el salón.",
+    "emotions": [
+      "risa",
+      "alegria",
+      "naturalidad",
+      "diversion"
+    ],
+    "objective": "Mostrar que los niños disfrutan cada sesión como un juego.",
+    "keywords": [
+      "risa",
+      "niña",
+      "casa",
+      "juego",
+      "aprendizaje"
+    ],
+    "prompt": "Joyful 6-year-old girl laughing happily while tapping a colorful interactive game on a tablet on a cozy sunlit living room rug, authentic photography, no text"
+  },
+  {
+    "id": "eva_gam_04",
+    "product": "eva",
+    "category": "learning_games",
+    "relPath": "eva/learning_games/eva_gam_04.jpg",
+    "title": "Rompecabezas de Palabras y Formas",
+    "description": "Piezas de puzzle suaves encajando perfectamente en colores pastel.",
+    "emotions": [
+      "logro",
+      "armonia",
+      "claridad",
+      "juego"
+    ],
+    "objective": "Representar progreso paso a paso adaptado al ritmo del niño.",
+    "keywords": [
+      "puzzle",
+      "rompecabezas",
+      "colores",
+      "adaptado",
+      "ritmo"
+    ],
+    "prompt": "Clean pastel colored rounded wooden puzzle pieces fitting together neatly on a bright white desk in soft morning sunlight, macro photography, no text"
+  },
+  {
+    "id": "eva_gam_05",
+    "product": "eva",
+    "category": "learning_games",
+    "relPath": "eva/learning_games/eva_gam_05.jpg",
+    "title": "Mundo Submarino Educativo",
+    "description": "Escenario lúdico de océano colorido con burbujas suaves para estimular el habla.",
+    "emotions": [
+      "asombro",
+      "imaginacion",
+      "calma",
+      "aventura"
+    ],
+    "objective": "Mostrar variedad de mundos temáticos en Eva.",
+    "keywords": [
+      "oceano",
+      "aventura",
+      "mundo",
+      "imaginacion",
+      "juego"
+    ],
+    "prompt": "Whimsical vibrant coral reef underwater fantasy scene with cute friendly glowing fish and floating translucent bubbles, bright joyful Pixar-style 3D render, no text"
+  },
+  {
+    "id": "eva_gam_06",
+    "product": "eva",
+    "category": "learning_games",
+    "relPath": "eva/learning_games/eva_gam_06.jpg",
+    "title": "Bosque Encantado de Cuentos",
+    "description": "Claro luminoso de bosque amigable con luciérnagas doradas y setas pastel.",
+    "emotions": [
+      "magia",
+      "ternura",
+      "descubrimiento",
+      "calidez"
+    ],
+    "objective": "Ambientar historias y retos de vocabulario infantil.",
+    "keywords": [
+      "bosque",
+      "cuentos",
+      "magia",
+      "vocabulario",
+      "aventura"
+    ],
+    "prompt": "Magical sunlit enchanted forest clearing with warm golden sunbeams, cute friendly glowing fireflies and colorful wildflowers, joyful 3D fairytale illustration, no text"
+  },
+  {
+    "id": "eva_gam_07",
+    "product": "eva",
+    "category": "learning_games",
+    "relPath": "eva/learning_games/eva_gam_07.jpg",
+    "title": "Juego Musical de Ritmo y Sílabas",
+    "description": "Xilófono colorido de madera con notas de luz suaves elevándose.",
+    "emotions": [
+      "ritmo",
+      "alegria",
+      "creatividad",
+      "armonia"
+    ],
+    "objective": "Conectar ritmo, música y desarrollo del lenguaje.",
+    "keywords": [
+      "musica",
+      "xilofono",
+      "ritmo",
+      "silabas",
+      "juego"
+    ],
+    "prompt": "Colorful wooden kids xylophone on a sunny playroom table with soft glowing pastel musical light notes floating gently above, photorealistic, no text"
+  },
+  {
+    "id": "eva_gam_08",
+    "product": "eva",
+    "category": "learning_games",
+    "relPath": "eva/learning_games/eva_gam_08.jpg",
+    "title": "Exploración Espacial Infantil",
+    "description": "Planetas pastel amigables y cohete de juguete en cielo estrellado cálido.",
+    "emotions": [
+      "aventura",
+      "descubrimiento",
+      "sueños",
+      "entusiasmo"
+    ],
+    "objective": "Motivar la curiosidad y ambición positiva en niños.",
+    "keywords": [
+      "espacio",
+      "planetas",
+      "cohete",
+      "aventura",
+      "infantil"
+    ],
+    "prompt": "Cute colorful toy rocket flying past friendly pastel planets and warm glowing stars in a cheerful deep blue cosmos, joyful 3D children illustration, no text"
+  },
+  {
+    "id": "eva_gam_09",
+    "product": "eva",
+    "category": "learning_games",
+    "relPath": "eva/learning_games/eva_gam_09.jpg",
+    "title": "Medalla de Superación Infantil",
+    "description": "Estrella dorada brillante sobre cinta azul simbolizando confianza ganada.",
+    "emotions": [
+      "victoria",
+      "confianza",
+      "orgullo",
+      "ternura"
+    ],
+    "objective": "Cerrar historias de éxito infantil con orgullo y emoción.",
+    "keywords": [
+      "medalla",
+      "confianza",
+      "superacion",
+      "estrella",
+      "logro"
+    ],
+    "prompt": "Cheerful glossy golden star medal on a bright turquoise ribbon resting on a sunny wooden school desk, warm bokeh, photorealistic, no text"
+  }
+]

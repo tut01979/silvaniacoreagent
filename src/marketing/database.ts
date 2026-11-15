@@ -28,6 +28,29 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_marketing_drafts_user ON marketing_drafts (userId);
   CREATE INDEX IF NOT EXISTS idx_marketing_drafts_status ON marketing_drafts (status);
+
+  CREATE TABLE IF NOT EXISTS visual_asset_usage (
+    id TEXT PRIMARY KEY,
+    product TEXT NOT NULL,
+    category TEXT NOT NULL,
+    rel_path TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'sin_usar',
+    use_count INTEGER NOT NULL DEFAULT 0,
+    last_used_at TEXT
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_visual_asset_status ON visual_asset_usage (status);
+
+  CREATE TABLE IF NOT EXISTS music_asset_usage (
+    id TEXT PRIMARY KEY,
+    category TEXT NOT NULL,
+    rel_path TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'sin_usar',
+    use_count INTEGER NOT NULL DEFAULT 0,
+    last_used_at TEXT
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_music_asset_status ON music_asset_usage (status);
 `);
 
 export const marketingDb = {
@@ -89,6 +112,94 @@ export const marketingDb = {
 
     this.saveDraft(draft);
     return true;
+  },
+
+  syncVisualAssets(
+    assets: Array<{ id: string; product: string; category: string; relPath: string }>
+  ): void {
+    const insert = db.prepare(`
+      INSERT OR IGNORE INTO visual_asset_usage (id, product, category, rel_path, status, use_count)
+      VALUES (?, ?, ?, ?, 'sin_usar', 0)
+    `);
+    const tx = db.transaction(
+      (items: Array<{ id: string; product: string; category: string; relPath: string }>) => {
+        for (const item of items) {
+          insert.run(item.id, item.product, item.category, item.relPath);
+        }
+      }
+    );
+    tx(assets);
+  },
+
+  syncMusicAssets(
+    assets: Array<{ id: string; category: string; relPath: string }>
+  ): void {
+    const insert = db.prepare(`
+      INSERT OR IGNORE INTO music_asset_usage (id, category, rel_path, status, use_count)
+      VALUES (?, ?, ?, 'sin_usar', 0)
+    `);
+    const tx = db.transaction(
+      (items: Array<{ id: string; category: string; relPath: string }>) => {
+        for (const item of items) {
+          insert.run(item.id, item.category, item.relPath);
+        }
+      }
+    );
+    tx(assets);
+  },
+
+  getAssetUsageMap(
+    pool: "visual" | "music"
+  ): Map<string, { status: "sin_usar" | "usado"; useCount: number; lastUsedAt: string | null }> {
+    const table = pool === "visual" ? "visual_asset_usage" : "music_asset_usage";
+    const rows = db
+      .prepare(`SELECT id, status, use_count, last_used_at FROM ${table}`)
+      .all() as Array<{
+        id: string;
+        status: string;
+        use_count: number;
+        last_used_at: string | null;
+      }>;
+    const map = new Map<
+      string,
+      { status: "sin_usar" | "usado"; useCount: number; lastUsedAt: string | null }
+    >();
+    for (const row of rows) {
+      map.set(row.id, {
+        status: row.status === "usado" ? "usado" : "sin_usar",
+        useCount: row.use_count || 0,
+        lastUsedAt: row.last_used_at || null,
+      });
+    }
+    return map;
+  },
+
+  markAssetUsed(pool: "visual" | "music", id: string): void {
+    const table = pool === "visual" ? "visual_asset_usage" : "music_asset_usage";
+    db.prepare(
+      `UPDATE ${table} SET status = 'usado', use_count = use_count + 1, last_used_at = ? WHERE id = ?`
+    ).run(new Date().toISOString(), id);
+  },
+
+  resetAssetPoolToUnused(pool: "visual" | "music"): void {
+    const table = pool === "visual" ? "visual_asset_usage" : "music_asset_usage";
+    db.prepare(`UPDATE ${table} SET status = 'sin_usar'`).run();
+  },
+
+  getAssetPoolStats(pool: "visual" | "music"): {
+    total: number;
+    unused: number;
+    used: number;
+  } {
+    const table = pool === "visual" ? "visual_asset_usage" : "music_asset_usage";
+    const row = db
+      .prepare(
+        `SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'sin_usar' THEN 1 ELSE 0 END) AS unused FROM ${table}`
+      )
+      .get() as { total: number; unused: number | null };
+    const total = row?.total || 0;
+    const unused = row?.unused || 0;
+    return { total, unused, used: Math.max(0, total - unused) };
   },
 
   close(): void {
