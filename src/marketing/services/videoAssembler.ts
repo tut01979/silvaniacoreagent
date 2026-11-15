@@ -252,17 +252,17 @@ export const videoAssembler = {
         } else {
           zpExpr = `zoompan=z='1.14':x='(iw-iw/zoom)*(1-(on/${denom}))':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
         }
-        filterParts.push(`[${i}:v]${baseScale},${zpExpr},format=yuv420p[v${i}]`);
+        filterParts.push(`[${i}:v]${baseScale},${zpExpr},fps=${fps},settb=AVTB,setpts=PTS-STARTPTS,format=yuv420p[v${i}]`);
       } else {
         inputArgs.push(`-loop 1 -t ${dur.toFixed(3)} -i "${imgPath}"`);
-        filterParts.push(`[${i}:v]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},setsar=1,fps=${fps},format=yuv420p[v${i}]`);
+        filterParts.push(`[${i}:v]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},setsar=1,fps=${fps},settb=AVTB,setpts=PTS-STARTPTS,format=yuv420p[v${i}]`);
       }
     }
 
     // Encadenar transiciones xfade o concat
     let currentVideoLabel = "[v0]";
     if (scenes.length > 1 && transDur > 0) {
-      let offset = allocatedDurations[0] - transDur;
+      let offset = allocatedDurations[0];
       for (let i = 1; i < scenes.length; i++) {
         const transName =
           transitionStyle === "auto"
@@ -275,7 +275,7 @@ export const videoAssembler = {
           )}:offset=${Math.max(0.1, offset).toFixed(3)}${outLabel}`
         );
         currentVideoLabel = outLabel;
-        offset += allocatedDurations[i] - transDur;
+        offset += allocatedDurations[i];
       }
     } else if (scenes.length > 1) {
       const inputs = scenes.map((_, i) => `[v${i}]`).join("");
