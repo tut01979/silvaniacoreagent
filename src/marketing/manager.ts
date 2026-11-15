@@ -191,47 +191,58 @@ export const marketingManager = {
 
       for (let i = 0; i < scenesToRender.length; i++) {
         const scene = scenesToRender[i];
-        const sceneTitle = (scene.onScreenText || scene.visualPrompt || `Escena ${i + 1}`).slice(0, 60);
-        const visualPrompt = scene.visualPrompt && scene.visualPrompt.trim().length > 0
-          ? `${scriptRes.data.title}, ${scene.visualPrompt.trim()}`
-          : `${scriptRes.data.title}, scene ${scene.sceneNumber || i + 1}`;
+        const baseDur = sceneDurations[i] || 8;
+        // Subdividir escenas largas (>10s) en cortes visuales de ~7-9s para que las imágenes cambien dinámicamente
+        const beatCount = baseDur > 10 ? Math.min(4, Math.max(2, Math.round(baseDur / 8))) : 1;
+        const beatDur = Number((baseDur / beatCount).toFixed(2));
+        const narrationSentences = (scene.narration || "").split(/(?<=[.!?])\s+/).filter(Boolean);
 
-        let sceneImgPath: string | null = null;
-        try {
-          const imgRes = await imageGenerator.generateImage(visualPrompt, {
-            ...imgDimensions,
-            seed: Math.floor(Math.random() * 1000000) + (i + 1) * 333,
-            sceneIndex: i + 1,
-            totalScenes: scenesToRender.length,
-            sceneTitle: scene.onScreenText || `Escena ${i + 1}`,
-            onScreenText: scene.onScreenText,
-            subtitle: scene.narration,
-            allowFallback: true,
-            product: targetProduct,
-            usedImages,
-          });
-          sceneImgPath = imgRes.filePath;
-          if (imgRes.sourceAssetPath) {
-            usedImages.push(imgRes.sourceAssetPath);
-          }
-          usedImages.push(imgRes.filePath);
-          if (imgRes.isLocalFallback || imgRes.provider === "corporate_slide_canvas") {
-            localFallbackCount++;
-          } else {
-            networkImageCount++;
-          }
-        } catch (sceneImgErr: any) {
-          console.warn(`⚠️ [Marketing Video] Falló generación escena ${i + 1}: ${sceneImgErr.message}`);
-        }
+        for (let b = 0; b < beatCount; b++) {
+          const beatSnippet =
+            narrationSentences.length > 0
+              ? narrationSentences[Math.min(narrationSentences.length - 1, Math.floor((b / beatCount) * narrationSentences.length))]
+              : scene.narration || "";
+          const visualPrompt = scene.visualPrompt && scene.visualPrompt.trim().length > 0
+            ? `${scriptRes.data.title}, ${scene.visualPrompt.trim()}, ${beatSnippet}`
+            : `${scriptRes.data.title}, scene ${scene.sceneNumber || i + 1}, ${beatSnippet}`;
 
-        if (sceneImgPath && fs.existsSync(sceneImgPath)) {
-          sceneMediaList.push({
-            sceneNumber: scene.sceneNumber || i + 1,
-            narrationText: scene.narration || "",
-            imagePath: sceneImgPath,
-            durationSeconds: sceneDurations[i],
-          });
-          console.log(`🖼️ [Marketing Video] Escena ${i + 1}/${scenesToRender.length}: OK -> ${sceneImgPath} (${sceneDurations[i] ? `${sceneDurations[i]}s` : "auto"})`);
+          let sceneImgPath: string | null = null;
+          try {
+            const imgRes = await imageGenerator.generateImage(visualPrompt, {
+              ...imgDimensions,
+              seed: Math.floor(Math.random() * 1000000) + (i + 1) * 333 + b * 77,
+              sceneIndex: sceneMediaList.length + 1,
+              totalScenes: scenesToRender.length * beatCount,
+              sceneTitle: scene.onScreenText || `Escena ${i + 1}`,
+              onScreenText: scene.onScreenText,
+              subtitle: beatSnippet || scene.narration,
+              allowFallback: true,
+              product: targetProduct,
+              usedImages,
+            });
+            sceneImgPath = imgRes.filePath;
+            if (imgRes.sourceAssetPath) {
+              usedImages.push(imgRes.sourceAssetPath);
+            }
+            usedImages.push(imgRes.filePath);
+            if (imgRes.isLocalFallback || imgRes.provider === "corporate_slide_canvas") {
+              localFallbackCount++;
+            } else {
+              networkImageCount++;
+            }
+          } catch (sceneImgErr: any) {
+            console.warn(`⚠️ [Marketing Video] Falló generación escena ${i + 1}.${b + 1}: ${sceneImgErr.message}`);
+          }
+
+          if (sceneImgPath && fs.existsSync(sceneImgPath)) {
+            sceneMediaList.push({
+              sceneNumber: sceneMediaList.length + 1,
+              narrationText: beatSnippet || scene.narration || "",
+              imagePath: sceneImgPath,
+              durationSeconds: beatDur,
+            });
+            console.log(`🖼️ [Marketing Video] Escena ${i + 1}.${b + 1}/${beatCount}: OK -> ${sceneImgPath} (${beatDur}s)`);
+          }
         }
       }
 
@@ -277,17 +288,26 @@ export const marketingManager = {
             draft.selectedMusicReason = selectedMusic.matchReason;
           }
 
-          const lowerTopic = topic.toLowerCase();
+          const normalizedTopic = topic
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "");
           let visualStyle: VisualStylePreset = "cinema_warm";
-          if (/(pelicula vieja|vintage|retro|sepia|antiguo|clasico)/.test(lowerTopic)) {
+          if (/(pelicula vieja|vintage|retro|sepia|antiguo|clasico|blanco y negro)/.test(normalizedTopic)) {
             visualStyle = "vintage_film";
           } else if (targetProduct === "eva") {
             visualStyle = "modern_clean";
           } else if (targetProduct === "coreagent") {
             visualStyle = "high_contrast_tech";
           }
+          const styleLabels: Record<VisualStylePreset, string> = {
+            vintage_film: "Película Vieja (vintage)",
+            high_contrast_tech: "Tech Alto Contraste",
+            cinema_warm: "Cine Cálido",
+            modern_clean: "Limpio Moderno",
+          };
           draft.visualStyle = visualStyle;
-          draft.visualEffectsSummary = `Zoom/Pan Ken Burns + transiciones xfade + estilo ${visualStyle}`;
+          draft.visualEffectsSummary = `Zoom/Pan Ken Burns + transiciones xfade + estilo ${styleLabels[visualStyle]}`;
 
           console.log(`🎬 [Marketing Video] Ensamblando MP4 con ${sceneMediaList.length} escenas (${distinctImages.size} imágenes distintas, estilo=${visualStyle}, zoom+xfade activos)...`);
           const videoRes = await videoAssembler.assembleVideo(

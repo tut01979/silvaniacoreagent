@@ -234,24 +234,28 @@ export const videoAssembler = {
       const imgPath = path.resolve(scenes[i].imagePath).replace(/\\/g, "/");
       const dur = allocatedDurations[i] + (i < scenes.length - 1 ? transDur : 0);
       const frames = Math.max(24, Math.ceil(dur * fps));
-      const baseScale = `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},setsar=1`;
+      // Usar escala 2x antes de zoompan para evitar temblores y mantener nitidez en cualquier aspecto
+      const upW = width * 2;
+      const upH = height * 2;
+      const baseScale = `scale=${upW}:${upH}:force_original_aspect_ratio=increase,crop=${upW}:${upH},setsar=1`;
       if (enableZoomPan) {
         inputArgs.push(`-i "${imgPath}"`);
         const mode = i % 4;
+        const denom = Math.max(1, frames - 1);
         let zpExpr = "";
         if (mode === 0) {
-          zpExpr = `zoompan=z='min(zoom+0.0012,1.18)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
+          zpExpr = `zoompan=z='1.0+0.18*(on/${denom})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
         } else if (mode === 1) {
-          zpExpr = `zoompan=z='if(lte(zoom,1.0),1.16,max(1.0,zoom-0.0012))':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
+          zpExpr = `zoompan=z='1.18-0.18*(on/${denom})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
         } else if (mode === 2) {
-          zpExpr = `zoompan=z='1.12':x='min(iw-iw/zoom,(iw-iw/zoom)*on/${frames})':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
+          zpExpr = `zoompan=z='1.14':x='(iw-iw/zoom)*(on/${denom})':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
         } else {
-          zpExpr = `zoompan=z='1.12':x='max(0,(iw-iw/zoom)*(1-on/${frames}))':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
+          zpExpr = `zoompan=z='1.14':x='(iw-iw/zoom)*(1-(on/${denom}))':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
         }
         filterParts.push(`[${i}:v]${baseScale},${zpExpr},format=yuv420p[v${i}]`);
       } else {
         inputArgs.push(`-loop 1 -t ${dur.toFixed(3)} -i "${imgPath}"`);
-        filterParts.push(`[${i}:v]${baseScale},fps=${fps},format=yuv420p[v${i}]`);
+        filterParts.push(`[${i}:v]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},setsar=1,fps=${fps},format=yuv420p[v${i}]`);
       }
     }
 
