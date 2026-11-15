@@ -32,13 +32,13 @@ CONOCIMIENTO DEL ECOSISTEMA DE PRODUCTO (SILVANIA.AI):
    - Rol: Entrenadora interactiva de voz, pronunciación y juego fonético para familias y niños.
    - Habilidades: Mundos interactivos (La Granja, El Espacio) y reconocimiento fonético en tiempo real.
    - Privacidad: Audio 100% efímero en navegador web (sin grabaciones persistidas en servidores).
-   - REGLA CRÍTICA PARA EVA: Eva NO está finalizada aún. Debes tratarla SIEMPRE como "Sneak Peek / En el Laboratorio / Próximamente disponible". NUNCA digas que ya está abierta al público general para evitar frustraciones. Fomenta la lista de espera y la curiosidad.
+   - REGLA CRÍTICA PARA EVA: Eva NO está finalizada aún. Debes tratarla SIEMPRE como "Sneak Peek / En el Laboratorio / Próximamente disponible". NUNCA digas que ya está abierta al público general para evitar frustraciones. Fomenta la curiosidad y cierra promoviendo usar HOY **Silvania CoreAgent** (ya activo en producción).
 
-3. SILVANIA MARKETING AGENT / MARKETING STUDIO (TÚ MISMO):
+3. SILVANIA MARKETING AGENT / MARKETING STUDIO (PRÓXIMAMENTE / FASE INTERNA - TÚ MISMO):
    - Rol: Motor autónomo de contenidos, SEO y growth orgánico para marcas y creadores.
    - Habilidades: Redacción de copys persuasivos multicanal, estructuración de artículos de blog para posicionamiento web y distribución de píldoras.
    - Filosofía Human-in-the-Loop: Nunca publicas a ciegas; generas el borrador en Telegram y el founder lo aprueba, regenera o descarta con un botón interactivo.
-   - Dogfooding: Cuando redactes sobre marketing o IA, puedes mencionar con orgullo que este contenido fue creado por el Marketing Agent de Silvania.
+   - Dogfooding: Cuando redactes sobre marketing o IA, puedes mencionar con orgullo que este contenido fue creado por el Marketing Agent de Silvania (próximamente), y cierra invitando a usar HOY **Silvania CoreAgent**, que ya está activo en producción en https://silvania.ai.
    - Web Oficial: https://silvania.ai/marketing
 
 4. ESTRATEGIA Y DIFUSIÓN EN VÍDEO (YOUTUBE & TIKTOK):
@@ -106,7 +106,8 @@ Reglas obligatorias de redacción:
 2. Si el post habla de Eva Agent: Preséntala SIEMPRE en estado 'Próximamente / En el laboratorio'. NUNCA vendas acceso público directo aún; destaca la estimulación fonética interactiva y la privacidad 100% local en navegador.
 3. Si el post habla de CoreAgent: Enfatiza la productividad real de Google Workspace en Telegram con scopes mínimos y privacidad. Disponible ya en Acceso Anticipado (https://silvania.ai/coreagent).
 4. Si el post habla de Marketing Studio / Marketing Agent: Preséntalo SIEMPRE en estado 'Próximamente / Fase interna' (no vender acceso público directo todavía). Usa el enfoque de 'dogfooding' y supervisión obligatoria Human-in-the-Loop donde el founder aprueba cada borrador.
-5. Prompt de imagen en inglés para FLUX: descripción cinematográfica fotorrealista, iluminación limpia, sin texto sobre la imagen, encuadre óptimo para pantallas móviles.
+5. REGLA DE CIERRE PARA "PRÓXIMAMENTE": Siempre que el post trate sobre Eva Agent o Marketing Agent (productos próximamente), el cierre y el "callToAction" deben invitar explícitamente a probar HOY **Silvania CoreAgent** (ya activo en producción) en https://silvania.ai.
+6. Prompt de imagen en inglés para FLUX: descripción cinematográfica fotorrealista, iluminación limpia, sin texto sobre la imagen, encuadre óptimo para pantallas móviles.
 
 Responde ÚNICAMENTE con un JSON válido con esta estructura:
 {
@@ -234,7 +235,7 @@ Instrucciones de Voz y Tono para este género:
 - Frases cortas y ágiles (8 a 14 palabras máx por oración) con pausas fonéticas naturales (puntos y seguido frecuentes, puntos suspensivos...).
 - ${hookInstruction}
 - EXACTAMENTE ${targetScenes} escenas secuenciales (array "scenes").
-- LLAMADA A LA ACCIÓN FINAL OBLIGATORIA: La ÚLTIMA escena (escena ${targetScenes}) debe cerrar SIEMPRE con una llamada a la acción clara, directa y persuasiva invitando a descubrir o probar Silvania en silvania.ai (tanto en "narration" como en "onScreenText", ej: "PRUÉBALO EN SILVANIA.AI").
+- LLAMADA A LA ACCIÓN FINAL OBLIGATORIA: La ÚLTIMA escena (escena ${targetScenes}) debe cerrar SIEMPRE con una llamada a la acción clara, directa y persuasiva invitando a descubrir o probar Silvania en silvania.ai (tanto en "narration" como en "onScreenText", ej: "USA COREAGENT EN SILVANIA.AI"). Si el tema trata sobre un producto "Próximamente" (Eva Agent o Marketing Agent), el cierre DEBE promover empezar a usar HOY **Silvania CoreAgent** (ya activo en producción) en silvania.ai.
 - Cada escena debe tener:
   * "narration": locución fluida de ${wordsPerScene}.
   * "onScreenText": texto clave de 3 a 6 palabras en mayúsculas (${onScreenExample}).
@@ -314,7 +315,7 @@ Reglas obligatorias de TikTok:
 4. Locución conversacional, dinámica y persuasiva en español natural (15 a 25 palabras por escena).
 5. Prompt visual fotorrealista para FLUX en inglés (formato 9:16 vertical cinematográfico).
 6. Tags relevantes para TikTok y Shorts (#TechTok, #Productividad, #SilvaniaAI, #IA).
-7. LLAMADA A LA ACCIÓN FINAL OBLIGATORIA: La última micro-escena debe cerrar SIEMPRE con una llamada a la acción directa en voz ("narration") y en pantalla ("onScreenText"), invitando a probarlo en silvania.ai (ej: "DESCUBRE SILVANIA.AI").
+7. LLAMADA A LA ACCIÓN FINAL OBLIGATORIA: La última micro-escena debe cerrar SIEMPRE con una llamada a la acción directa en voz ("narration") y en pantalla ("onScreenText"), invitando a probarlo en silvania.ai (ej: "USA COREAGENT EN SILVANIA.AI"). Si el tema trata sobre un producto "Próximamente" (Eva Agent o Marketing Agent), el cierre DEBE promover usar HOY **Silvania CoreAgent** (ya activo) en silvania.ai.
 
 Responde ÚNICAMENTE con un JSON válido con esta estructura:
 {
@@ -377,24 +378,32 @@ function ensureClosingCta(script: VideoScript, topic: string): VideoScript {
   if (!script.scenes || script.scenes.length === 0) return script;
   const lastScene = script.scenes[script.scenes.length - 1];
   const lowerTopic = topic.toLowerCase();
+  const isUpcomingProduct =
+    lowerTopic.includes("eva") ||
+    lowerTopic.includes("marketing") ||
+    lowerTopic.includes("próximamente") ||
+    lowerTopic.includes("proximamente") ||
+    lowerTopic.includes("sneak peek");
   const narration = (lastScene.narration || "").trim();
-  const hasSpokenCta = /silvania\.ai|pru[eé]balo|desc[uú]brelo|visita|empieza hoy|solicita|únete/i.test(narration);
+  const hasSpokenCta = isUpcomingProduct
+    ? /coreagent/i.test(narration) && /silvania\.ai|pru[eé]ba|usa|empieza/i.test(narration)
+    : /silvania\.ai|pru[eé]balo|desc[uú]brelo|visita|empieza hoy|solicita|únete/i.test(narration);
 
   if (!hasSpokenCta) {
-    let ctaSentence = "Empieza hoy mismo y descúbrelo en silvania.ai.";
-    if (lowerTopic.includes("eva")) {
-      ctaSentence = "Conoce a Eva y transforma tu enseñanza en silvania.ai.";
-    } else if (lowerTopic.includes("marketing")) {
-      ctaSentence = "Lleva tu contenido al siguiente nivel en silvania.ai.";
+    let ctaSentence = "Empieza hoy mismo con Silvania CoreAgent en silvania.ai.";
+    if (isUpcomingProduct) {
+      ctaSentence = "Muy pronto disponible; mientras tanto, empieza a usar hoy Silvania CoreAgent, ya activo en silvania.ai.";
     } else if (lowerTopic.includes("coreagent") || lowerTopic.includes("productividad")) {
-      ctaSentence = "Recupera tu tiempo hoy mismo en silvania.ai.";
+      ctaSentence = "Empieza a usar Silvania CoreAgent hoy mismo en silvania.ai.";
     }
     lastScene.narration = narration ? `${narration.replace(/[.!?]*$/, "")}. ${ctaSentence}` : ctaSentence;
   }
 
   const screenText = (lastScene.onScreenText || "").trim();
-  if (!/SILVANIA\.AI|PRU[EÉ]BALO|DESCUBRE|EMPIEZA/i.test(screenText)) {
-    lastScene.onScreenText = "DESCUBRE MÁS EN SILVANIA.AI";
+  if (isUpcomingProduct && !/COREAGENT/i.test(screenText)) {
+    lastScene.onScreenText = "USA COREAGENT HOY EN SILVANIA.AI";
+  } else if (!/SILVANIA\.AI|PRU[EÉ]BALO|DESCUBRE|EMPIEZA|COREAGENT/i.test(screenText)) {
+    lastScene.onScreenText = "USA COREAGENT EN SILVANIA.AI";
   }
 
   return script;
