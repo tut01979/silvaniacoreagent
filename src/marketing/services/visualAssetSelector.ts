@@ -228,22 +228,31 @@ export const visualAssetSelector = {
         (options.usedImages || []).map((p) => path.resolve(p).toLowerCase())
       );
 
-      let unusedPool = chunks.filter((c) => {
+      // Filtrar estrictamente por afinidad de producto para no mezclar imágenes de Eva (niños/clases) en vídeos de CoreAgent o viceversa
+      const productFilteredChunks = chunks.filter((c) => {
+        if (product === "coreagent") return c.product === "coreagent" || c.product === "shared" || c.product === "marketing";
+        if (product === "marketing") return c.product === "marketing" || c.product === "shared" || c.product === "coreagent";
+        if (product === "eva") return c.product === "eva" || c.product === "shared";
+        return c.product === product || c.product === "shared";
+      });
+      const candidateChunks = productFilteredChunks.length > 0 ? productFilteredChunks : chunks;
+
+      let unusedPool = candidateChunks.filter((c) => {
         const isUnused = (usageMap.get(c.id)?.status ?? "sin_usar") === "sin_usar";
         const abs = path.resolve(process.cwd(), c.relPath).toLowerCase();
         return isUnused && !usedInVideo.has(abs);
       });
 
       let cycleResetTriggered = false;
-      // Si se agotaron las imágenes "sin_usar" globalmente, reiniciamos el ciclo completo a "sin_usar"
+      // Si se agotaron las imágenes "sin_usar" de este producto, reiniciamos el ciclo para no cruzar productos incompatibles
       if (unusedPool.length === 0) {
         marketingDb.resetAssetPoolToUnused("visual");
         usageMap = marketingDb.getAssetUsageMap("visual");
-        unusedPool = chunks.filter((c) => {
+        unusedPool = candidateChunks.filter((c) => {
           const abs = path.resolve(process.cwd(), c.relPath).toLowerCase();
           return !usedInVideo.has(abs);
         });
-        if (unusedPool.length === 0) unusedPool = chunks;
+        if (unusedPool.length === 0) unusedPool = candidateChunks;
         cycleResetTriggered = true;
       }
 
@@ -276,7 +285,7 @@ export const visualAssetSelector = {
 
         // Afinidad directa con el producto objetivo
         if (chunk.product === product) {
-          score += 2.2;
+          score += 4.5;
         } else if (chunk.product === "shared") {
           score += 0.4;
         }

@@ -234,9 +234,9 @@ export const videoAssembler = {
       const imgPath = path.resolve(scenes[i].imagePath).replace(/\\/g, "/");
       const dur = allocatedDurations[i] + (i < scenes.length - 1 ? transDur : 0);
       const frames = Math.max(24, Math.ceil(dur * fps));
-      // Usar escala 2x antes de zoompan para evitar temblores y mantener nitidez en cualquier aspecto
-      const upW = width * 2;
-      const upH = height * 2;
+      // Usar escala 1.25x antes de zoompan para mantener nitidez sin saturar RAM en vídeos largos (16+ escenas)
+      const upW = Math.round((width * 1.25) / 2) * 2;
+      const upH = Math.round((height * 1.25) / 2) * 2;
       const isPortrait = height > width;
       const baseScale = `scale=${upW}:${upH}:force_original_aspect_ratio=increase,crop=${upW}:${upH},setsar=1`;
       if (enableZoomPan) {
@@ -340,15 +340,39 @@ export const videoAssembler = {
           maxBuffer: 15 * 1024 * 1024,
         });
       } catch (advErr: any) {
+        const stderrTail = advErr?.stderr ? String(advErr.stderr).slice(-350).replace(/\s+/g, " ") : "";
         console.warn(
-          `⚠️ [VideoAssembler] Pipeline avanzado falló (${advErr?.message?.slice(0, 140)}), usando fallback concat...`
+          `⚠️ [VideoAssembler] Pipeline avanzado falló (${advErr?.message?.slice(0, 120)}${stderrTail ? " | stderr: " + stderrTail : ""}), usando fallback seguro multi-entrada...`
         );
-        const vf = `fps=${fps},scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,${styleExpr},format=yuv420p`;
-        const fallbackCmd = `"${ffmpegBin}" -y -f concat -safe 0 -i "${concatListPath}" -i "${audioPath}" -vf "${vf}" -r ${fps} -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k -shortest -movflags +faststart "${outputPath}"`;
+        const isPortraitFallback = height > width;
+        const fbInputs: string[] = [];
+        const fbFilters: string[] = [];
+        for (let i = 0; i < scenes.length; i++) {
+          const imgPath = path.resolve(scenes[i].imagePath).replace(/\\/g, "/");
+          fbInputs.push(`-loop 1 -t ${allocatedDurations[i].toFixed(3)} -i "${imgPath}"`);
+          if (isPortraitFallback) {
+            fbFilters.push(
+              `[${i}:v]split[fbg${i}][ffg${i}];` +
+                `[fbg${i}]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},boxblur=18:4,setsar=1[fbgb${i}];` +
+                `[ffg${i}]scale=${width}:${height}:force_original_aspect_ratio=decrease,setsar=1[ffgb${i}];` +
+                `[fbgb${i}][ffgb${i}]overlay=(W-w)/2:(H-h)/2,fps=${fps},format=yuv420p[fv${i}]`
+            );
+          } else {
+            fbFilters.push(
+              `[${i}:v]scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=${fps},format=yuv420p[fv${i}]`
+            );
+          }
+        }
+        const fbConcatInputs = scenes.map((_, i) => `[fv${i}]`).join("");
+        fbFilters.push(`${fbConcatInputs}concat=n=${scenes.length}:v=1:a=0,${styleExpr},format=yuv420p[vout]`);
+        const fbFilterPath = path.join(path.dirname(outputPath), `${path.basename(outputPath, path.extname(outputPath))}_fb_filter.txt`);
+        fs.writeFileSync(fbFilterPath, fbFilters.join(";"), "utf8");
+        const fallbackCmd = `"${ffmpegBin}" -y ${fbInputs.join(" ")} -i "${audioPath}" -filter_complex_script "${fbFilterPath}" -map "[vout]" -map ${scenes.length}:a -r ${fps} -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k -shortest -movflags +faststart "${outputPath}"`;
         await execAsync(fallbackCmd, {
-          timeout: timeoutMs,
+          timeout: Math.max(timeoutMs, 180_000),
           maxBuffer: 10 * 1024 * 1024,
         });
+        if (fs.existsSync(fbFilterPath)) fs.unlinkSync(fbFilterPath);
       }
 
       // Limpiar archivos intermedios
