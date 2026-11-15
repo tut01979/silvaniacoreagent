@@ -86,8 +86,16 @@ export const socialPublisher = {
       .map(t => (t.startsWith("#") ? t : `#${t}`).replace(/\s+/g, ""))
       .join(" ");
 
+    const crossLinksBlock =
+      `📌 Enlaces oficiales y redes:\n` +
+      `• 🌐 Web: https://silvania.ai\n` +
+      `• 🤖 Bot CoreAgent: https://t.me/Silvania_Core_Agent_Bot\n` +
+      `• 📢 Canal Telegram: https://t.me/silvania_ai\n` +
+      `• 📸 Instagram: https://www.instagram.com/silvania.ai/\n` +
+      `• 𝕏 X: https://x.com/Silvania_AI`;
+
     // 1. X / Twitter (Máximo 280 caracteres ponderados, margen de seguridad a 260)
-    const fixedTwitterCta = `👉 t.me/silvania_ai ${tagsStr.split(" ").slice(0, 2).join(" ")}`.trim();
+    const fixedTwitterCta = `👉 https://silvania.ai | 🤖 https://t.me/Silvania_Core_Agent_Bot ${tagsStr.split(" ").slice(0, 1).join(" ")}`.trim();
     const ctaWeighted = getTwitterWeightedLength(fixedTwitterCta);
     const availableForTitleAndBody = 255 - ctaWeighted - 4; // 4 por los saltos de línea
 
@@ -101,46 +109,44 @@ export const socialPublisher = {
     const truncatedMain = truncateForTwitter(mainText, availableForTitleAndBody);
     const twitterCopy = `${truncatedMain}\n\n${fixedTwitterCta}`.trim();
 
-    // 2. LinkedIn (Estructurado, saltos de línea limpios, enfoque profesional)
+    // 2. LinkedIn (Estructurado, saltos de línea limpios, enfoque profesional con enlaces cruzados)
     const linkedinCopy = 
       `🚀 ${cleanTitle}\n\n` +
       `${cleanCopy}\n\n` +
       `💡 ¿Cómo automatizas tú estas tareas en tu día a día?\n\n` +
-      `🔗 Descubre más y accede al asistente en Telegram: https://silvania.ai/coreagent\n\n` +
+      `${crossLinksBlock}\n\n` +
       `${tagsStr}`;
 
-    // 3. Facebook (Tono conversacional, invitando a interactuar)
+    // 3. Facebook (Tono conversacional con enlaces cruzados)
     const facebookCopy =
       `✨ ${cleanTitle}\n\n` +
       `${cleanCopy}\n\n` +
-      `👉 Pruébalo ahora mismo gratis en Telegram: https://t.me/Silvania_Core_Agent_Bot\n` +
-      `📢 Únete a nuestro canal oficial de novedades: https://t.me/silvania_ai\n\n` +
+      `${crossLinksBlock}\n\n` +
       `${tagsStr}`;
 
-    // 4. Instagram (Enfoque visual, invitando al link en bio y bot)
+    // 4. Instagram (Enfoque visual, bio, bot y redes cruzadas)
     const instagramCopy =
       `✨ ${cleanTitle}\n\n` +
       `${cleanCopy}\n\n` +
-      `🔗 Enlace en bio: silvania.ai\n` +
-      `👉 Pruébalo gratis en Telegram: @Silvania_Core_Agent_Bot\n\n` +
+      `🔗 Web oficial (enlace en bio): https://silvania.ai\n` +
+      `🤖 Bot en Telegram: @Silvania_Core_Agent_Bot (t.me/Silvania_Core_Agent_Bot)\n` +
+      `📢 Canal Telegram: t.me/silvania_ai | 𝕏 @Silvania_AI\n\n` +
       `${tagsStr}`;
 
-    // 5. TikTok (Descripción corta + gancho + tags de alto volumen)
+    // 5. TikTok (Descripción corta + gancho + enlaces cruzados + tags de alto volumen)
     const tiktokCopy = 
-      `🔥 ${cleanTitle.slice(0, 60)} | Asistente IA para Google Workspace\n` +
-      `¿Lo usarías en tu oficina? Comenta 👇\n\n` +
+      `🔥 ${cleanTitle.slice(0, 60)} | Asistente IA Silvania\n` +
+      `¿Lo usarías en tu día a día? Comenta 👇\n` +
+      `🌐 silvania.ai | 🤖 t.me/Silvania_Core_Agent_Bot | 📢 t.me/silvania_ai | 📸 @silvania.ai\n\n` +
       `#SilvaniaAI #Productividad #InteligenciaArtificial #Telegram #GoogleWorkspace #TechTok #Emprendimiento`;
 
-    // 6. YouTube (Título SEO + Descripción con capítulos y enlaces)
+    // 6. YouTube (Título SEO + Descripción con capítulos y enlaces cruzados)
     const ytTitle = draft.videoScript?.title || `${cleanTitle} | Silvania.ai`;
     const ytDescription = 
-      `En este vídeo te mostramos cómo usar Silvania CoreAgent para optimizar tu trabajo diario con Google Workspace directamente desde Telegram.\n\n` +
-      `📌 Enlaces oficiales:\n` +
-      `• Web: https://silvania.ai\n` +
-      `• Bot en Telegram: https://t.me/Silvania_Core_Agent_Bot\n` +
-      `• Canal de Novedades: https://t.me/silvania_ai\n\n` +
+      `Descubre cómo Silvania CoreAgent optimiza tu trabajo diario con Google Workspace directamente desde Telegram.\n\n` +
+      `${crossLinksBlock}\n\n` +
       `${cleanCopy}\n\n` +
-      `Capítulos:\n00:00 Introducción y problema\n00:15 Demostración en directo\n00:45 Conclusiones y acceso\n\n` +
+      `Capítulos:\n00:00 Introducción y problema\n00:15 Demostración y solución\n00:45 Conclusiones y llamada a la acción\n\n` +
       `${tagsStr}`;
 
     return {

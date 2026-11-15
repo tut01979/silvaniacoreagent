@@ -131,6 +131,7 @@ Responde ÚNICAMENTE con un JSON válido con esta estructura:
       const raw = completion.choices[0].message?.content || "{}";
       const post = JSON.parse(raw) as SocialPost;
       post.platform = platform;
+      post.copy = ensureOfficialLinks(post.copy || "", platform === "x");
       return { data: post, llmModel: preferredModel };
     } catch (err: any) {
       console.warn("⚠️ Falló OpenRouter en SocialPost, usando Groq (Llama-3.3-70b):", err.message);
@@ -144,6 +145,7 @@ Responde ÚNICAMENTE con un JSON válido con esta estructura:
       const cleanJson = raw.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
       const post = JSON.parse(cleanJson) as SocialPost;
       post.platform = platform;
+      post.copy = ensureOfficialLinks(post.copy || "", platform === "x");
       return { data: post, llmModel: "llama-3.3-70b-versatile" };
     }
   },
@@ -482,5 +484,35 @@ function ensureClosingCta(script: VideoScript, topic: string): VideoScript {
     lastScene.onScreenText = "USA COREAGENT EN SILVANIA.AI";
   }
 
+  script.description = ensureOfficialLinks(script.description || "");
   return script;
+}
+
+const OFFICIAL_LINKS_BLOCK =
+  `🌐 Web oficial: https://silvania.ai\n` +
+  `🤖 Bot CoreAgent en Telegram: https://t.me/Silvania_Core_Agent_Bot\n` +
+  `📢 Canal Telegram: https://t.me/silvania_ai\n` +
+  `📸 Instagram: https://www.instagram.com/silvania.ai/\n` +
+  `𝕏 X: https://x.com/Silvania_AI`;
+
+/**
+ * Garantiza que todo texto publicado o enviado (WhatsApp, redes, descripciones) incluya siempre
+ * los enlaces oficiales a la web, bot de Telegram y redes sociales de Silvania.
+ */
+function ensureOfficialLinks(text: string, compactForX: boolean = false): string {
+  const trimmed = (text || "").trim();
+  const hasWeb = /silvania\.ai/i.test(trimmed);
+  const hasBot = /Silvania_Core_Agent_Bot/i.test(trimmed);
+  const hasSocial = /t\.me\/silvania_ai|instagram\.com\/silvania\.ai|x\.com\/Silvania_AI/i.test(trimmed);
+
+  if (hasWeb && hasBot && hasSocial) {
+    return trimmed;
+  }
+
+  if (compactForX) {
+    const compactFooter = "🌐 https://silvania.ai | 🤖 https://t.me/Silvania_Core_Agent_Bot";
+    return hasWeb && hasBot ? trimmed : `${trimmed}\n\n${compactFooter}`.trim();
+  }
+
+  return `${trimmed}\n\n${OFFICIAL_LINKS_BLOCK}`.trim();
 }
