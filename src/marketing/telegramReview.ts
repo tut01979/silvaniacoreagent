@@ -60,12 +60,21 @@ export const telegramReview = {
         : draft.videoError
         ? `\n⚠️ *Vídeo MP4:* ${draft.videoError}`
         : "";
+      const musicLine = draft.selectedMusicTitle
+        ? `\n🎵 *Música:* ${draft.selectedMusicTitle}`
+        : "";
+      const effectsLine = draft.visualEffectsSummary
+        ? `\n✨ *Efectos:* ${draft.visualEffectsSummary}`
+        : "";
       summaryText =
         `🎬 *GUION DE VIDEO (${formatLabel})*\n\n` +
         `📌 *Título:* ${draft.videoScript.title}\n` +
         `⏱️ *Duración:* ${durLabel}\n` +
         `🎞️ *Escenas:* ${scenesInScript} escenas (${imgBreakdown})` +
-        videoStatus + `\n\n` +
+        videoStatus +
+        musicLine +
+        effectsLine +
+        `\n\n` +
         `🎣 *Hook:* "${draft.videoScript.hook}"` +
         techFooter;
     } else {

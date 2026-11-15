@@ -273,6 +273,8 @@ export const marketingManager = {
           });
           if (selectedMusic) {
             console.log(`🎵 [Marketing Video] Música seleccionada: ${selectedMusic.matchReason}`);
+            draft.selectedMusicTitle = `${selectedMusic.title} (${selectedMusic.category})`;
+            draft.selectedMusicReason = selectedMusic.matchReason;
           }
 
           const lowerTopic = topic.toLowerCase();
@@ -284,6 +286,8 @@ export const marketingManager = {
           } else if (targetProduct === "coreagent") {
             visualStyle = "high_contrast_tech";
           }
+          draft.visualStyle = visualStyle;
+          draft.visualEffectsSummary = `Zoom/Pan Ken Burns + transiciones xfade + estilo ${visualStyle}`;
 
           console.log(`🎬 [Marketing Video] Ensamblando MP4 con ${sceneMediaList.length} escenas (${distinctImages.size} imágenes distintas, estilo=${visualStyle}, zoom+xfade activos)...`);
           const videoRes = await videoAssembler.assembleVideo(

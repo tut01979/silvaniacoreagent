@@ -55,6 +55,10 @@ export interface MarketingDraft {
   networkImageCount?: number;
   localFallbackImageCount?: number;
   realDurationSeconds?: number;
+  selectedMusicTitle?: string;
+  selectedMusicReason?: string;
+  visualStyle?: string;
+  visualEffectsSummary?: string;
   videoError?: string;
   feedbackNote?: string;
   createdAt: string;
