@@ -5,7 +5,7 @@ import { driveMemoryService } from "../services/driveMemory.js";
 import fs from "fs";
 import path from "path";
 
-const SEP = "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
+const SEP = "\n---";
 
 function sanitizeMarkdown(text: string): string {
   if (!text) return "";

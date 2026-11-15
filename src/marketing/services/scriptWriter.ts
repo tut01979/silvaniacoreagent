@@ -234,6 +234,7 @@ Instrucciones de Voz y Tono para este género:
 - Frases cortas y ágiles (8 a 14 palabras máx por oración) con pausas fonéticas naturales (puntos y seguido frecuentes, puntos suspensivos...).
 - ${hookInstruction}
 - EXACTAMENTE ${targetScenes} escenas secuenciales (array "scenes").
+- LLAMADA A LA ACCIÓN FINAL OBLIGATORIA: La ÚLTIMA escena (escena ${targetScenes}) debe cerrar SIEMPRE con una llamada a la acción clara, directa y persuasiva invitando a descubrir o probar Silvania en silvania.ai (tanto en "narration" como en "onScreenText", ej: "PRUÉBALO EN SILVANIA.AI").
 - Cada escena debe tener:
   * "narration": locución fluida de ${wordsPerScene}.
   * "onScreenText": texto clave de 3 a 6 palabras en mayúsculas (${onScreenExample}).
@@ -273,7 +274,7 @@ Responde ÚNICAMENTE con un JSON:
         script.scenes = script.scenes.slice(0, targetScenes);
       }
       script.totalEstimatedDurationSeconds = durationSeconds;
-      return { data: script, llmModel: preferredModel };
+      return { data: ensureClosingCta(script, topic), llmModel: preferredModel };
     } catch (err: any) {
       console.warn("⚠️ Falló OpenRouter en YouTubeScript, usando Groq:", err.message);
       const groqCompletion = await groq.chat.completions.create({
@@ -289,7 +290,7 @@ Responde ÚNICAMENTE con un JSON:
         script.scenes = script.scenes.slice(0, targetScenes);
       }
       script.totalEstimatedDurationSeconds = durationSeconds;
-      return { data: script, llmModel: "llama-3.3-70b-versatile" };
+      return { data: ensureClosingCta(script, topic), llmModel: "llama-3.3-70b-versatile" };
     }
   },
 
@@ -313,6 +314,7 @@ Reglas obligatorias de TikTok:
 4. Locución conversacional, dinámica y persuasiva en español natural (15 a 25 palabras por escena).
 5. Prompt visual fotorrealista para FLUX en inglés (formato 9:16 vertical cinematográfico).
 6. Tags relevantes para TikTok y Shorts (#TechTok, #Productividad, #SilvaniaAI, #IA).
+7. LLAMADA A LA ACCIÓN FINAL OBLIGATORIA: La última micro-escena debe cerrar SIEMPRE con una llamada a la acción directa en voz ("narration") y en pantalla ("onScreenText"), invitando a probarlo en silvania.ai (ej: "DESCUBRE SILVANIA.AI").
 
 Responde ÚNICAMENTE con un JSON válido con esta estructura:
 {
@@ -347,7 +349,7 @@ Responde ÚNICAMENTE con un JSON válido con esta estructura:
       if (script.scenes && script.scenes.length > 4) {
         script.scenes = script.scenes.slice(0, 4);
       }
-      return { data: script, llmModel: preferredModel };
+      return { data: ensureClosingCta(script, topic), llmModel: preferredModel };
     } catch (err: any) {
       console.warn("⚠️ Falló OpenRouter en TikTokScript, usando Groq:", err.message);
       const groqCompletion = await groq.chat.completions.create({
@@ -362,7 +364,38 @@ Responde ÚNICAMENTE con un JSON válido con esta estructura:
       if (script.scenes && script.scenes.length > 4) {
         script.scenes = script.scenes.slice(0, 4);
       }
-      return { data: script, llmModel: "llama-3.3-70b-versatile" };
+      return { data: ensureClosingCta(script, topic), llmModel: "llama-3.3-70b-versatile" };
     }
   },
 };
+
+/**
+ * Garantiza que la última escena de todo vídeo cierre con una llamada a la acción clara
+ * tanto en la locución (voz) como en el texto en pantalla.
+ */
+function ensureClosingCta(script: VideoScript, topic: string): VideoScript {
+  if (!script.scenes || script.scenes.length === 0) return script;
+  const lastScene = script.scenes[script.scenes.length - 1];
+  const lowerTopic = topic.toLowerCase();
+  const narration = (lastScene.narration || "").trim();
+  const hasSpokenCta = /silvania\.ai|pru[eé]balo|desc[uú]brelo|visita|empieza hoy|solicita|únete/i.test(narration);
+
+  if (!hasSpokenCta) {
+    let ctaSentence = "Empieza hoy mismo y descúbrelo en silvania.ai.";
+    if (lowerTopic.includes("eva")) {
+      ctaSentence = "Conoce a Eva y transforma tu enseñanza en silvania.ai.";
+    } else if (lowerTopic.includes("marketing")) {
+      ctaSentence = "Lleva tu contenido al siguiente nivel en silvania.ai.";
+    } else if (lowerTopic.includes("coreagent") || lowerTopic.includes("productividad")) {
+      ctaSentence = "Recupera tu tiempo hoy mismo en silvania.ai.";
+    }
+    lastScene.narration = narration ? `${narration.replace(/[.!?]*$/, "")}. ${ctaSentence}` : ctaSentence;
+  }
+
+  const screenText = (lastScene.onScreenText || "").trim();
+  if (!/SILVANIA\.AI|PRU[EÉ]BALO|DESCUBRE|EMPIEZA/i.test(screenText)) {
+    lastScene.onScreenText = "DESCUBRE MÁS EN SILVANIA.AI";
+  }
+
+  return script;
+}

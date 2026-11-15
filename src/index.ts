@@ -2383,7 +2383,8 @@ bot.command(["voz", "voice"], async (ctx) => {
 });
 
 // Comando /campaña (Campaña Omnicanal Multired)
-bot.command(["campaña", "campana", "campaign"], async (ctx) => {
+// Nota: Telegram Bot API no reconoce 'ñ' en bot_command, por eso usamos bot.hears antes de message:text.
+bot.hears(/^\/(?:campa[ñn]a|campaign)(?:@\w+)?(?:\s+([\s\S]+))?$/i, async (ctx) => {
   const userId = ctx.from!.id;
   const adminIds = config.marketing?.adminIds || [1572946817];
 
@@ -2391,7 +2392,7 @@ bot.command(["campaña", "campana", "campaign"], async (ctx) => {
     return ctx.reply("❌ No tienes permisos para acceder a Silvania Marketing Studio.");
   }
 
-  const topic = ctx.match ? ctx.match.toString().trim() : "";
+  const topic = (ctx.match && ctx.match[1] ? ctx.match[1] : "").trim();
   if (!topic) {
     return ctx.reply(
       "🚀 *Campaña Omnicanal de Silvania*\n\n" +
