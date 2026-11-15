@@ -333,43 +333,62 @@ export const videoAssembler = {
       `🎬 VideoAssembler: Renderizando MP4 (${width}x${height} @ ${fps}fps, estilo=${visualStyle}, zoom=${enableZoomPan}, trans=${transitionStyle}, música=${hasMusic ? path.basename(options!.musicTrackPath!) : "ninguna"})...`
     );
 
+    let usedFallback = false;
     try {
       try {
         await execAsync(advancedFfmpegCmd, {
-          timeout: Math.max(timeoutMs, 180_000),
+          timeout: Math.max(timeoutMs, scenes.length * 20_000, 300_000),
           maxBuffer: 15 * 1024 * 1024,
         });
       } catch (advErr: any) {
+        usedFallback = true;
         const stderrTail = advErr?.stderr ? String(advErr.stderr).slice(-350).replace(/\s+/g, " ") : "";
         console.warn(
-          `⚠️ [VideoAssembler] Pipeline avanzado falló (${advErr?.message?.slice(0, 120)}${stderrTail ? " | stderr: " + stderrTail : ""}), usando fallback seguro multi-entrada...`
+          `⚠️ [VideoAssembler] Pipeline avanzado falló (${advErr?.message?.slice(0, 120)}${stderrTail ? " | stderr: " + stderrTail : ""}), usando fallback seguro multi-entrada con fades y música...`
         );
         const isPortraitFallback = height > width;
         const fbInputs: string[] = [];
         const fbFilters: string[] = [];
         for (let i = 0; i < scenes.length; i++) {
           const imgPath = path.resolve(scenes[i].imagePath).replace(/\\/g, "/");
-          fbInputs.push(`-loop 1 -t ${allocatedDurations[i].toFixed(3)} -i "${imgPath}"`);
+          const sceneDur = allocatedDurations[i];
+          const fadeOutSt = Math.max(0.2, sceneDur - 0.35).toFixed(2);
+          fbInputs.push(`-loop 1 -t ${sceneDur.toFixed(3)} -i "${imgPath}"`);
           if (isPortraitFallback) {
             fbFilters.push(
-              `[${i}:v]split[fbg${i}][ffg${i}];` +
+              `[${i}:v]format=yuv420p,split[fbg${i}][ffg${i}];` +
                 `[fbg${i}]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},boxblur=18:4,setsar=1[fbgb${i}];` +
                 `[ffg${i}]scale=${width}:${height}:force_original_aspect_ratio=decrease,setsar=1[ffgb${i}];` +
-                `[fbgb${i}][ffgb${i}]overlay=(W-w)/2:(H-h)/2,fps=${fps},format=yuv420p[fv${i}]`
+                `[fbgb${i}][ffgb${i}]overlay=(W-w)/2:(H-h)/2,fps=${fps},fade=t=in:st=0:d=0.30,fade=t=out:st=${fadeOutSt}:d=0.35,format=yuv420p[fv${i}]`
             );
           } else {
             fbFilters.push(
-              `[${i}:v]scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=${fps},format=yuv420p[fv${i}]`
+              `[${i}:v]format=yuv420p,scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=${fps},fade=t=in:st=0:d=0.30,fade=t=out:st=${fadeOutSt}:d=0.35,format=yuv420p[fv${i}]`
             );
           }
         }
         const fbConcatInputs = scenes.map((_, i) => `[fv${i}]`).join("");
         fbFilters.push(`${fbConcatInputs}concat=n=${scenes.length}:v=1:a=0,${styleExpr},format=yuv420p[vout]`);
+
+        let fbAudioMap = `-map ${scenes.length}:a`;
+        let fbMusicInputArg = "";
+        if (hasMusic && options?.musicTrackPath) {
+          const fbMusicIdx = scenes.length + 1;
+          const safeMusicPath = path.resolve(options.musicTrackPath).replace(/\\/g, "/");
+          fbMusicInputArg = `-stream_loop -1 -i "${safeMusicPath}"`;
+          const fadeOutStart = Math.max(0.5, totalAudioDuration - 1.8).toFixed(2);
+          fbFilters.push(
+            `[${fbMusicIdx}:a]volume=${musicVolume},afade=t=in:st=0:d=1.2,afade=t=out:st=${fadeOutStart}:d=1.8[mduck]`,
+            `[${scenes.length}:a][mduck]amix=inputs=2:duration=first:dropout_transition=2[aout]`
+          );
+          fbAudioMap = `-map "[aout]"`;
+        }
+
         const fbFilterPath = path.join(path.dirname(outputPath), `${path.basename(outputPath, path.extname(outputPath))}_fb_filter.txt`);
         fs.writeFileSync(fbFilterPath, fbFilters.join(";"), "utf8");
-        const fallbackCmd = `"${ffmpegBin}" -y ${fbInputs.join(" ")} -i "${audioPath}" -filter_complex_script "${fbFilterPath}" -map "[vout]" -map ${scenes.length}:a -r ${fps} -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k -shortest -movflags +faststart "${outputPath}"`;
+        const fallbackCmd = `"${ffmpegBin}" -y ${fbInputs.join(" ")} -i "${audioPath}" ${fbMusicInputArg} -filter_complex_script "${fbFilterPath}" -map "[vout]" ${fbAudioMap} -r ${fps} -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k -shortest -movflags +faststart "${outputPath}"`;
         await execAsync(fallbackCmd, {
-          timeout: Math.max(timeoutMs, 180_000),
+          timeout: Math.max(timeoutMs, scenes.length * 20_000, 300_000),
           maxBuffer: 10 * 1024 * 1024,
         });
         if (fs.existsSync(fbFilterPath)) fs.unlinkSync(fbFilterPath);
@@ -396,7 +415,9 @@ export const videoAssembler = {
         fileSizeBytes: fileStats.size,
         width,
         height,
-        providerNotes: `FFmpeg H.264/AAC @ ${fps}fps + Concat Demuxer (${distinctImages.size} imágenes distintas)`,
+        providerNotes: usedFallback
+          ? `FFmpeg H.264/AAC @ ${fps}fps (Fallback fade + ${visualStyle}, ${distinctImages.size} imágenes distintas)`
+          : `FFmpeg H.264/AAC @ ${fps}fps (Ken Burns + xfade:${transitionStyle} + ${visualStyle}, ${distinctImages.size} imágenes distintas)`,
       };
     } catch (err: any) {
       // Limpiar archivo intermedio en caso de fallo
