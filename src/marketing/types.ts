@@ -74,6 +74,7 @@ export interface CampaignPackDraft {
   createdAt: string;
   youtubeLongDraft?: MarketingDraft; // 16:9 full (2-3 min, N scenes)
   tiktokShortDraft?: MarketingDraft; // 9:16 vertical (45-60s)
+  whatsappVideoDraft?: MarketingDraft; // 9:16 vertical (30s WhatsApp + copy persuasivo)
   linkedinPostDraft?: MarketingDraft; // Storytelling
   xPostDraft?: MarketingDraft; // Punchy hook
   telegramPostDraft?: MarketingDraft; // Formatted summary

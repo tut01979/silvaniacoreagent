@@ -49,7 +49,7 @@ Si lo dejas tal cual, el agente usará los valores por defecto de Silvania.
 - Reglas explícitas de vídeo e imágenes (ej: usar siempre las imágenes de 01_inicio, 02_medio y 03_cierre; estilo cinema cálido):
 `;
 
-const IMAGE_EXT_REGEX = /\.(png|jpe?g|webp)$/i;
+const IMAGE_EXT_REGEX = /\.(png|jpe?g|webp|bmp|gif)$/i;
 
 function isImageFile(file: any): boolean {
   const mime = String(file?.mimeType || "").toLowerCase();
@@ -231,22 +231,42 @@ export const brandDriveAssets = {
       // ignore brand rules read errors
     }
 
-    // 1. Imágenes intrínsecas (01_inicio, 02_medio, 03_cierre)
+    // 1. Imágenes intrínsecas (01_inicio, 02_medio, 03_cierre + raíz de imagenes_intrinsecas)
     const downloadIntrinsic = async (folderId: string, prefix: string): Promise<string | undefined> => {
       const files = (await listFolderFiles(userId, folderId)).filter(isImageFile);
+      console.log(`🔍 [BrandDrive] Carpeta ${prefix} (${folderId}): ${files.length} imagen(es) detectada(s).`);
       if (files.length === 0) return undefined;
       const chosen = files[0];
       const ext = path.extname(chosen.name) || ".png";
       const outPath = path.join(tempDir, `${prefix}${ext}`);
       const ok = await downloadDriveFile(userId, chosen.id, outPath);
+      if (ok) console.log(`✅ [BrandDrive] Descargada intrínseca ${prefix}: ${chosen.name}`);
       return ok ? outPath : undefined;
     };
 
-    const [introImagePath, middleImagePath, outroImagePath] = await Promise.all([
+    let [introImagePath, middleImagePath, outroImagePath] = await Promise.all([
       downloadIntrinsic(folders.inicioFolderId, "intrinsic_01_inicio"),
       downloadIntrinsic(folders.medioFolderId, "intrinsic_02_medio"),
       downloadIntrinsic(folders.cierreFolderId, "intrinsic_03_cierre"),
     ]);
+
+    // Si el usuario pegó su logo/imagen directamente en la raíz de imagenes_intrinsecas/
+    if (!introImagePath || !outroImagePath) {
+      const rootIntrinsicFiles = (await listFolderFiles(userId, folders.intrinsicFolderId)).filter(isImageFile);
+      console.log(`🔍 [BrandDrive] Raíz imagenes_intrinsecas: ${rootIntrinsicFiles.length} imagen(es) detectada(s).`);
+      if (rootIntrinsicFiles.length > 0) {
+        const logoFile =
+          rootIntrinsicFiles.find((f) => /logo|inicio|intro|marca/i.test(f.name)) || rootIntrinsicFiles[0];
+        const ext = path.extname(logoFile.name) || ".png";
+        const rootLogoPath = path.join(tempDir, `intrinsic_root_logo${ext}`);
+        const ok = await downloadDriveFile(userId, logoFile.id, rootLogoPath);
+        if (ok) {
+          console.log(`✅ [BrandDrive] Logo detectado en raíz imagenes_intrinsecas: ${logoFile.name}`);
+          if (!introImagePath) introImagePath = rootLogoPath;
+          if (!outroImagePath) outroImagePath = rootLogoPath;
+        }
+      }
+    }
 
     const intrinsicCount = [introImagePath, middleImagePath, outroImagePath].filter(Boolean).length;
 

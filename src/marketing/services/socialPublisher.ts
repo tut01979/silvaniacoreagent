@@ -11,6 +11,7 @@ export interface FormattedSocialPack {
   facebook: string;
   instagram: string;
   tiktok: string;
+  whatsapp: string;
   youtube: {
     title: string;
     description: string;
@@ -149,12 +150,20 @@ export const socialPublisher = {
       `Capítulos:\n00:00 Introducción y problema\n00:15 Demostración y solución\n00:45 Conclusiones y llamada a la acción\n\n` +
       `${tagsStr}`;
 
+    // 7. WhatsApp (Texto persuasivo listo para reenviar junto al vídeo de 30s)
+    const whatsappCopy =
+      `*${cleanTitle}*\n\n` +
+      `${cleanCopy}\n\n` +
+      `🚀 *Empieza hoy con Silvania CoreAgent (ya activo):*\n` +
+      `${crossLinksBlock}`;
+
     return {
       twitter: twitterCopy,
       linkedin: linkedinCopy,
       facebook: facebookCopy,
       instagram: instagramCopy,
       tiktok: tiktokCopy,
+      whatsapp: whatsappCopy,
       youtube: {
         title: ytTitle,
         description: ytDescription,

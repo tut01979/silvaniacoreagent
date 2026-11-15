@@ -315,13 +315,15 @@ export const telegramReview = {
 
       const msgPart2 = 
         `📦 *PACK MULTIRREDES (Parte 2/2)*\n\n` +
+        `💚 *WhatsApp (Texto persuasivo + enlaces):*\n` +
+        `\`\`\`text\n${pack.whatsapp}\n\`\`\`\n\n` +
         `📸 *Instagram (@silvania.ai):*\n` +
         `\`\`\`text\n${pack.instagram}\n\`\`\`\n\n` +
         `🎵 *TikTok:*\n` +
         `\`\`\`text\n${pack.tiktok}\n\`\`\`\n\n` +
         `🎬 *YouTube (Título & Descripción):*\n` +
         `*Título:* \`${pack.youtube.title}\`\n\n` +
-        `*Descripción:*\n\`\`\`text\n${pack.youtube.description.slice(0, 1000)}\n\`\`\``;
+        `*Descripción:*\n\`\`\`text\n${pack.youtube.description.slice(0, 900)}\n\`\`\``;
 
       try {
         await ctx.reply(msgPart1, { parse_mode: "Markdown" });
@@ -513,7 +515,10 @@ export const telegramReview = {
             publishReport.join("\n") + "\n\n" +
             `💡 _Toca el botón abajo para obtener los textos listos para pegar en X, LinkedIn, TikTok y YouTube:_`;
 
-          const followUpKeyboard = new InlineKeyboard().text("📦 Ver Pack Multirredes (1-Click)", `mkt_pack_${draftId}`);
+          const followUpKeyboard = new InlineKeyboard()
+            .text("📦 Ver Pack Multirredes (1-Click)", `mkt_pack_${draftId}`)
+            .row()
+            .text("💚 Generar Vídeo WhatsApp 30s + Copy", `mkt_wa_${draftId}`);
           try {
             await ctx.reply(reportText, { parse_mode: "Markdown", reply_markup: followUpKeyboard });
           } catch {
@@ -548,10 +553,25 @@ export const telegramReview = {
           `Configura la variable \`MARKETING_TELEGRAM_CHANNEL_ID\` en Railway.\n\n` +
           `_Toca abajo para copiar los textos formateados para tus otras redes:_`;
 
-        const followUpKeyboard = new InlineKeyboard().text("📦 Ver Pack Multirredes (1-Click)", `mkt_pack_${draftId}`);
+        const followUpKeyboard = new InlineKeyboard()
+          .text("📦 Ver Pack Multirredes (1-Click)", `mkt_pack_${draftId}`)
+          .row()
+          .text("💚 Generar Vídeo WhatsApp 30s + Copy", `mkt_wa_${draftId}`);
         await ctx.reply(reportText, { parse_mode: "Markdown", reply_markup: followUpKeyboard });
         return true;
       }
+    }
+
+    if (action === "wa") {
+      await ctx.answerCallbackQuery({ text: "💚 Generando vídeo WhatsApp 30s..." }).catch(() => {});
+      await ctx.reply(`💚 *Generando vídeo vertical de 30s y texto persuasivo para WhatsApp...*\n📌 _${draft.topic}_`, { parse_mode: "Markdown" });
+      try {
+        const { marketingManager } = await import("./manager.js");
+        await marketingManager.createAndReviewDraft(draft.topic, "whatsapp_video", draft.userId, bot);
+      } catch (waErr: any) {
+        await ctx.reply(`❌ Error generando vídeo WhatsApp 30s: ${waErr.message}`);
+      }
+      return true;
     }
 
     if (action === "reg") {
@@ -606,6 +626,9 @@ export const telegramReview = {
     const ttDur = pack.tiktokShortDraft?.realDurationSeconds
       ? `${Math.round(pack.tiktokShortDraft.realDurationSeconds)}s`
       : "~40s";
+    const waDur = pack.whatsappVideoDraft?.realDurationSeconds
+      ? `${Math.round(pack.whatsappVideoDraft.realDurationSeconds)}s`
+      : "~30s";
 
     const msg =
       `📦 *CAMPAÑA OMNICANAL GENERADA CON ÉXITO*\n` +
@@ -618,6 +641,9 @@ export const telegramReview = {
       `📱 *TikTok / Shorts (9:16):*\n` +
       `  • Estado: ${pack.tiktokShortDraft?.videoPath ? "✅ Vídeo MP4 listo" : "Borrador generado"}\n` +
       `  • Formato: ${ttScenes} escenas condensadas · ${ttDur} de alto impacto viral\n\n` +
+      `💚 *WhatsApp 30s (9:16):*\n` +
+      `  • Estado: ${pack.whatsappVideoDraft?.videoPath ? "✅ Vídeo MP4 + texto persuasivo listos" : "Borrador generado"}\n` +
+      `  • Duración: ${waDur} con CTA final y enlaces oficiales\n\n` +
       `💼 *LinkedIn Post:*\n` +
       `  • Estado: ✅ Redactado (storytelling B2B + aprendizajes profesionales)\n\n` +
       `𝕏 *X / Twitter:*\n` +

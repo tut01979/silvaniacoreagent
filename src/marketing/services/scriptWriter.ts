@@ -468,9 +468,10 @@ function ensureClosingCta(script: VideoScript, topic: string): VideoScript {
     lowerTopic.includes("proximamente") ||
     lowerTopic.includes("sneak peek");
   const narration = (lastScene.narration || "").trim();
+  const hasSpokenUrl = /silvania\.ai|silvania punto a i/i.test(narration);
   const hasSpokenCta = isUpcomingProduct
-    ? /coreagent/i.test(narration) && /silvania\.ai|pru[eé]ba|usa|empieza/i.test(narration)
-    : /silvania\.ai|pru[eé]balo|desc[uú]brelo|visita|empieza hoy|solicita|únete/i.test(narration);
+    ? hasSpokenUrl && /coreagent/i.test(narration)
+    : hasSpokenUrl && /pru[eé]ba|desc[uú]bre|visita|empieza|usa|solicita|únete/i.test(narration);
 
   if (!hasSpokenCta) {
     let ctaSentence = "Empieza hoy mismo con Silvania CoreAgent en silvania.ai.";

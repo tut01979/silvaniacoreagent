@@ -449,6 +449,7 @@ export const marketingManager = {
       `📌 _"${topic}"_\n\n` +
       `• 🎬 *YouTube Largo (16:9)*: Formato extendido (admite hasta 30 escenas y duración > 2 min)\n` +
       `• 📱 *TikTok / Shorts (9:16)*: Formato vertical condensado (3-4 escenas, ~40s)\n` +
+      `• 💚 *WhatsApp 30s (9:16)*: Vídeo vertical de 30s con CTA + texto persuasivo\n` +
       `• 💼 *LinkedIn*: Storytelling B2B y aprendizajes\n` +
       `• 𝕏 *X / Twitter*: Gancho viral de síntesis (< 280 caracteres)\n` +
       `• ✈️ *Telegram*: Resumen digest para el canal\n\n` +
@@ -470,6 +471,14 @@ export const marketingManager = {
       tiktokShortDraft = await this.createAndReviewDraft(topic, "tiktok", userId, bot);
     } catch (err: any) {
       console.warn("⚠️ Falló borrador de TikTok en campaña:", err.message);
+    }
+
+    // 2.5 WhatsApp 30s (9:16) + Texto Persuasivo
+    let whatsappVideoDraft: MarketingDraft | undefined;
+    try {
+      whatsappVideoDraft = await this.createAndReviewDraft(topic, "whatsapp_video", userId, bot);
+    } catch (err: any) {
+      console.warn("⚠️ Falló borrador de WhatsApp 30s en campaña:", err.message);
     }
 
     // 3. LinkedIn Post
@@ -503,6 +512,7 @@ export const marketingManager = {
       createdAt: now,
       youtubeLongDraft,
       tiktokShortDraft,
+      whatsappVideoDraft,
       linkedinPostDraft,
       xPostDraft,
       telegramPostDraft,
