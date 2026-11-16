@@ -102,6 +102,11 @@ export const telegramReview = {
       summaryText = `⚠️ *Imagen no generada:* ${draft.imageError}\n\n` + summaryText;
     }
 
+    // Telegram rechaza sendMessage > 4096 caracteres
+    if (summaryText.length > 3850) {
+      summaryText = summaryText.slice(0, 3840) + "\n...";
+    }
+
     // 1. Enviar imagen si existe
     if (hasImage) {
       if (summaryText.length <= 1000) {

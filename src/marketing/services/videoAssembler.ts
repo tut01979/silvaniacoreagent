@@ -333,65 +333,109 @@ export const videoAssembler = {
       `🎬 VideoAssembler: Renderizando MP4 (${width}x${height} @ ${fps}fps, estilo=${visualStyle}, zoom=${enableZoomPan}, trans=${transitionStyle}, música=${hasMusic ? path.basename(options!.musicTrackPath!) : "ninguna"})...`
     );
 
-    let usedFallback = false;
-    try {
+    const baseName = path.basename(outputPath, path.extname(outputPath));
+    const renderPerSceneConcat = async (): Promise<void> => {
+      const clipPaths: string[] = [];
+      const clipListPath = path.join(path.dirname(outputPath), `${baseName}_clips.txt`);
+      const isPortraitClip = height > width;
+      const upW = Math.round((width * 1.25) / 2) * 2;
+      const upH = Math.round((height * 1.25) / 2) * 2;
       try {
-        await execAsync(advancedFfmpegCmd, {
-          timeout: Math.max(timeoutMs, scenes.length * 20_000, 300_000),
-          maxBuffer: 15 * 1024 * 1024,
-        });
-      } catch (advErr: any) {
-        usedFallback = true;
-        const stderrTail = advErr?.stderr ? String(advErr.stderr).slice(-350).replace(/\s+/g, " ") : "";
-        console.warn(
-          `⚠️ [VideoAssembler] Pipeline avanzado falló (${advErr?.message?.slice(0, 120)}${stderrTail ? " | stderr: " + stderrTail : ""}), usando fallback seguro multi-entrada con fades y música...`
-        );
-        const isPortraitFallback = height > width;
-        const fbInputs: string[] = [];
-        const fbFilters: string[] = [];
         for (let i = 0; i < scenes.length; i++) {
           const imgPath = path.resolve(scenes[i].imagePath).replace(/\\/g, "/");
           const sceneDur = allocatedDurations[i];
+          const frames = Math.max(24, Math.ceil(sceneDur * fps));
+          const denom = Math.max(1, frames - 1);
           const fadeOutSt = Math.max(0.2, sceneDur - 0.35).toFixed(2);
-          fbInputs.push(`-loop 1 -t ${sceneDur.toFixed(3)} -i "${imgPath}"`);
-          if (isPortraitFallback) {
-            fbFilters.push(
-              `[${i}:v]format=yuv420p,split[fbg${i}][ffg${i}];` +
-                `[fbg${i}]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},boxblur=18:4,setsar=1[fbgb${i}];` +
-                `[ffg${i}]scale=${width}:${height}:force_original_aspect_ratio=decrease,setsar=1[ffgb${i}];` +
-                `[fbgb${i}][ffgb${i}]overlay=(W-w)/2:(H-h)/2,fps=${fps},fade=t=in:st=0:d=0.30,fade=t=out:st=${fadeOutSt}:d=0.35,format=yuv420p[fv${i}]`
-            );
+          const clipPath = path.join(path.dirname(outputPath), `${baseName}_clip_${i}.mp4`);
+          const mode = i % 4;
+          let filterStr = "";
+          let clipInputArg = `-i "${imgPath}"`;
+
+          if (enableZoomPan) {
+            let zpExpr = "";
+            if (isPortraitClip) {
+              zpExpr =
+                mode % 2 === 0
+                  ? `zoompan=z='1.0+0.08*(on/${denom})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`
+                  : `zoompan=z='1.08-0.08*(on/${denom})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
+              filterStr =
+                `[0:v]format=yuv420p,split[bg][fg];` +
+                `[bg]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},boxblur=18:4,setsar=1[bgb];` +
+                `[fg]scale=${width}:${height}:force_original_aspect_ratio=decrease,setsar=1[fgb];` +
+                `[bgb][fgb]overlay=(W-w)/2:(H-h)/2,scale=${upW}:${upH},setsar=1,${zpExpr},fps=${fps},fade=t=in:st=0:d=0.35,fade=t=out:st=${fadeOutSt}:d=0.35,${styleExpr},format=yuv420p[vout]`;
+            } else {
+              if (mode === 0) {
+                zpExpr = `zoompan=z='1.0+0.18*(on/${denom})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
+              } else if (mode === 1) {
+                zpExpr = `zoompan=z='1.18-0.18*(on/${denom})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
+              } else if (mode === 2) {
+                zpExpr = `zoompan=z='1.14':x='(iw-iw/zoom)*(on/${denom})':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
+              } else {
+                zpExpr = `zoompan=z='1.14':x='(iw-iw/zoom)*(1-(on/${denom}))':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
+              }
+              filterStr = `[0:v]format=yuv420p,scale=${upW}:${upH}:force_original_aspect_ratio=increase,crop=${upW}:${upH},setsar=1,${zpExpr},fps=${fps},fade=t=in:st=0:d=0.35,fade=t=out:st=${fadeOutSt}:d=0.35,${styleExpr},format=yuv420p[vout]`;
+            }
           } else {
-            fbFilters.push(
-              `[${i}:v]format=yuv420p,scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=${fps},fade=t=in:st=0:d=0.30,fade=t=out:st=${fadeOutSt}:d=0.35,format=yuv420p[fv${i}]`
-            );
+            clipInputArg = `-loop 1 -t ${sceneDur.toFixed(3)} -i "${imgPath}"`;
+            filterStr = `[0:v]format=yuv420p,scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},setsar=1,fps=${fps},fade=t=in:st=0:d=0.35,fade=t=out:st=${fadeOutSt}:d=0.35,${styleExpr},format=yuv420p[vout]`;
           }
-        }
-        const fbConcatInputs = scenes.map((_, i) => `[fv${i}]`).join("");
-        fbFilters.push(`${fbConcatInputs}concat=n=${scenes.length}:v=1:a=0,${styleExpr},format=yuv420p[vout]`);
 
-        let fbAudioMap = `-map ${scenes.length}:a`;
-        let fbMusicInputArg = "";
+          const clipCmd = `"${ffmpegBin}" -y ${clipInputArg} -filter_complex "${filterStr}" -map "[vout]" -an -r ${fps} -c:v libx264 -preset fast -crf 23 -t ${sceneDur.toFixed(3)} "${clipPath}"`;
+          await execAsync(clipCmd, { timeout: 60_000, maxBuffer: 5 * 1024 * 1024 });
+          clipPaths.push(clipPath);
+        }
+
+        fs.writeFileSync(
+          clipListPath,
+          clipPaths.map((p) => `file '${path.resolve(p).replace(/\\/g, "/").replace(/'/g, "'\\''")}'`).join("\n"),
+          "utf8"
+        );
+
+        let finalAudioArgs = `-map 1:a`;
+        let finalMusicInput = "";
+        let finalAudioFilter = "";
         if (hasMusic && options?.musicTrackPath) {
-          const fbMusicIdx = scenes.length + 1;
           const safeMusicPath = path.resolve(options.musicTrackPath).replace(/\\/g, "/");
-          fbMusicInputArg = `-stream_loop -1 -i "${safeMusicPath}"`;
+          finalMusicInput = `-stream_loop -1 -i "${safeMusicPath}"`;
           const fadeOutStart = Math.max(0.5, totalAudioDuration - 1.8).toFixed(2);
-          fbFilters.push(
-            `[${fbMusicIdx}:a]volume=${musicVolume},afade=t=in:st=0:d=1.2,afade=t=out:st=${fadeOutStart}:d=1.8[mduck]`,
-            `[${scenes.length}:a][mduck]amix=inputs=2:duration=first:dropout_transition=2[aout]`
-          );
-          fbAudioMap = `-map "[aout]"`;
+          finalAudioFilter = `-filter_complex "[2:a]volume=${musicVolume},afade=t=in:st=0:d=1.2,afade=t=out:st=${fadeOutStart}:d=1.8[mduck];[1:a][mduck]amix=inputs=2:duration=first:dropout_transition=2[aout]"`;
+          finalAudioArgs = `-map "[aout]"`;
         }
 
-        const fbFilterPath = path.join(path.dirname(outputPath), `${path.basename(outputPath, path.extname(outputPath))}_fb_filter.txt`);
-        fs.writeFileSync(fbFilterPath, fbFilters.join(";"), "utf8");
-        const fallbackCmd = `"${ffmpegBin}" -y ${fbInputs.join(" ")} -i "${audioPath}" ${fbMusicInputArg} -filter_complex_script "${fbFilterPath}" -map "[vout]" ${fbAudioMap} -r ${fps} -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k -shortest -movflags +faststart "${outputPath}"`;
-        await execAsync(fallbackCmd, {
-          timeout: Math.max(timeoutMs, scenes.length * 20_000, 300_000),
-          maxBuffer: 10 * 1024 * 1024,
-        });
-        if (fs.existsSync(fbFilterPath)) fs.unlinkSync(fbFilterPath);
+        const mergeCmd = `"${ffmpegBin}" -y -f concat -safe 0 -i "${clipListPath}" -i "${audioPath}" ${finalMusicInput} ${finalAudioFilter} -map 0:v -c:v copy ${finalAudioArgs} -c:a aac -b:a 160k -shortest -movflags +faststart "${outputPath}"`;
+        await execAsync(mergeCmd, { timeout: 120_000, maxBuffer: 10 * 1024 * 1024 });
+      } finally {
+        for (const cp of clipPaths) {
+          try { if (fs.existsSync(cp)) fs.unlinkSync(cp); } catch {}
+        }
+        try { if (fs.existsSync(clipListPath)) fs.unlinkSync(clipListPath); } catch {}
+      }
+    };
+
+    let usedFallback = false;
+    let usedPerScene = false;
+    try {
+      if (scenes.length > 6) {
+        // Vídeos largos (>6 escenas): renderizado secuencial por escena + concat -c:v copy
+        // Evita saturar RAM/CPU en Railway con 15-20 filtros zoompan+xfade simultáneos
+        usedPerScene = true;
+        console.log(`🎬 [VideoAssembler] Vídeo largo (${scenes.length} escenas): usando renderizado secuencial por escena (Ken Burns + fades + estilo + música)...`);
+        await renderPerSceneConcat();
+      } else {
+        try {
+          await execAsync(advancedFfmpegCmd, {
+            timeout: Math.max(timeoutMs, scenes.length * 20_000, 300_000),
+            maxBuffer: 15 * 1024 * 1024,
+          });
+        } catch (advErr: any) {
+          usedFallback = true;
+          const stderrTail = advErr?.stderr ? String(advErr.stderr).slice(-350).replace(/\s+/g, " ") : "";
+          console.warn(
+            `⚠️ [VideoAssembler] Pipeline avanzado falló (${advErr?.message?.slice(0, 120)}${stderrTail ? " | stderr: " + stderrTail : ""}), usando renderizado secuencial seguro con Ken Burns, fades y música...`
+          );
+          await renderPerSceneConcat();
+        }
       }
 
       // Limpiar archivos intermedios
@@ -416,16 +460,20 @@ export const videoAssembler = {
         width,
         height,
         providerNotes: usedFallback
-          ? `FFmpeg H.264/AAC @ ${fps}fps (Fallback fade + ${visualStyle}, ${distinctImages.size} imágenes distintas)`
+          ? `FFmpeg H.264/AAC @ ${fps}fps (Secuencial seguro: Ken Burns + fade + ${visualStyle}, ${distinctImages.size} imágenes distintas)`
+          : usedPerScene
+          ? `FFmpeg H.264/AAC @ ${fps}fps (Secuencial Ken Burns + fade + ${visualStyle}, ${distinctImages.size} imágenes distintas)`
           : `FFmpeg H.264/AAC @ ${fps}fps (Ken Burns + xfade:${transitionStyle} + ${visualStyle}, ${distinctImages.size} imágenes distintas)`,
       };
     } catch (err: any) {
       // Limpiar archivo intermedio en caso de fallo
       try {
         if (fs.existsSync(concatListPath)) fs.unlinkSync(concatListPath);
+        if (fs.existsSync(filterScriptPath)) fs.unlinkSync(filterScriptPath);
       } catch {}
-      console.error("❌ VideoAssembler: Error en renderizado FFmpeg:", err.message);
-      throw new Error(`Fallo en el renderizado del vídeo con FFmpeg: ${err.message}`);
+      const shortErr = String(err?.stderr || err?.message || "Error FFmpeg").slice(-260).replace(/\s+/g, " ").trim();
+      console.error("❌ VideoAssembler: Error en renderizado FFmpeg:", shortErr);
+      throw new Error(`Fallo en el renderizado del vídeo con FFmpeg: ${shortErr}`);
     }
   },
 };

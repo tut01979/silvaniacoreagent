@@ -2724,23 +2724,30 @@ bot.command("marketing", async (ctx) => {
   const platformBadge = targetPlatform ? ` [${targetPlatform.toUpperCase()}]` : "";
   await ctx.reply(`🧠 *Silvania Marketing Studio en marcha...*\nInvestigando y preparando propuesta${platformBadge} para:\n_${topic}_...`, { parse_mode: "Markdown" });
 
-  try {
-    const { marketingManager } = await import("./marketing/manager.js");
-    const draft = await marketingManager.createAndReviewDraft(topic, format, userId, bot, { targetPlatform });
-    if (draft && draft.videoPath) {
-      const realDurStr = draft.realDurationSeconds
-        ? `${Math.floor(draft.realDurationSeconds / 60)}:${Math.round(draft.realDurationSeconds % 60) < 10 ? "0" : ""}${Math.round(draft.realDurationSeconds % 60)}`
-        : `${Math.round(draft.videoScript?.totalEstimatedDurationSeconds || 60)}s`;
-      const scenesInScript = draft.videoScript?.scenes.length || draft.sceneImageCount || 1;
-      const net = draft.networkImageCount ?? (draft.distinctImageCount || 0);
-      const loc = draft.localFallbackImageCount ?? 0;
-      const imgBreakdown = net > 0 && loc > 0 ? `${net} red, ${loc} slides corporativos` : net > 0 ? `${net} red` : loc > 0 ? `${loc} slides corporativos` : `${draft.distinctImageCount || 0} imágenes`;
-      await ctx.reply(`🎬 *Vídeo MP4 generado:* MP4 ${realDurStr} (audio real) · ${scenesInScript} escenas (${imgBreakdown}).\nRevisa el resultado interactivo arriba con los controles HITL de aprobación.`, { parse_mode: "Markdown" });
+  // Ejecutar en segundo plano para responder 200 OK inmediato a Telegram y evitar reintentos del webhook tras 60s
+  void (async () => {
+    try {
+      const { marketingManager } = await import("./marketing/manager.js");
+      const draft = await marketingManager.createAndReviewDraft(topic, format, userId, bot, { targetPlatform });
+      if (draft && draft.videoPath) {
+        const realDurStr = draft.realDurationSeconds
+          ? `${Math.floor(draft.realDurationSeconds / 60)}:${Math.round(draft.realDurationSeconds % 60) < 10 ? "0" : ""}${Math.round(draft.realDurationSeconds % 60)}`
+          : `${Math.round(draft.videoScript?.totalEstimatedDurationSeconds || 60)}s`;
+        const scenesInScript = draft.videoScript?.scenes.length || draft.sceneImageCount || 1;
+        const net = draft.networkImageCount ?? (draft.distinctImageCount || 0);
+        const loc = draft.localFallbackImageCount ?? 0;
+        const imgBreakdown = net > 0 && loc > 0 ? `${net} red, ${loc} slides corporativos` : net > 0 ? `${net} red` : loc > 0 ? `${loc} slides corporativos` : `${draft.distinctImageCount || 0} imágenes`;
+        await ctx.api.sendMessage(
+          userId,
+          `🎬 *Vídeo MP4 generado:* MP4 ${realDurStr} (audio real) · ${scenesInScript} escenas (${imgBreakdown}).\nRevisa el resultado interactivo arriba con los controles HITL de aprobación.`,
+          { parse_mode: "Markdown" }
+        );
+      }
+    } catch (err: any) {
+      console.error("❌ Error en Marketing Studio:", err);
+      await ctx.api.sendMessage(userId, `❌ Error generando el borrador de marketing: ${String(err?.message || err).slice(0, 500)}`).catch(() => {});
     }
-  } catch (err: any) {
-    console.error("❌ Error en Marketing Studio:", err);
-    await ctx.reply(`❌ Error generando el borrador de marketing: ${err.message}`);
-  }
+  })();
 });
 
 // ─── CAMBIO RÁPIDO DE VOZ EN LENGUAJE NATURAL (Álvaro / Lucía) ───
