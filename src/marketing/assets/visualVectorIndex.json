@@ -1,37 +1,5 @@
 [
   {
-    "id": "ca_auto_01",
-    "relPath": "src/marketing/assets/visuals/coreagent/automation/ca_auto_01.jpg",
-    "product": "coreagent",
-    "category": "automation",
-    "title": "Orquestación Autónoma de Flujos IA",
-    "description": "Interfaz holográfica azul y dorada conectando nodos de automatización empresarial sin intervención humana.",
-    "emotions": [
-      "eficiencia",
-      "control",
-      "poder",
-      "descubrimiento",
-      "futuro"
-    ],
-    "objective": "Demostrar cómo CoreAgent automatiza tareas repetitivas de principio a fin.",
-    "keywords": [
-      "automatizacion",
-      "flujos",
-      "nodos",
-      "ia",
-      "coreagent",
-      "orquestacion",
-      "workflow"
-    ],
-    "copyrightStatus": "royalty_free_ai_generated",
-    "attributes": [
-      "ordenes por voz",
-      "telegram",
-      "ejecucion inmediata",
-      "productividad"
-    ]
-  },
-  {
     "id": "ca_auto_02",
     "relPath": "src/marketing/assets/visuals/coreagent/automation/ca_auto_02.jpg",
     "product": "coreagent",
@@ -375,31 +343,6 @@
     "attributes": []
   },
   {
-    "id": "ca_docs_04",
-    "relPath": "src/marketing/assets/visuals/coreagent/stacked_documents/ca_docs_04.jpg",
-    "product": "coreagent",
-    "category": "stacked_documents",
-    "title": "Búsqueda Semántica en Miles de Documentos",
-    "description": "Lupa luminosa encontrando el documento exacto entre cientos de archivos flotantes.",
-    "emotions": [
-      "claridad",
-      "descubrimiento",
-      "alivio",
-      "precision"
-    ],
-    "objective": "Ilustrar la búsqueda instantánea de archivos en Google Drive con IA.",
-    "keywords": [
-      "busqueda",
-      "drive",
-      "archivos",
-      "encontrar",
-      "lupa",
-      "documentos"
-    ],
-    "copyrightStatus": "royalty_free_ai_generated",
-    "attributes": []
-  },
-  {
     "id": "ca_docs_05",
     "relPath": "src/marketing/assets/visuals/coreagent/stacked_documents/ca_docs_05.jpg",
     "product": "coreagent",
@@ -498,30 +441,6 @@
       "informe",
       "rapidez",
       "documentos"
-    ],
-    "copyrightStatus": "royalty_free_ai_generated",
-    "attributes": []
-  },
-  {
-    "id": "ca_docs_09",
-    "relPath": "src/marketing/assets/visuals/coreagent/stacked_documents/ca_docs_09.jpg",
-    "product": "coreagent",
-    "category": "stacked_documents",
-    "title": "Carpeta Segura y Respaldada",
-    "description": "Bóveda digital cristalina protegiendo documentos corporativos importantes.",
-    "emotions": [
-      "seguridad",
-      "proteccion",
-      "confianza",
-      "tranquilidad"
-    ],
-    "objective": "Transmitir privacidad y resguardo seguro de archivos empresariales.",
-    "keywords": [
-      "seguridad",
-      "boveda",
-      "privacidad",
-      "documentos",
-      "respaldo"
     ],
     "copyrightStatus": "royalty_free_ai_generated",
     "attributes": []
@@ -1141,59 +1060,6 @@
     "attributes": []
   },
   {
-    "id": "ca_prod_04",
-    "relPath": "src/marketing/assets/visuals/coreagent/productivity/ca_prod_04.jpg",
-    "product": "coreagent",
-    "category": "productivity",
-    "title": "Mañana Productiva con Café y Agenda Clara",
-    "description": "Primera hora de la mañana con portátil abierto y lista de prioridades resueltas.",
-    "emotions": [
-      "energia",
-      "claridad",
-      "optimismo",
-      "inicio"
-    ],
-    "objective": "Transmitir arranque de día organizado y sin agobios.",
-    "keywords": [
-      "mañana",
-      "cafe",
-      "agenda",
-      "energia",
-      "organizacion"
-    ],
-    "copyrightStatus": "royalty_free_ai_generated",
-    "attributes": [
-      "oficina moderna",
-      "google workspace",
-      "ahorro de tiempo",
-      "profesional"
-    ]
-  },
-  {
-    "id": "ca_prod_05",
-    "relPath": "src/marketing/assets/visuals/coreagent/productivity/ca_prod_05.jpg",
-    "product": "coreagent",
-    "category": "productivity",
-    "title": "Equipo Ágil Celebrando Metas Cumplidas",
-    "description": "Pequeño equipo moderno sonriendo frente a un tablero de objetivos completados.",
-    "emotions": [
-      "victoria",
-      "alegria",
-      "equipo",
-      "logro"
-    ],
-    "objective": "Mostrar impacto positivo en la productividad del equipo.",
-    "keywords": [
-      "equipo",
-      "metas",
-      "victoria",
-      "logro",
-      "productividad"
-    ],
-    "copyrightStatus": "royalty_free_ai_generated",
-    "attributes": []
-  },
-  {
     "id": "ca_prod_06",
     "relPath": "src/marketing/assets/visuals/coreagent/productivity/ca_prod_06.jpg",
     "product": "coreagent",
@@ -1242,84 +1108,6 @@
     "attributes": []
   },
   {
-    "id": "ca_prod_08",
-    "relPath": "src/marketing/assets/visuals/coreagent/productivity/ca_prod_08.jpg",
-    "product": "coreagent",
-    "category": "productivity",
-    "title": "Cero Distracciones, Máximo Rendimiento",
-    "description": "Auriculares premium y teclado minimalista en un ambiente sereno.",
-    "emotions": [
-      "calma",
-      "enfoque",
-      "calidad",
-      "silencio"
-    ],
-    "objective": "Evocar flujo de trabajo sin interrupciones.",
-    "keywords": [
-      "enfoque",
-      "auriculares",
-      "minimalismo",
-      "calma",
-      "rendimiento"
-    ],
-    "copyrightStatus": "royalty_free_ai_generated",
-    "attributes": []
-  },
-  {
-    "id": "ca_prod_09",
-    "relPath": "src/marketing/assets/visuals/coreagent/productivity/ca_prod_09.jpg",
-    "product": "coreagent",
-    "category": "productivity",
-    "title": "Cierre de Jornada Exitoso",
-    "description": "Profesional cerrando el portátil satisfecho al final de una tarde soleada.",
-    "emotions": [
-      "satisfaccion",
-      "victoria",
-      "equilibrio",
-      "descanso"
-    ],
-    "objective": "Mostrar que con CoreAgent terminas tu trabajo a tiempo.",
-    "keywords": [
-      "cierre",
-      "satisfaccion",
-      "equilibrio",
-      "tiempo",
-      "exito"
-    ],
-    "copyrightStatus": "royalty_free_ai_generated",
-    "attributes": []
-  },
-  {
-    "id": "ca_gw_01",
-    "relPath": "src/marketing/assets/visuals/coreagent/google_workspace/ca_gw_01.jpg",
-    "product": "coreagent",
-    "category": "google_workspace",
-    "title": "Ecosistema Cloud Unificado",
-    "description": "Cuatro esferas luminosas de colores azul, rojo, amarillo y verde conectadas en la nube.",
-    "emotions": [
-      "conexion",
-      "armonia",
-      "integracion",
-      "modernidad"
-    ],
-    "objective": "Representar la integración nativa con Google Workspace.",
-    "keywords": [
-      "google",
-      "workspace",
-      "nube",
-      "integracion",
-      "ecosistema",
-      "cloud"
-    ],
-    "copyrightStatus": "royalty_free_ai_generated",
-    "attributes": [
-      "oficina moderna",
-      "google workspace",
-      "ahorro de tiempo",
-      "profesional"
-    ]
-  },
-  {
     "id": "ca_gw_02",
     "relPath": "src/marketing/assets/visuals/coreagent/google_workspace/ca_gw_02.jpg",
     "product": "coreagent",
@@ -1350,36 +1138,6 @@
     ]
   },
   {
-    "id": "ca_gw_03",
-    "relPath": "src/marketing/assets/visuals/coreagent/google_workspace/ca_gw_03.jpg",
-    "product": "coreagent",
-    "category": "google_workspace",
-    "title": "Calendario Inteligente Sincronizado",
-    "description": "Cuadrícula de calendario holográfica perfectamente organizada por bloques de color.",
-    "emotions": [
-      "orden",
-      "puntualidad",
-      "control",
-      "claridad"
-    ],
-    "objective": "Ilustrar creación y consulta de citas en Google Calendar por voz.",
-    "keywords": [
-      "calendar",
-      "calendario",
-      "citas",
-      "agenda",
-      "reuniones",
-      "workspace"
-    ],
-    "copyrightStatus": "royalty_free_ai_generated",
-    "attributes": [
-      "oficina moderna",
-      "google workspace",
-      "ahorro de tiempo",
-      "profesional"
-    ]
-  },
-  {
     "id": "ca_gw_04",
     "relPath": "src/marketing/assets/visuals/coreagent/google_workspace/ca_gw_04.jpg",
     "product": "coreagent",
@@ -1399,95 +1157,6 @@
       "excel",
       "tablas",
       "datos",
-      "workspace"
-    ],
-    "copyrightStatus": "royalty_free_ai_generated",
-    "attributes": [
-      "oficina moderna",
-      "google workspace",
-      "ahorro de tiempo",
-      "profesional"
-    ]
-  },
-  {
-    "id": "ca_gw_05",
-    "relPath": "src/marketing/assets/visuals/coreagent/google_workspace/ca_gw_05.jpg",
-    "product": "coreagent",
-    "category": "google_workspace",
-    "title": "Carpetas en la Nube de Google Drive",
-    "description": "Estructura cristalina de carpetas flotantes conectadas por rayos suaves de luz.",
-    "emotions": [
-      "organizacion",
-      "acceso",
-      "seguridad",
-      "rapidez"
-    ],
-    "objective": "Representar búsqueda y organización de archivos en Google Drive.",
-    "keywords": [
-      "drive",
-      "carpetas",
-      "archivos",
-      "nube",
-      "google",
-      "workspace"
-    ],
-    "copyrightStatus": "royalty_free_ai_generated",
-    "attributes": [
-      "oficina moderna",
-      "google workspace",
-      "ahorro de tiempo",
-      "profesional"
-    ]
-  },
-  {
-    "id": "ca_gw_06",
-    "relPath": "src/marketing/assets/visuals/coreagent/google_workspace/ca_gw_06.jpg",
-    "product": "coreagent",
-    "category": "google_workspace",
-    "title": "Colaboración en Documentos en Tiempo Real",
-    "description": "Equipo trabajando conectado alrededor de documentos compartidos en la nube.",
-    "emotions": [
-      "colaboracion",
-      "fluidez",
-      "equipo",
-      "progreso"
-    ],
-    "objective": "Destacar creación y edición colaborativa en Google Docs.",
-    "keywords": [
-      "docs",
-      "documentos",
-      "colaboracion",
-      "equipo",
-      "google",
-      "workspace"
-    ],
-    "copyrightStatus": "royalty_free_ai_generated",
-    "attributes": [
-      "oficina moderna",
-      "google workspace",
-      "ahorro de tiempo",
-      "profesional"
-    ]
-  },
-  {
-    "id": "ca_gw_07",
-    "relPath": "src/marketing/assets/visuals/coreagent/google_workspace/ca_gw_07.jpg",
-    "product": "coreagent",
-    "category": "google_workspace",
-    "title": "Reunión Virtual sin Fricción",
-    "description": "Videollamada ejecutiva nítida con agenda y notas generadas automáticamente.",
-    "emotions": [
-      "conexion",
-      "profesionalismo",
-      "claridad",
-      "eficiencia"
-    ],
-    "objective": "Mostrar preparación y seguimiento automático de reuniones.",
-    "keywords": [
-      "meet",
-      "videollamada",
-      "reunion",
-      "notas",
       "workspace"
     ],
     "copyrightStatus": "royalty_free_ai_generated",
@@ -1900,30 +1569,6 @@
     "attributes": []
   },
   {
-    "id": "mk_str_05",
-    "relPath": "src/marketing/assets/visuals/marketing/marketing_strategy/mk_str_05.jpg",
-    "product": "marketing",
-    "category": "marketing_strategy",
-    "title": "Conexión Emocional con la Audiencia",
-    "description": "Puente luminoso uniendo dos siluetas de cristal en armonía.",
-    "emotions": [
-      "empatia",
-      "conexion",
-      "confianza",
-      "calidez"
-    ],
-    "objective": "Resaltar que el marketing efectivo conecta emociones reales.",
-    "keywords": [
-      "audiencia",
-      "emocion",
-      "conexion",
-      "puente",
-      "marketing"
-    ],
-    "copyrightStatus": "royalty_free_ai_generated",
-    "attributes": []
-  },
-  {
     "id": "mk_str_06",
     "relPath": "src/marketing/assets/visuals/marketing/marketing_strategy/mk_str_06.jpg",
     "product": "marketing",
@@ -1966,30 +1611,6 @@
       "contenido",
       "programacion",
       "constancia"
-    ],
-    "copyrightStatus": "royalty_free_ai_generated",
-    "attributes": []
-  },
-  {
-    "id": "mk_str_08",
-    "relPath": "src/marketing/assets/visuals/marketing/marketing_strategy/mk_str_08.jpg",
-    "product": "marketing",
-    "category": "marketing_strategy",
-    "title": "Imán de Atracción de Clientes",
-    "description": "Imán minimalista metálico atrayendo esferas doradas brillantes.",
-    "emotions": [
-      "atraccion",
-      "exito",
-      "magnetismo",
-      "crecimiento"
-    ],
-    "objective": "Visualizar inbound marketing y atracción orgánica de leads.",
-    "keywords": [
-      "inbound",
-      "atraccion",
-      "iman",
-      "leads",
-      "clientes"
     ],
     "copyrightStatus": "royalty_free_ai_generated",
     "attributes": []
@@ -2356,30 +1977,6 @@
     "attributes": []
   },
   {
-    "id": "mk_soc_06",
-    "relPath": "src/marketing/assets/visuals/marketing/social_media/mk_soc_06.jpg",
-    "product": "marketing",
-    "category": "social_media",
-    "title": "Engagement Real en Movimiento",
-    "description": "Personas interactuando felices con contenido desde una cafetería urbana.",
-    "emotions": [
-      "cercania",
-      "vida",
-      "conexion",
-      "alegria"
-    ],
-    "objective": "Mostrar consumo real de redes sociales en el día a día.",
-    "keywords": [
-      "engagement",
-      "personas",
-      "movil",
-      "interaccion",
-      "redes"
-    ],
-    "copyrightStatus": "royalty_free_ai_generated",
-    "attributes": []
-  },
-  {
     "id": "mk_soc_07",
     "relPath": "src/marketing/assets/visuals/marketing/social_media/mk_soc_07.jpg",
     "product": "marketing",
@@ -2640,30 +2237,6 @@
       "demanda",
       "deteccion",
       "leads"
-    ],
-    "copyrightStatus": "royalty_free_ai_generated",
-    "attributes": []
-  },
-  {
-    "id": "mk_ana_09",
-    "relPath": "src/marketing/assets/visuals/marketing/analytics_campaigns/mk_ana_09.jpg",
-    "product": "marketing",
-    "category": "analytics_campaigns",
-    "title": "Multiplicador de Alcance Orgánico",
-    "description": "Prisma de cristal dividiendo un haz de luz en múltiples rayos vibrantes.",
-    "emotions": [
-      "multiplicacion",
-      "creatividad",
-      "gloria",
-      "energia"
-    ],
-    "objective": "Simbolizar cómo una idea se multiplica en decenas de piezas.",
-    "keywords": [
-      "prisma",
-      "multiplicar",
-      "contenido",
-      "alcance",
-      "energia"
     ],
     "copyrightStatus": "royalty_free_ai_generated",
     "attributes": []
@@ -3499,44 +3072,6 @@
       "tecnologia educativa",
       "escuela del futuro",
       "innovacion"
-    ]
-  },
-  {
-    "id": "eva_rbt_07",
-    "relPath": "src/marketing/assets/visuals/eva/robot_teacher/eva_rbt_07.jpg",
-    "product": "eva",
-    "category": "robot_teacher",
-    "title": "Profesora Humana y Profesora Robot Juntas",
-    "description": "Maestra humana sonriendo junto al robot educativo en un aula armónica.",
-    "emotions": [
-      "armonia",
-      "colaboracion",
-      "confianza",
-      "futuro"
-    ],
-    "objective": "Dejar claro que Eva apoya al docente humano, nunca lo reemplaza.",
-    "keywords": [
-      "profesora humana",
-      "profesora robot",
-      "equipo",
-      "aula",
-      "armonia"
-    ],
-    "copyrightStatus": "royalty_free_ai_generated",
-    "attributes": [
-      "aula moderna",
-      "niños en clase",
-      "compañerismo",
-      "aprendizaje activo",
-      "luz natural",
-      "tutor ia",
-      "tecnologia educativa",
-      "escuela del futuro",
-      "innovacion",
-      "acompañamiento humano",
-      "cercania",
-      "confianza",
-      "progreso"
     ]
   },
   {
@@ -5211,31 +4746,6 @@
     "attributes": []
   },
   {
-    "id": "vis_person_mkt_vertical_creator_01",
-    "relPath": "src/marketing/assets/visuals/marketing/social_channels/person_mkt_vertical_creator_01.jpg",
-    "product": "marketing",
-    "category": "social_channels",
-    "title": "person mkt vertical creator 01",
-    "description": "Comunicar campañas, publicidad, redes sociales y crecimiento de marca.",
-    "emotions": [
-      "creatividad",
-      "impacto",
-      "exito",
-      "crecimiento"
-    ],
-    "objective": "Comunicar campañas, publicidad, redes sociales y crecimiento de marca.",
-    "keywords": [
-      "person mkt vertical creator 01",
-      "social_channels",
-      "marketing",
-      "publicidad",
-      "campaña",
-      "marca"
-    ],
-    "copyrightStatus": "royalty_free_verified",
-    "attributes": []
-  },
-  {
     "id": "vis_person_mkt_camera_operator_02",
     "relPath": "src/marketing/assets/visuals/marketing/video_studio/person_mkt_camera_operator_02.jpg",
     "product": "marketing",
@@ -5682,105 +5192,12 @@
     ]
   },
   {
-    "id": "ca_mod_01",
-    "relPath": "src/marketing/assets/visuals/coreagent/productivity_modern/ca_mod_01.jpg",
-    "product": "coreagent",
-    "category": "productivity_modern",
-    "title": "Espacio de Trabajo Moderno y Productivo #01",
-    "description": "Ordenador modernísimo en escritorio limpio diseñado para máxima productividad ejecutiva. (Workspace @ Nottingham Flat)",
-    "emotions": [
-      "productividad",
-      "eficiencia",
-      "enfoque",
-      "calma"
-    ],
-    "objective": "Mostrar un entorno digital moderno y ágil impulsado por CoreAgent.",
-    "keywords": [
-      "productividad",
-      "eficiencia",
-      "ordenador moderno",
-      "escritorio",
-      "monitor",
-      "coreagent"
-    ],
-    "attributes": [
-      "ordenadores modernisimos",
-      "productividad",
-      "eficiencia",
-      "oficina moderna",
-      "espacio limpio"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
-    "id": "ca_mod_02",
-    "relPath": "src/marketing/assets/visuals/coreagent/productivity_modern/ca_mod_02.jpg",
-    "product": "coreagent",
-    "category": "productivity_modern",
-    "title": "Espacio de Trabajo Moderno y Productivo #02",
-    "description": "Ordenador modernísimo en escritorio limpio diseñado para máxima productividad ejecutiva. (My Desk @ SimpleGeo SF)",
-    "emotions": [
-      "productividad",
-      "eficiencia",
-      "enfoque",
-      "calma"
-    ],
-    "objective": "Mostrar un entorno digital moderno y ágil impulsado por CoreAgent.",
-    "keywords": [
-      "productividad",
-      "eficiencia",
-      "ordenador moderno",
-      "escritorio",
-      "monitor",
-      "coreagent"
-    ],
-    "attributes": [
-      "ordenadores modernisimos",
-      "productividad",
-      "eficiencia",
-      "oficina moderna",
-      "espacio limpio"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
     "id": "ca_mod_03",
     "relPath": "src/marketing/assets/visuals/coreagent/productivity_modern/ca_mod_03.jpg",
     "product": "coreagent",
     "category": "productivity_modern",
     "title": "Espacio de Trabajo Moderno y Productivo #03",
     "description": "Ordenador modernísimo en escritorio limpio diseñado para máxima productividad ejecutiva. (Computer)",
-    "emotions": [
-      "productividad",
-      "eficiencia",
-      "enfoque",
-      "calma"
-    ],
-    "objective": "Mostrar un entorno digital moderno y ágil impulsado por CoreAgent.",
-    "keywords": [
-      "productividad",
-      "eficiencia",
-      "ordenador moderno",
-      "escritorio",
-      "monitor",
-      "coreagent"
-    ],
-    "attributes": [
-      "ordenadores modernisimos",
-      "productividad",
-      "eficiencia",
-      "oficina moderna",
-      "espacio limpio"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
-    "id": "ca_mod_04",
-    "relPath": "src/marketing/assets/visuals/coreagent/productivity_modern/ca_mod_04.jpg",
-    "product": "coreagent",
-    "category": "productivity_modern",
-    "title": "Espacio de Trabajo Moderno y Productivo #04",
-    "description": "Ordenador modernísimo en escritorio limpio diseñado para máxima productividad ejecutiva. (Workspace)",
     "emotions": [
       "productividad",
       "eficiencia",
@@ -5930,74 +5347,12 @@
     "copyrightStatus": "openverse_wikimedia_commercial"
   },
   {
-    "id": "ca_mod_09",
-    "relPath": "src/marketing/assets/visuals/coreagent/productivity_modern/ca_mod_09.jpg",
-    "product": "coreagent",
-    "category": "productivity_modern",
-    "title": "Espacio de Trabajo Moderno y Productivo #09",
-    "description": "Ordenador modernísimo en escritorio limpio diseñado para máxima productividad ejecutiva. (Business - Credit to http://homedust.com/)",
-    "emotions": [
-      "productividad",
-      "eficiencia",
-      "enfoque",
-      "calma"
-    ],
-    "objective": "Mostrar un entorno digital moderno y ágil impulsado por CoreAgent.",
-    "keywords": [
-      "productividad",
-      "eficiencia",
-      "ordenador moderno",
-      "escritorio",
-      "monitor",
-      "coreagent"
-    ],
-    "attributes": [
-      "ordenadores modernisimos",
-      "productividad",
-      "eficiencia",
-      "oficina moderna",
-      "espacio limpio"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
     "id": "ca_mod_10",
     "relPath": "src/marketing/assets/visuals/coreagent/productivity_modern/ca_mod_10.jpg",
     "product": "coreagent",
     "category": "productivity_modern",
     "title": "Espacio de Trabajo Moderno y Productivo #10",
     "description": "Ordenador modernísimo en escritorio limpio diseñado para máxima productividad ejecutiva. (Analog camera behind computer laptop - Credit to https://hom)",
-    "emotions": [
-      "productividad",
-      "eficiencia",
-      "enfoque",
-      "calma"
-    ],
-    "objective": "Mostrar un entorno digital moderno y ágil impulsado por CoreAgent.",
-    "keywords": [
-      "productividad",
-      "eficiencia",
-      "ordenador moderno",
-      "escritorio",
-      "monitor",
-      "coreagent"
-    ],
-    "attributes": [
-      "ordenadores modernisimos",
-      "productividad",
-      "eficiencia",
-      "oficina moderna",
-      "espacio limpio"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
-    "id": "ca_mod_11",
-    "relPath": "src/marketing/assets/visuals/coreagent/productivity_modern/ca_mod_11.jpg",
-    "product": "coreagent",
-    "category": "productivity_modern",
-    "title": "Espacio de Trabajo Moderno y Productivo #11",
-    "description": "Ordenador modernísimo en escritorio limpio diseñado para máxima productividad ejecutiva. (Modern Workspace)",
     "emotions": [
       "productividad",
       "eficiencia",
@@ -6116,37 +5471,6 @@
     "copyrightStatus": "openverse_wikimedia_commercial"
   },
   {
-    "id": "ca_holo_01",
-    "relPath": "src/marketing/assets/visuals/coreagent/holograms_virtual/ca_holo_01.jpg",
-    "product": "coreagent",
-    "category": "holograms_virtual",
-    "title": "Interfaz Virtual y Holograma Inteligente #01",
-    "description": "Pantallas virtuales y hologramas futuristas procesando datos y órdenes en tiempo real. (Credit Card Theft)",
-    "emotions": [
-      "innovacion",
-      "futuro",
-      "asombro",
-      "velocidad"
-    ],
-    "objective": "Representar la inteligencia artificial avanzada y pantallas virtuales de Silvania.",
-    "keywords": [
-      "holograma",
-      "virtual",
-      "futuro",
-      "interfaz",
-      "ia",
-      "tecnologia"
-    ],
-    "attributes": [
-      "hologramas",
-      "pantallas virtuales",
-      "futurista",
-      "ordenadores virtuales",
-      "tecnologia avanzada"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
     "id": "ca_holo_02",
     "relPath": "src/marketing/assets/visuals/coreagent/holograms_virtual/ca_holo_02.jpg",
     "product": "coreagent",
@@ -6178,74 +5502,12 @@
     "copyrightStatus": "openverse_wikimedia_commercial"
   },
   {
-    "id": "ca_holo_03",
-    "relPath": "src/marketing/assets/visuals/coreagent/holograms_virtual/ca_holo_03.jpg",
-    "product": "coreagent",
-    "category": "holograms_virtual",
-    "title": "Interfaz Virtual y Holograma Inteligente #03",
-    "description": "Pantallas virtuales y hologramas futuristas procesando datos y órdenes en tiempo real. (Geocaching)",
-    "emotions": [
-      "innovacion",
-      "futuro",
-      "asombro",
-      "velocidad"
-    ],
-    "objective": "Representar la inteligencia artificial avanzada y pantallas virtuales de Silvania.",
-    "keywords": [
-      "holograma",
-      "virtual",
-      "futuro",
-      "interfaz",
-      "ia",
-      "tecnologia"
-    ],
-    "attributes": [
-      "hologramas",
-      "pantallas virtuales",
-      "futurista",
-      "ordenadores virtuales",
-      "tecnologia avanzada"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
     "id": "ca_holo_04",
     "relPath": "src/marketing/assets/visuals/coreagent/holograms_virtual/ca_holo_04.jpg",
     "product": "coreagent",
     "category": "holograms_virtual",
     "title": "Interfaz Virtual y Holograma Inteligente #04",
     "description": "Pantallas virtuales y hologramas futuristas procesando datos y órdenes en tiempo real. (New home office computer setup)",
-    "emotions": [
-      "innovacion",
-      "futuro",
-      "asombro",
-      "velocidad"
-    ],
-    "objective": "Representar la inteligencia artificial avanzada y pantallas virtuales de Silvania.",
-    "keywords": [
-      "holograma",
-      "virtual",
-      "futuro",
-      "interfaz",
-      "ia",
-      "tecnologia"
-    ],
-    "attributes": [
-      "hologramas",
-      "pantallas virtuales",
-      "futurista",
-      "ordenadores virtuales",
-      "tecnologia avanzada"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
-    "id": "ca_holo_05",
-    "relPath": "src/marketing/assets/visuals/coreagent/holograms_virtual/ca_holo_05.jpg",
-    "product": "coreagent",
-    "category": "holograms_virtual",
-    "title": "Interfaz Virtual y Holograma Inteligente #05",
-    "description": "Pantallas virtuales y hologramas futuristas procesando datos y órdenes en tiempo real. (remote meeting set up, Japan)",
     "emotions": [
       "innovacion",
       "futuro",
@@ -6488,37 +5750,6 @@
     "copyrightStatus": "openverse_wikimedia_commercial"
   },
   {
-    "id": "ca_holo_13",
-    "relPath": "src/marketing/assets/visuals/coreagent/holograms_virtual/ca_holo_13.jpg",
-    "product": "coreagent",
-    "category": "holograms_virtual",
-    "title": "Interfaz Virtual y Holograma Inteligente #13",
-    "description": "Pantallas virtuales y hologramas futuristas procesando datos y órdenes en tiempo real. (Studio 3)",
-    "emotions": [
-      "innovacion",
-      "futuro",
-      "asombro",
-      "velocidad"
-    ],
-    "objective": "Representar la inteligencia artificial avanzada y pantallas virtuales de Silvania.",
-    "keywords": [
-      "holograma",
-      "virtual",
-      "futuro",
-      "interfaz",
-      "ia",
-      "tecnologia"
-    ],
-    "attributes": [
-      "hologramas",
-      "pantallas virtuales",
-      "futurista",
-      "ordenadores virtuales",
-      "tecnologia avanzada"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
     "id": "ca_holo_14",
     "relPath": "src/marketing/assets/visuals/coreagent/holograms_virtual/ca_holo_14.jpg",
     "product": "coreagent",
@@ -6736,37 +5967,6 @@
     "copyrightStatus": "openverse_wikimedia_commercial"
   },
   {
-    "id": "ca_exec_07",
-    "relPath": "src/marketing/assets/visuals/coreagent/executives_luxury/ca_exec_07.jpg",
-    "product": "coreagent",
-    "category": "executives_luxury",
-    "title": "Ejecutivos en Oficina de Lujo y Reunión #07",
-    "description": "Directivos en reunión ejecutiva dentro de una oficina moderna de lujo con ventanales. (DSC05488-Praha Hilton)",
-    "emotions": [
-      "liderazgo",
-      "confianza",
-      "exito",
-      "profesionalidad"
-    ],
-    "objective": "Conectar con directivos, empresarios y reuniones ejecutivas de alto nivel.",
-    "keywords": [
-      "ejecutivos",
-      "reunion ejecutiva",
-      "oficina de lujo",
-      "directivo",
-      "empresa",
-      "liderazgo"
-    ],
-    "attributes": [
-      "ejecutivos",
-      "reuniones ejecutivas",
-      "oficinas de lujo",
-      "directivos",
-      "corporativo"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
     "id": "ca_exec_08",
     "relPath": "src/marketing/assets/visuals/coreagent/executives_luxury/ca_exec_08.jpg",
     "product": "coreagent",
@@ -6953,37 +6153,6 @@
     "copyrightStatus": "openverse_wikimedia_commercial"
   },
   {
-    "id": "ca_exec_14",
-    "relPath": "src/marketing/assets/visuals/coreagent/executives_luxury/ca_exec_14.jpg",
-    "product": "coreagent",
-    "category": "executives_luxury",
-    "title": "Ejecutivos en Oficina de Lujo y Reunión #14",
-    "description": "Directivos en reunión ejecutiva dentro de una oficina moderna de lujo con ventanales. (Eli Adashi and Ken Gude)",
-    "emotions": [
-      "liderazgo",
-      "confianza",
-      "exito",
-      "profesionalidad"
-    ],
-    "objective": "Conectar con directivos, empresarios y reuniones ejecutivas de alto nivel.",
-    "keywords": [
-      "ejecutivos",
-      "reunion ejecutiva",
-      "oficina de lujo",
-      "directivo",
-      "empresa",
-      "liderazgo"
-    ],
-    "attributes": [
-      "ejecutivos",
-      "reuniones ejecutivas",
-      "oficinas de lujo",
-      "directivos",
-      "corporativo"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
     "id": "ca_exec_15",
     "relPath": "src/marketing/assets/visuals/coreagent/executives_luxury/ca_exec_15.jpg",
     "product": "coreagent",
@@ -7042,36 +6211,6 @@
       "oficinas de lujo",
       "directivos",
       "corporativo"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
-    "id": "ca_rbot_01",
-    "relPath": "src/marketing/assets/visuals/coreagent/robots_computers/ca_rbot_01.jpg",
-    "product": "coreagent",
-    "category": "robots_computers",
-    "title": "Robot Manejando Ordenador y Sistemas #01",
-    "description": "Robot inteligente operando un ordenador y ejecutando tareas automatizadas. (work)",
-    "emotions": [
-      "eficiencia",
-      "automatizacion",
-      "futuro",
-      "precision"
-    ],
-    "objective": "Visualizar al agente autónomo ejecutando tareas administrativas por el usuario.",
-    "keywords": [
-      "robot",
-      "ordenador",
-      "automatizacion",
-      "ia",
-      "teclado",
-      "agente"
-    ],
-    "attributes": [
-      "robot manejando ordenador",
-      "robots trabajando",
-      "automatizacion total",
-      "ia ejecutiva"
     ],
     "copyrightStatus": "openverse_wikimedia_commercial"
   },
@@ -8446,99 +7585,6 @@
     "copyrightStatus": "openverse_wikimedia_commercial"
   },
   {
-    "id": "eva_tab_07",
-    "relPath": "src/marketing/assets/visuals/eva/kids_tablets_study/eva_tab_07.jpg",
-    "product": "eva",
-    "category": "kids_tablets_study",
-    "title": "Niños Investigando y Jugando con Tablet #07",
-    "description": "Niños interactuando con una tablet educativa mientras investigan y aprenden jugando. (20160415-NIFA-LSC-0046)",
-    "emotions": [
-      "curiosidad",
-      "descubrimiento",
-      "diversion",
-      "autonomia"
-    ],
-    "objective": "Mostrar cómo los niños usan tablets para aprender de forma interactiva con Eva.",
-    "keywords": [
-      "tablet",
-      "niños",
-      "investigando",
-      "estudiando",
-      "jugando",
-      "educacion"
-    ],
-    "attributes": [
-      "niños con tablet jugando",
-      "investigando",
-      "estudiando",
-      "pantalla interactiva",
-      "aprendizaje digital"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
-    "id": "eva_tab_08",
-    "relPath": "src/marketing/assets/visuals/eva/kids_tablets_study/eva_tab_08.jpg",
-    "product": "eva",
-    "category": "kids_tablets_study",
-    "title": "Niños Investigando y Jugando con Tablet #08",
-    "description": "Niños interactuando con una tablet educativa mientras investigan y aprenden jugando. (20160415-NIFA-LSC-0050)",
-    "emotions": [
-      "curiosidad",
-      "descubrimiento",
-      "diversion",
-      "autonomia"
-    ],
-    "objective": "Mostrar cómo los niños usan tablets para aprender de forma interactiva con Eva.",
-    "keywords": [
-      "tablet",
-      "niños",
-      "investigando",
-      "estudiando",
-      "jugando",
-      "educacion"
-    ],
-    "attributes": [
-      "niños con tablet jugando",
-      "investigando",
-      "estudiando",
-      "pantalla interactiva",
-      "aprendizaje digital"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
-    "id": "eva_tab_09",
-    "relPath": "src/marketing/assets/visuals/eva/kids_tablets_study/eva_tab_09.jpg",
-    "product": "eva",
-    "category": "kids_tablets_study",
-    "title": "Niños Investigando y Jugando con Tablet #09",
-    "description": "Niños interactuando con una tablet educativa mientras investigan y aprenden jugando. (20160415-NIFA-LSC-0051)",
-    "emotions": [
-      "curiosidad",
-      "descubrimiento",
-      "diversion",
-      "autonomia"
-    ],
-    "objective": "Mostrar cómo los niños usan tablets para aprender de forma interactiva con Eva.",
-    "keywords": [
-      "tablet",
-      "niños",
-      "investigando",
-      "estudiando",
-      "jugando",
-      "educacion"
-    ],
-    "attributes": [
-      "niños con tablet jugando",
-      "investigando",
-      "estudiando",
-      "pantalla interactiva",
-      "aprendizaje digital"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
     "id": "eva_tab_10",
     "relPath": "src/marketing/assets/visuals/eva/kids_tablets_study/eva_tab_10.jpg",
     "product": "eva",
@@ -8631,66 +7677,6 @@
     "copyrightStatus": "openverse_wikimedia_commercial"
   },
   {
-    "id": "eva_comp_02",
-    "relPath": "src/marketing/assets/visuals/eva/kids_modern_computers/eva_comp_02.jpg",
-    "product": "eva",
-    "category": "kids_modern_computers",
-    "title": "Niños en Clase Moderna con Ordenadores #02",
-    "description": "Estudiantes en un aula moderna equipada con ordenadores colaborando activamente. (Cis and Bill Glavin Center at the Gifford Youth Achievement)",
-    "emotions": [
-      "modernidad",
-      "entusiasmo",
-      "aprendizaje",
-      "futuro"
-    ],
-    "objective": "Mostrar colegios modernos equipados con tecnología y ordenadores para niños.",
-    "keywords": [
-      "clase moderna",
-      "ordenadores",
-      "niños",
-      "colegio",
-      "tecnologia",
-      "aula"
-    ],
-    "attributes": [
-      "niños en clases modernas con ordenadores",
-      "aula moderna",
-      "colegio tecnologico",
-      "educacion actual"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
-    "id": "eva_comp_03",
-    "relPath": "src/marketing/assets/visuals/eva/kids_modern_computers/eva_comp_03.jpg",
-    "product": "eva",
-    "category": "kids_modern_computers",
-    "title": "Niños en Clase Moderna con Ordenadores #03",
-    "description": "Estudiantes en un aula moderna equipada con ordenadores colaborando activamente. (Gifford Youth Achievement Center Transportation 3)",
-    "emotions": [
-      "modernidad",
-      "entusiasmo",
-      "aprendizaje",
-      "futuro"
-    ],
-    "objective": "Mostrar colegios modernos equipados con tecnología y ordenadores para niños.",
-    "keywords": [
-      "clase moderna",
-      "ordenadores",
-      "niños",
-      "colegio",
-      "tecnologia",
-      "aula"
-    ],
-    "attributes": [
-      "niños en clases modernas con ordenadores",
-      "aula moderna",
-      "colegio tecnologico",
-      "educacion actual"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
     "id": "eva_comp_04",
     "relPath": "src/marketing/assets/visuals/eva/kids_modern_computers/eva_comp_04.jpg",
     "product": "eva",
@@ -8757,126 +7743,6 @@
     "category": "kids_modern_computers",
     "title": "Niños en Clase Moderna con Ordenadores #06",
     "description": "Estudiantes en un aula moderna equipada con ordenadores colaborando activamente. (Gifford Youth Achievement Center 3)",
-    "emotions": [
-      "modernidad",
-      "entusiasmo",
-      "aprendizaje",
-      "futuro"
-    ],
-    "objective": "Mostrar colegios modernos equipados con tecnología y ordenadores para niños.",
-    "keywords": [
-      "clase moderna",
-      "ordenadores",
-      "niños",
-      "colegio",
-      "tecnologia",
-      "aula"
-    ],
-    "attributes": [
-      "niños en clases modernas con ordenadores",
-      "aula moderna",
-      "colegio tecnologico",
-      "educacion actual"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
-    "id": "eva_comp_07",
-    "relPath": "src/marketing/assets/visuals/eva/kids_modern_computers/eva_comp_07.jpg",
-    "product": "eva",
-    "category": "kids_modern_computers",
-    "title": "Niños en Clase Moderna con Ordenadores #07",
-    "description": "Estudiantes en un aula moderna equipada con ordenadores colaborando activamente. (Cis and Bill Glavin Center at the Gifford Youth Achievement)",
-    "emotions": [
-      "modernidad",
-      "entusiasmo",
-      "aprendizaje",
-      "futuro"
-    ],
-    "objective": "Mostrar colegios modernos equipados con tecnología y ordenadores para niños.",
-    "keywords": [
-      "clase moderna",
-      "ordenadores",
-      "niños",
-      "colegio",
-      "tecnologia",
-      "aula"
-    ],
-    "attributes": [
-      "niños en clases modernas con ordenadores",
-      "aula moderna",
-      "colegio tecnologico",
-      "educacion actual"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
-    "id": "eva_comp_08",
-    "relPath": "src/marketing/assets/visuals/eva/kids_modern_computers/eva_comp_08.jpg",
-    "product": "eva",
-    "category": "kids_modern_computers",
-    "title": "Niños en Clase Moderna con Ordenadores #08",
-    "description": "Estudiantes en un aula moderna equipada con ordenadores colaborando activamente. (Gifford Youth Achievement Center Transportation 1)",
-    "emotions": [
-      "modernidad",
-      "entusiasmo",
-      "aprendizaje",
-      "futuro"
-    ],
-    "objective": "Mostrar colegios modernos equipados con tecnología y ordenadores para niños.",
-    "keywords": [
-      "clase moderna",
-      "ordenadores",
-      "niños",
-      "colegio",
-      "tecnologia",
-      "aula"
-    ],
-    "attributes": [
-      "niños en clases modernas con ordenadores",
-      "aula moderna",
-      "colegio tecnologico",
-      "educacion actual"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
-    "id": "eva_comp_09",
-    "relPath": "src/marketing/assets/visuals/eva/kids_modern_computers/eva_comp_09.jpg",
-    "product": "eva",
-    "category": "kids_modern_computers",
-    "title": "Niños en Clase Moderna con Ordenadores #09",
-    "description": "Estudiantes en un aula moderna equipada con ordenadores colaborando activamente. (Gifford Youth Achievement Center 2)",
-    "emotions": [
-      "modernidad",
-      "entusiasmo",
-      "aprendizaje",
-      "futuro"
-    ],
-    "objective": "Mostrar colegios modernos equipados con tecnología y ordenadores para niños.",
-    "keywords": [
-      "clase moderna",
-      "ordenadores",
-      "niños",
-      "colegio",
-      "tecnologia",
-      "aula"
-    ],
-    "attributes": [
-      "niños en clases modernas con ordenadores",
-      "aula moderna",
-      "colegio tecnologico",
-      "educacion actual"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
-    "id": "eva_comp_10",
-    "relPath": "src/marketing/assets/visuals/eva/kids_modern_computers/eva_comp_10.jpg",
-    "product": "eva",
-    "category": "kids_modern_computers",
-    "title": "Niños en Clase Moderna con Ordenadores #10",
-    "description": "Estudiantes en un aula moderna equipada con ordenadores colaborando activamente. (Gifford Youth Achievement Center Transportation 2)",
     "emotions": [
       "modernidad",
       "entusiasmo",
@@ -10101,126 +8967,6 @@
     "copyrightStatus": "openverse_wikimedia_commercial"
   },
   {
-    "id": "mk_soc2_05",
-    "relPath": "src/marketing/assets/visuals/marketing/social_media_campaigns/mk_soc2_05.jpg",
-    "product": "marketing",
-    "category": "social_media_campaigns",
-    "title": "Estrategia de Marketing y Redes Sociales #05",
-    "description": "Paneles de marketing digital, métricas de crecimiento y gestión de redes sociales. (Call 0816-986-118, Lowongan Magang Guru SMK Produktif di Yog)",
-    "emotions": [
-      "crecimiento",
-      "estrategia",
-      "impacto",
-      "exito"
-    ],
-    "objective": "Representar campañas digitales y crecimiento en redes con Silvania Marketing.",
-    "keywords": [
-      "marketing",
-      "redes sociales",
-      "campaña",
-      "analitica",
-      "alcance",
-      "digital"
-    ],
-    "attributes": [
-      "marketing digital",
-      "redes sociales",
-      "crecimiento de marca",
-      "estrategia multicanal"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
-    "id": "mk_soc2_06",
-    "relPath": "src/marketing/assets/visuals/marketing/social_media_campaigns/mk_soc2_06.jpg",
-    "product": "marketing",
-    "category": "social_media_campaigns",
-    "title": "Estrategia de Marketing y Redes Sociales #06",
-    "description": "Paneles de marketing digital, métricas de crecimiento y gestión de redes sociales. (TANPA BIAYA, Call 0813-3096-1051, Magang SMK Jurusan Multime)",
-    "emotions": [
-      "crecimiento",
-      "estrategia",
-      "impacto",
-      "exito"
-    ],
-    "objective": "Representar campañas digitales y crecimiento en redes con Silvania Marketing.",
-    "keywords": [
-      "marketing",
-      "redes sociales",
-      "campaña",
-      "analitica",
-      "alcance",
-      "digital"
-    ],
-    "attributes": [
-      "marketing digital",
-      "redes sociales",
-      "crecimiento de marca",
-      "estrategia multicanal"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
-    "id": "mk_soc2_07",
-    "relPath": "src/marketing/assets/visuals/marketing/social_media_campaigns/mk_soc2_07.jpg",
-    "product": "marketing",
-    "category": "social_media_campaigns",
-    "title": "Estrategia de Marketing y Redes Sociales #07",
-    "description": "Paneles de marketing digital, métricas de crecimiento y gestión de redes sociales. (WA 0813-3096-1051, Tempat Magang Jurusan MPLB SMK Sekitar Ng)",
-    "emotions": [
-      "crecimiento",
-      "estrategia",
-      "impacto",
-      "exito"
-    ],
-    "objective": "Representar campañas digitales y crecimiento en redes con Silvania Marketing.",
-    "keywords": [
-      "marketing",
-      "redes sociales",
-      "campaña",
-      "analitica",
-      "alcance",
-      "digital"
-    ],
-    "attributes": [
-      "marketing digital",
-      "redes sociales",
-      "crecimiento de marca",
-      "estrategia multicanal"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
-    "id": "mk_soc2_08",
-    "relPath": "src/marketing/assets/visuals/marketing/social_media_campaigns/mk_soc2_08.jpg",
-    "product": "marketing",
-    "category": "social_media_campaigns",
-    "title": "Estrategia de Marketing y Redes Sociales #08",
-    "description": "Paneles de marketing digital, métricas de crecimiento y gestión de redes sociales. (WA 0813-3096-1051, Tempat Prakerin Jurusan RPL SMK Sekitar N)",
-    "emotions": [
-      "crecimiento",
-      "estrategia",
-      "impacto",
-      "exito"
-    ],
-    "objective": "Representar campañas digitales y crecimiento en redes con Silvania Marketing.",
-    "keywords": [
-      "marketing",
-      "redes sociales",
-      "campaña",
-      "analitica",
-      "alcance",
-      "digital"
-    ],
-    "attributes": [
-      "marketing digital",
-      "redes sociales",
-      "crecimiento de marca",
-      "estrategia multicanal"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
     "id": "mk_soc2_09",
     "relPath": "src/marketing/assets/visuals/marketing/social_media_campaigns/mk_soc2_09.jpg",
     "product": "marketing",
@@ -10281,102 +9027,12 @@
     "copyrightStatus": "openverse_wikimedia_commercial"
   },
   {
-    "id": "mk_soc2_11",
-    "relPath": "src/marketing/assets/visuals/marketing/social_media_campaigns/mk_soc2_11.jpg",
-    "product": "marketing",
-    "category": "social_media_campaigns",
-    "title": "Estrategia de Marketing y Redes Sociales #11",
-    "description": "Paneles de marketing digital, métricas de crecimiento y gestión de redes sociales. (Seo Computer)",
-    "emotions": [
-      "crecimiento",
-      "estrategia",
-      "impacto",
-      "exito"
-    ],
-    "objective": "Representar campañas digitales y crecimiento en redes con Silvania Marketing.",
-    "keywords": [
-      "marketing",
-      "redes sociales",
-      "campaña",
-      "analitica",
-      "alcance",
-      "digital"
-    ],
-    "attributes": [
-      "marketing digital",
-      "redes sociales",
-      "crecimiento de marca",
-      "estrategia multicanal"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
     "id": "mk_soc2_12",
     "relPath": "src/marketing/assets/visuals/marketing/social_media_campaigns/mk_soc2_12.jpg",
     "product": "marketing",
     "category": "social_media_campaigns",
     "title": "Estrategia de Marketing y Redes Sociales #12",
     "description": "Paneles de marketing digital, métricas de crecimiento y gestión de redes sociales. (Investment sticker, laptop and smartphone)",
-    "emotions": [
-      "crecimiento",
-      "estrategia",
-      "impacto",
-      "exito"
-    ],
-    "objective": "Representar campañas digitales y crecimiento en redes con Silvania Marketing.",
-    "keywords": [
-      "marketing",
-      "redes sociales",
-      "campaña",
-      "analitica",
-      "alcance",
-      "digital"
-    ],
-    "attributes": [
-      "marketing digital",
-      "redes sociales",
-      "crecimiento de marca",
-      "estrategia multicanal"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
-    "id": "mk_soc2_13",
-    "relPath": "src/marketing/assets/visuals/marketing/social_media_campaigns/mk_soc2_13.jpg",
-    "product": "marketing",
-    "category": "social_media_campaigns",
-    "title": "Estrategia de Marketing y Redes Sociales #13",
-    "description": "Paneles de marketing digital, métricas de crecimiento y gestión de redes sociales. (Domain Seo)",
-    "emotions": [
-      "crecimiento",
-      "estrategia",
-      "impacto",
-      "exito"
-    ],
-    "objective": "Representar campañas digitales y crecimiento en redes con Silvania Marketing.",
-    "keywords": [
-      "marketing",
-      "redes sociales",
-      "campaña",
-      "analitica",
-      "alcance",
-      "digital"
-    ],
-    "attributes": [
-      "marketing digital",
-      "redes sociales",
-      "crecimiento de marca",
-      "estrategia multicanal"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
-    "id": "mk_soc2_14",
-    "relPath": "src/marketing/assets/visuals/marketing/social_media_campaigns/mk_soc2_14.jpg",
-    "product": "marketing",
-    "category": "social_media_campaigns",
-    "title": "Estrategia de Marketing y Redes Sociales #14",
-    "description": "Paneles de marketing digital, métricas de crecimiento y gestión de redes sociales. (Google analytics mobile screen, digital)",
     "emotions": [
       "crecimiento",
       "estrategia",
@@ -10791,36 +9447,6 @@
     "copyrightStatus": "openverse_wikimedia_commercial"
   },
   {
-    "id": "mk_post_12",
-    "relPath": "src/marketing/assets/visuals/marketing/person_posting_social/mk_post_12.jpg",
-    "product": "marketing",
-    "category": "person_posting_social",
-    "title": "Persona Publicando Contenido en Redes Sociales #12",
-    "description": "Creador o profesional publicando contenido en redes sociales desde móvil o portátil. (OCSD Duke 6 Bell UH 1H N186SD by Don Ramey Logan)",
-    "emotions": [
-      "dinamismo",
-      "conexion",
-      "creatividad",
-      "accion"
-    ],
-    "objective": "Mostrar la publicación ágil en redes sociales con aprobación en un clic.",
-    "keywords": [
-      "publicando",
-      "redes sociales",
-      "smartphone",
-      "creador",
-      "contenido",
-      "post"
-    ],
-    "attributes": [
-      "persona publicando en redes",
-      "creacion de contenido",
-      "movil",
-      "redes activas"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
     "id": "mk_post_13",
     "relPath": "src/marketing/assets/visuals/marketing/person_posting_social/mk_post_13.jpg",
     "product": "marketing",
@@ -10888,37 +9514,6 @@
     "category": "clocks_time_urgency",
     "title": "Relojes Digitales, de Arena y de Manillas #02",
     "description": "Relojes digitales, relojes de arena y relojes clásicos de manillas simbolizando ahorro de tiempo y urgencia. (Strobeshnik)",
-    "emotions": [
-      "urgencia",
-      "tiempo",
-      "puntualidad",
-      "ahorro"
-    ],
-    "objective": "Reforzar mensajes sobre ahorrar horas cada semana o aprovechar el momento actual.",
-    "keywords": [
-      "reloj",
-      "reloj digital",
-      "reloj de arena",
-      "reloj de manillas",
-      "tiempo",
-      "horas"
-    ],
-    "attributes": [
-      "relojes digitales",
-      "reloj de arena",
-      "reloj de manillas",
-      "ahorro de tiempo",
-      "urgencia"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
-    "id": "mk_time_03",
-    "relPath": "src/marketing/assets/visuals/marketing/clocks_time_urgency/mk_time_03.jpg",
-    "product": "marketing",
-    "category": "clocks_time_urgency",
-    "title": "Relojes Digitales, de Arena y de Manillas #03",
-    "description": "Relojes digitales, relojes de arena y relojes clásicos de manillas simbolizando ahorro de tiempo y urgencia. (Giftmaster Product Gallery 1979)",
     "emotions": [
       "urgencia",
       "tiempo",
@@ -11285,37 +9880,6 @@
     "copyrightStatus": "openverse_wikimedia_commercial"
   },
   {
-    "id": "mk_time_15",
-    "relPath": "src/marketing/assets/visuals/marketing/clocks_time_urgency/mk_time_15.jpg",
-    "product": "marketing",
-    "category": "clocks_time_urgency",
-    "title": "Relojes Digitales, de Arena y de Manillas #15",
-    "description": "Relojes digitales, relojes de arena y relojes clásicos de manillas simbolizando ahorro de tiempo y urgencia. (Digital-clock-alarm)",
-    "emotions": [
-      "urgencia",
-      "tiempo",
-      "puntualidad",
-      "ahorro"
-    ],
-    "objective": "Reforzar mensajes sobre ahorrar horas cada semana o aprovechar el momento actual.",
-    "keywords": [
-      "reloj",
-      "reloj digital",
-      "reloj de arena",
-      "reloj de manillas",
-      "tiempo",
-      "horas"
-    ],
-    "attributes": [
-      "relojes digitales",
-      "reloj de arena",
-      "reloj de manillas",
-      "ahorro de tiempo",
-      "urgencia"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
     "id": "mk_time_16",
     "relPath": "src/marketing/assets/visuals/marketing/clocks_time_urgency/mk_time_16.jpg",
     "product": "marketing",
@@ -11343,36 +9907,6 @@
       "reloj de manillas",
       "ahorro de tiempo",
       "urgencia"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
-    "id": "mk_rbot_01",
-    "relPath": "src/marketing/assets/visuals/marketing/robot_marketing_desk/mk_rbot_01.jpg",
-    "product": "marketing",
-    "category": "robot_marketing_desk",
-    "title": "Robot Manejando Ordenador de Marketing #01",
-    "description": "Robot de inteligencia artificial manejando un ordenador para diseñar y programar campañas. (Salford Institute for Demetia)",
-    "emotions": [
-      "innovacion",
-      "automatizacion",
-      "eficiencia",
-      "futuro"
-    ],
-    "objective": "Representar a Silvania Marketing Agent trabajando automáticamente para el negocio.",
-    "keywords": [
-      "robot",
-      "ordenador",
-      "marketing",
-      "ia",
-      "automatizacion",
-      "campañas"
-    ],
-    "attributes": [
-      "robot manejando un ordenador",
-      "marketing autonomo",
-      "ia creativa",
-      "automatizacion de redes"
     ],
     "copyrightStatus": "openverse_wikimedia_commercial"
   },
@@ -11473,36 +10007,6 @@
     "category": "robot_marketing_desk",
     "title": "Robot Manejando Ordenador de Marketing #05",
     "description": "Robot de inteligencia artificial manejando un ordenador para diseñar y programar campañas. (William Stanley Jevons: logician and pioneer of computation)",
-    "emotions": [
-      "innovacion",
-      "automatizacion",
-      "eficiencia",
-      "futuro"
-    ],
-    "objective": "Representar a Silvania Marketing Agent trabajando automáticamente para el negocio.",
-    "keywords": [
-      "robot",
-      "ordenador",
-      "marketing",
-      "ia",
-      "automatizacion",
-      "campañas"
-    ],
-    "attributes": [
-      "robot manejando un ordenador",
-      "marketing autonomo",
-      "ia creativa",
-      "automatizacion de redes"
-    ],
-    "copyrightStatus": "openverse_wikimedia_commercial"
-  },
-  {
-    "id": "mk_rbot_06",
-    "relPath": "src/marketing/assets/visuals/marketing/robot_marketing_desk/mk_rbot_06.jpg",
-    "product": "marketing",
-    "category": "robot_marketing_desk",
-    "title": "Robot Manejando Ordenador de Marketing #06",
-    "description": "Robot de inteligencia artificial manejando un ordenador para diseñar y programar campañas. (College of DuPage Engineering Club Preps for NASA Robotics M)",
     "emotions": [
       "innovacion",
       "automatizacion",
