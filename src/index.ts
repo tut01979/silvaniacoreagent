@@ -323,6 +323,12 @@ app.get("/checkout", rateLimiter(10, 60000), async (req: any, res: any) => {
     return res.status(400).send("userId inválido.");
   }
 
+  const requestedPlan = String(req.query.plan || "").toLowerCase();
+  const isProSetterPlan = requestedPlan === "pro_setter";
+  if (isProSetterPlan && process.env.ENABLE_PRO_SETTER_CHECKOUT !== "true") {
+    return res.status(403).send("Plan CoreAgent Pro + Setter IA (49€/mes) en preparación — próximamente disponible.");
+  }
+
   const stripeKey = process.env.STRIPE_SECRET_KEY;
   if (!stripeKey) {
     console.log(`⚠️ Stripe Key no configurada. Redirigiendo a simulador para usuario ${userId}`);
@@ -332,6 +338,14 @@ app.get("/checkout", rateLimiter(10, 60000), async (req: any, res: any) => {
   try {
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" as any });
     const redirectUrl = PUBLIC_URL || `http://localhost:${PORT}`;
+    const planProductName = isProSetterPlan
+      ? "Silvania CoreAgent Pro + Setter IA"
+      : "Silvania CoreAgent Premium";
+    const planDescription = isProSetterPlan
+      ? "Asistente ejecutivo + Setter IA conectado con Unipile y Google Calendar"
+      : "Tu asistente ejecutivo élite 24/7 desde Telegram";
+    const planUnitAmount = isProSetterPlan ? 4900 : 1900; // €49.00 vs €19.00
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [
@@ -339,10 +353,10 @@ app.get("/checkout", rateLimiter(10, 60000), async (req: any, res: any) => {
           price_data: {
             currency: "eur",
             product_data: {
-              name: "Silvania CoreAgent Premium",
-              description: "Tu asistente ejecutivo élite 24/7 desde Telegram",
+              name: planProductName,
+              description: planDescription,
             },
-            unit_amount: 1900, // €19.00
+            unit_amount: planUnitAmount,
             recurring: {
               interval: "month",
             },
@@ -687,6 +701,37 @@ app.post("/api/setter/incoming-message", express.json(), async (req: any, res: a
     return res.json({ success: true, pendingId: pending.id });
   } catch (err: any) {
     console.error("❌ Error en webhook incoming-message:", err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// Webhook Unipile (LinkedIn / Instagram / WhatsApp / Email): ingesta automática -> HITL Telegram -> Envío + Google Calendar
+app.post("/api/unipile/webhook", express.json(), async (req: any, res: any) => {
+  try {
+    const { unipileService } = await import("./services/unipileService.js");
+    const parsed = unipileService.parseWebhookPayload(req.body);
+    if (!parsed) {
+      return res.json({ ignored: true, reason: "non_message_or_empty" });
+    }
+    if (parsed.isSelf) {
+      return res.json({ ignored: true, reason: "self_echo" });
+    }
+
+    const adminId = Number(req.query.userId) || config.marketing?.adminIds?.[0] || 1572946817;
+    const { leadSetter } = await import("./services/leadSetter.js");
+    const pending = await leadSetter.createPendingLeadReply({
+      leadName: parsed.senderName,
+      leadRole: parsed.senderRole || "Profesional B2B",
+      leadProfileUrl: parsed.senderProfileUrl,
+      messageText: parsed.messageText,
+      chatId: adminId,
+      unipileChatId: parsed.chatId,
+      channel: parsed.provider,
+    });
+    await leadSetter.sendApprovalAlert(bot, adminId, pending);
+    return res.json({ success: true, pendingId: pending.id, channel: parsed.provider });
+  } catch (err: any) {
+    console.error("❌ Error en webhook /api/unipile/webhook:", err);
     return res.status(500).json({ error: err.message });
   }
 });
@@ -2450,7 +2495,9 @@ bot.command(["setter", "prospecting", "leads"], async (ctx) => {
       leadRole: role,
       messageText: message,
       personaKey: "inmobiliaria",
-      chatId: userId
+      chatId: userId,
+      unipileChatId: `sim_unipile_${Date.now()}`,
+      channel: "LINKEDIN",
     });
 
     await leadSetter.sendApprovalAlert(bot, userId, pending);

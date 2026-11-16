@@ -234,38 +234,39 @@ export const videoAssembler = {
       const imgPath = path.resolve(scenes[i].imagePath).replace(/\\/g, "/");
       const dur = allocatedDurations[i] + (i < scenes.length - 1 ? transDur : 0);
       const frames = Math.max(24, Math.ceil(dur * fps));
-      // Usar escala 1.25x antes de zoompan para mantener nitidez sin saturar RAM en vídeos largos (16+ escenas)
-      const upW = Math.round((width * 1.25) / 2) * 2;
-      const upH = Math.round((height * 1.25) / 2) * 2;
+      // Escalar a 2x antes de zoompan en pipeline corto para evitar vibración por redondeo de píxel
+      const upW = Math.round((width * 2) / 2) * 2;
+      const upH = Math.round((height * 2) / 2) * 2;
       const isPortrait = height > width;
+      const isBrandAsset = /(intrinsic_|drive_brand_|logo)/i.test(imgPath);
       const baseScale = `format=yuv420p,scale=${upW}:${upH}:force_original_aspect_ratio=increase,crop=${upW}:${upH},setsar=1`;
       if (enableZoomPan) {
         inputArgs.push(`-i "${imgPath}"`);
         const mode = i % 4;
         const denom = Math.max(1, frames - 1);
         let zpExpr = "";
-        if (isPortrait) {
-          // En 9:16 vertical, evitar recortar los laterales de fotos horizontales:
-          // fondo difuminado + imagen completa centrada con zoom suave
+        if (isPortrait || isBrandAsset) {
+          // En 9:16 vertical o placas/logos de marca: mostrar imagen completa centrada sobre fondo difuminado (sin recortar bordes)
+          const zoomDelta = isBrandAsset ? "0.03" : "0.06";
           zpExpr =
-            mode % 2 === 0
-              ? `zoompan=z='1.0+0.08*(on/${denom})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`
-              : `zoompan=z='1.08-0.08*(on/${denom})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
+            mode % 2 === 0 || isBrandAsset
+              ? `zoompan=z='1.0+${zoomDelta}*(on/${denom})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`
+              : `zoompan=z='${1 + parseFloat(zoomDelta)}-${zoomDelta}*(on/${denom})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
           filterParts.push(
             `[${i}:v]format=yuv420p,split[bg${i}][fg${i}];` +
               `[bg${i}]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},boxblur=18:4,setsar=1[bgb${i}];` +
               `[fg${i}]scale=${width}:${height}:force_original_aspect_ratio=decrease,setsar=1[fgb${i}];` +
-              `[bgb${i}][fgb${i}]overlay=(W-w)/2:(H-h)/2,scale=${upW}:${upH},setsar=1,${zpExpr},fps=${fps},settb=1/${fps},setpts=PTS-STARTPTS,format=yuv420p[v${i}]`
+              `[bgb${i}][fgb${i}]overlay=(W-w)/2:(H-h)/2,scale=${upW}:${upH}:flags=lanczos,setsar=1,${zpExpr},fps=${fps},settb=1/${fps},setpts=PTS-STARTPTS,format=yuv420p[v${i}]`
           );
         } else {
           if (mode === 0) {
-            zpExpr = `zoompan=z='1.0+0.18*(on/${denom})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
+            zpExpr = `zoompan=z='1.0+0.09*(on/${denom})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
           } else if (mode === 1) {
-            zpExpr = `zoompan=z='1.18-0.18*(on/${denom})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
+            zpExpr = `zoompan=z='1.09-0.09*(on/${denom})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
           } else if (mode === 2) {
-            zpExpr = `zoompan=z='1.14':x='(iw-iw/zoom)*(on/${denom})':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
+            zpExpr = `zoompan=z='1.06':x='(iw-iw/zoom)*(on/${denom})':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
           } else {
-            zpExpr = `zoompan=z='1.14':x='(iw-iw/zoom)*(1-(on/${denom}))':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
+            zpExpr = `zoompan=z='1.06':x='(iw-iw/zoom)*(1-(on/${denom}))':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
           }
           filterParts.push(`[${i}:v]${baseScale},${zpExpr},fps=${fps},settb=1/${fps},setpts=PTS-STARTPTS,format=yuv420p[v${i}]`);
         }
@@ -338,8 +339,9 @@ export const videoAssembler = {
       const clipPaths: string[] = [];
       const clipListPath = path.join(path.dirname(outputPath), `${baseName}_clips.txt`);
       const isPortraitClip = height > width;
-      const upW = Math.round((width * 1.25) / 2) * 2;
-      const upH = Math.round((height * 1.25) / 2) * 2;
+      // Escalar 3x (1 escena a la vez = bajo consumo RAM) para eliminar vibración por redondeo de píxel en zoompan
+      const upW = Math.round((width * 3) / 2) * 2;
+      const upH = Math.round((height * 3) / 2) * 2;
       try {
         for (let i = 0; i < scenes.length; i++) {
           const imgPath = path.resolve(scenes[i].imagePath).replace(/\\/g, "/");
@@ -348,33 +350,35 @@ export const videoAssembler = {
           const denom = Math.max(1, frames - 1);
           const fadeOutSt = Math.max(0.2, sceneDur - 0.35).toFixed(2);
           const clipPath = path.join(path.dirname(outputPath), `${baseName}_clip_${i}.mp4`);
+          const isBrandAsset = /(intrinsic_|drive_brand_|logo)/i.test(imgPath);
           const mode = i % 4;
           let filterStr = "";
           let clipInputArg = `-i "${imgPath}"`;
 
           if (enableZoomPan) {
             let zpExpr = "";
-            if (isPortraitClip) {
+            if (isPortraitClip || isBrandAsset) {
+              const zoomDelta = isBrandAsset ? "0.03" : "0.06";
               zpExpr =
-                mode % 2 === 0
-                  ? `zoompan=z='1.0+0.08*(on/${denom})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`
-                  : `zoompan=z='1.08-0.08*(on/${denom})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
+                mode % 2 === 0 || isBrandAsset
+                  ? `zoompan=z='1.0+${zoomDelta}*(on/${denom})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`
+                  : `zoompan=z='${1 + parseFloat(zoomDelta)}-${zoomDelta}*(on/${denom})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
               filterStr =
                 `[0:v]format=yuv420p,split[bg][fg];` +
                 `[bg]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},boxblur=18:4,setsar=1[bgb];` +
                 `[fg]scale=${width}:${height}:force_original_aspect_ratio=decrease,setsar=1[fgb];` +
-                `[bgb][fgb]overlay=(W-w)/2:(H-h)/2,scale=${upW}:${upH},setsar=1,${zpExpr},fps=${fps},fade=t=in:st=0:d=0.35,fade=t=out:st=${fadeOutSt}:d=0.35,${styleExpr},format=yuv420p[vout]`;
+                `[bgb][fgb]overlay=(W-w)/2:(H-h)/2,scale=${upW}:${upH}:flags=lanczos,setsar=1,${zpExpr},fps=${fps},fade=t=in:st=0:d=0.35,fade=t=out:st=${fadeOutSt}:d=0.35,${styleExpr},format=yuv420p[vout]`;
             } else {
               if (mode === 0) {
-                zpExpr = `zoompan=z='1.0+0.18*(on/${denom})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
+                zpExpr = `zoompan=z='1.0+0.09*(on/${denom})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
               } else if (mode === 1) {
-                zpExpr = `zoompan=z='1.18-0.18*(on/${denom})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
+                zpExpr = `zoompan=z='1.09-0.09*(on/${denom})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
               } else if (mode === 2) {
-                zpExpr = `zoompan=z='1.14':x='(iw-iw/zoom)*(on/${denom})':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
+                zpExpr = `zoompan=z='1.06':x='(iw-iw/zoom)*(on/${denom})':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
               } else {
-                zpExpr = `zoompan=z='1.14':x='(iw-iw/zoom)*(1-(on/${denom}))':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
+                zpExpr = `zoompan=z='1.06':x='(iw-iw/zoom)*(1-(on/${denom}))':y='ih/2-(ih/zoom/2)':d=${frames}:s=${width}x${height}:fps=${fps}`;
               }
-              filterStr = `[0:v]format=yuv420p,scale=${upW}:${upH}:force_original_aspect_ratio=increase,crop=${upW}:${upH},setsar=1,${zpExpr},fps=${fps},fade=t=in:st=0:d=0.35,fade=t=out:st=${fadeOutSt}:d=0.35,${styleExpr},format=yuv420p[vout]`;
+              filterStr = `[0:v]format=yuv420p,scale=${upW}:${upH}:flags=lanczos:force_original_aspect_ratio=increase,crop=${upW}:${upH},setsar=1,${zpExpr},fps=${fps},fade=t=in:st=0:d=0.35,fade=t=out:st=${fadeOutSt}:d=0.35,${styleExpr},format=yuv420p[vout]`;
             }
           } else {
             clipInputArg = `-loop 1 -t ${sceneDur.toFixed(3)} -i "${imgPath}"`;

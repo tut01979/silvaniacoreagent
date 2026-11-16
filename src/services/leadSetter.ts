@@ -1,6 +1,7 @@
 import { InlineKeyboard } from "grammy";
 import { llmService } from "./llm.js";
-import { calendarCreate } from "../tools/calendar.js";
+import { calendarCreate, calendarList } from "../tools/calendar.js";
+import { unipileService } from "./unipileService.js";
 
 export interface ProspectingPersona {
   key: string;
@@ -30,6 +31,10 @@ export interface PendingLeadReply {
   status: "pending" | "approved" | "edited" | "discarded";
   createdAt: number;
   chatId: number;
+  unipileChatId?: string;
+  channel?: string;
+  proposedSlotStart?: string;
+  proposedSlotLabel?: string;
 }
 
 export const PERSONAS: Record<string, ProspectingPersona> = {
@@ -260,21 +265,80 @@ export const leadSetter = {
   },
 
   /**
-   * Genera una respuesta inteligente con IA a un mensaje entrante de LinkedIn
+   * Calcula 2 huecos reales en los próximos días laborables consultando Google Calendar si está conectado.
    */
-  async generateSuggestedReply(leadName: string, leadRole: string, messageText: string, personaKey?: string): Promise<string> {
+  async getSuggestedCalendarSlots(userId: number): Promise<{ primaryStart: string; primaryLabel: string; secondaryLabel: string }> {
+    const candidateDays: Date[] = [];
+    const cursor = new Date();
+    cursor.setDate(cursor.getDate() + 1);
+    while (candidateDays.length < 2) {
+      const dow = cursor.getDay();
+      if (dow !== 0 && dow !== 6) {
+        candidateDays.push(new Date(cursor));
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    let calendarText = "";
     try {
-      const prompt = 
+      if (userId > 0) {
+        calendarText = await calendarList(userId, 4);
+      }
+    } catch {}
+
+    const formatDayLabel = (d: Date, hour: string) => {
+      const dayName = d.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "short", timeZone: "Europe/Madrid" });
+      return `${dayName} a las ${hour}`;
+    };
+
+    const pickHourForDay = (d: Date, preferredHours: string[]): string => {
+      const isoDate = d.toISOString().split("T")[0];
+      for (const h of preferredHours) {
+        if (!calendarText || !calendarText.includes(isoDate) || !calendarText.includes(h)) {
+          return h;
+        }
+      }
+      return preferredHours[0];
+    };
+
+    const d1 = candidateDays[0];
+    const d2 = candidateDays[1];
+    const h1 = pickHourForDay(d1, ["10:30", "11:30", "16:30"]);
+    const h2 = pickHourForDay(d2, ["16:30", "12:00", "10:30"]);
+    const d1Iso = d1.toISOString().split("T")[0];
+
+    return {
+      primaryStart: `${d1Iso}T${h1}:00`,
+      primaryLabel: formatDayLabel(d1, h1),
+      secondaryLabel: formatDayLabel(d2, h2),
+    };
+  },
+
+  /**
+   * Genera una respuesta inteligente con IA a un mensaje entrante (LinkedIn / Unipile) con huecos reales de Calendar
+   */
+  async generateSuggestedReply(
+    leadName: string,
+    leadRole: string,
+    messageText: string,
+    personaKey?: string,
+    slots?: { primaryLabel: string; secondaryLabel: string }
+  ): Promise<string> {
+    const slot1 = slots?.primaryLabel || "mañana a las 10:30";
+    const slot2 = slots?.secondaryLabel || "pasado mañana a las 16:30";
+    try {
+      const prompt =
         `Eres Silvania Setter AI, un asistente de prospección B2B de élite para Silvania CoreAgent (tu oficina ejecutiva en Telegram conectada con Google Workspace: Calendar, Gmail, Sheets, Drive).\n` +
-        `Un prospecto en LinkedIn ha respondido a nuestro contacto:\n` +
+        `Un prospecto ha respondido a nuestro contacto:\n` +
         `- Nombre: ${leadName}\n` +
         `- Cargo/Sector: ${leadRole}\n` +
-        `- Mensaje recibido del prospecto: "${messageText}"\n\n` +
+        `- Mensaje recibido del prospecto: "${messageText}"\n` +
+        `- Huecos libres reales en nuestro Google Calendar: "${slot1}" o "${slot2}"\n\n` +
         `Tu misión: Redactar la respuesta ideal en español para continuar la conversación con naturalidad, empatía y efectividad.\n` +
         `Reglas indispensables:\n` +
         `1. Longitud: 2 a 3 frases cortas (< 280 caracteres). Tono humano y cercano, cero lenguaje robótico o de venta agresiva.\n` +
         `2. Desactiva su objeción de inmediato (si no tiene tiempo, dile que por eso le ayuda a ganar 2 horas al día; si pregunta precio, indícale prueba gratis y tarifa plana reducida).\n` +
-        `3. Propón una demo ágil de 10 minutos por Google Meet ofreciendo 2 opciones (ej: martes a las 10:00 o jueves a las 16:30).\n` +
+        `3. Si muestra interés o pide cita, propón exactamente nuestros huecos libres reales (${slot1} o ${slot2}) para una demo de 10 min por Google Meet.\n` +
         `4. Devuelve EXCLUSIVAMENTE el texto de la respuesta, sin saludos introductorios ni comillas extras.`;
 
       const response = await llmService.chatSimple([
@@ -288,12 +352,11 @@ export const leadSetter = {
       console.warn("⚠️ Falló llamada a LLM para respuesta sugerida, usando fallback contextual:", err.message);
     }
 
-    // Fallback contextual de alta calidad
-    return `Te entiendo perfectamente ${leadName}, justo por eso te vendrá genial: te muestro en 10 min cómo dictar visitas por voz a Calendar y Sheets para ahorrarte 2h al día. ¿Te viene mejor el martes a las 10:00 o jueves a las 16:30?`;
+    return `¡Genial ${leadName}! En 10 min por Google Meet te enseño cómo CoreAgent agenda y organiza Google Workspace por voz. Tengo libre ${slot1} o ${slot2}, ¿cuál te encaja mejor?`;
   },
 
   /**
-   * Crea un registro de mensaje entrante pendiente de aprobación en Nivel 2
+   * Crea un registro de mensaje entrante pendiente de aprobación HITL en Telegram
    */
   async createPendingLeadReply(opts: {
     leadName: string;
@@ -303,9 +366,12 @@ export const leadSetter = {
     personaKey?: string;
     chatId: number;
     customSuggestedReply?: string;
+    unipileChatId?: string;
+    channel?: string;
   }): Promise<PendingLeadReply> {
     const id = `lr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const suggested = opts.customSuggestedReply || await this.generateSuggestedReply(opts.leadName, opts.leadRole, opts.messageText, opts.personaKey);
+    const slots = await this.getSuggestedCalendarSlots(opts.chatId);
+    const suggested = opts.customSuggestedReply || await this.generateSuggestedReply(opts.leadName, opts.leadRole, opts.messageText, opts.personaKey, slots);
 
     const pending: PendingLeadReply = {
       id,
@@ -317,7 +383,11 @@ export const leadSetter = {
       suggestedReply: suggested,
       status: "pending",
       createdAt: Date.now(),
-      chatId: opts.chatId
+      chatId: opts.chatId,
+      unipileChatId: opts.unipileChatId,
+      channel: opts.channel,
+      proposedSlotStart: slots.primaryStart,
+      proposedSlotLabel: slots.primaryLabel,
     };
 
     pendingReplies.set(id, pending);
@@ -325,20 +395,28 @@ export const leadSetter = {
   },
 
   /**
-   * Envía la alerta interactiva Nivel 2 a Telegram con botones [Aprobar y Enviar] y [Modificar]
+   * Envía la alerta interactiva HITL a Telegram con botones de aprobación, envío por Unipile y agenda en Calendar
    */
   async sendApprovalAlert(bot: any, chatId: number, reply: PendingLeadReply): Promise<void> {
+    const hasUnipile = Boolean(reply.unipileChatId);
+    const channelBadge = hasUnipile
+      ? (unipileService.isConfigured() ? `Unipile · ${reply.channel || "LINKEDIN"}` : `Simulador Unipile · ${reply.channel || "LINKEDIN"}`)
+      : "LinkedIn Manual";
+
     const keyboard = new InlineKeyboard()
-      .text("✅ Aprobar y Enviar", `setter_app_${reply.id}`)
-      .text("✏️ Modificar", `setter_edit_${reply.id}`)
+      .text(hasUnipile ? "✅ Aprobar y Enviar" : "✅ Aprobar Respuesta", `setter_app_${reply.id}`)
+      .text("📅 Enviar + Agendar Cita", `setter_appmeet_${reply.id}`)
       .row()
+      .text("✏️ Modificar", `setter_edit_${reply.id}`)
       .text("❌ Descartar", `setter_disc_${reply.id}`);
 
-    const message = 
-      `🔔 *Nuevo mensaje de ${reply.leadName} (${reply.leadRole}):*\n` +
-      `"${reply.messageText}"\n\n` +
-      `🤖 *Respuesta sugerida por Silvania:*\n` +
-      `"${reply.suggestedReply}"`;
+    const message =
+      `🔔 *Nuevo mensaje de ${reply.leadName}* (${reply.leadRole})\n` +
+      `📡 *Canal:* ${channelBadge}\n` +
+      `💬 "${reply.messageText}"\n\n` +
+      `🤖 *Respuesta sugerida por Setter IA:*\n` +
+      `"${reply.suggestedReply}"\n\n` +
+      (reply.proposedSlotLabel ? `📅 *Hueco Calendar listo:* ${reply.proposedSlotLabel}` : "");
 
     await bot.api.sendMessage(chatId, message, {
       parse_mode: "Markdown",
@@ -347,7 +425,7 @@ export const leadSetter = {
   },
 
   /**
-   * Procesa los callbacks de Telegram para la aprobación en 1 clic
+   * Procesa los callbacks de Telegram para aprobación HITL, envío Unipile y agendado en Google Calendar
    */
   async handleCallback(bot: any, ctx: any): Promise<boolean> {
     const data = ctx.callbackQuery?.data || "";
@@ -355,9 +433,10 @@ export const leadSetter = {
 
     await ctx.answerCallbackQuery().catch(() => {});
 
-    // Aprobar y Enviar
-    if (data.startsWith("setter_app_")) {
-      const id = data.replace("setter_app_", "");
+    // Aprobar y Enviar (o Enviar + Agendar Cita en 1 clic)
+    if (data.startsWith("setter_app_") || data.startsWith("setter_appmeet_")) {
+      const alsoSchedule = data.startsWith("setter_appmeet_");
+      const id = data.replace("setter_appmeet_", "").replace("setter_app_", "");
       const item = pendingReplies.get(id);
 
       if (!item) {
@@ -367,27 +446,61 @@ export const leadSetter = {
 
       item.status = "approved";
 
-      const meetKeyboard = new InlineKeyboard()
-        .text("📅 Agendar Google Meet", `setter_meet_${id}`);
+      let sendStatusLine = `💬 *Texto Listo:* (Copia y pega en LinkedIn):\n\`\`\`text\n${item.suggestedReply}\n\`\`\``;
+      if (item.unipileChatId) {
+        const sendRes = await unipileService.sendMessage(item.unipileChatId, item.suggestedReply);
+        if (sendRes.ok && !sendRes.simulated) {
+          sendStatusLine = `🚀 *Enviado automáticamente vía Unipile (${item.channel || "LINKEDIN"})*\n_"${item.suggestedReply}"_`;
+        } else if (sendRes.ok && sendRes.simulated) {
+          sendStatusLine = `🧪 *Simulador Unipile OK* (conecta \`UNIPILE_DSN\` + \`UNIPILE_API_KEY\` en Railway para envío real):\n\`\`\`text\n${item.suggestedReply}\n\`\`\``;
+        } else {
+          sendStatusLine = `⚠️ *No se pudo enviar por Unipile (${sendRes.error}):*\n\`\`\`text\n${item.suggestedReply}\n\`\`\``;
+        }
+      }
 
-      const approvedMsg = 
-        `✅ *Respuesta APROBADA y Lista para Enviar*\n` +
+      let calendarLine = `*(Si el prospecto acepta, pulsa abajo para agendar en Google Calendar)*`;
+      if (alsoSchedule) {
+        const uId = ctx.from?.id || item.chatId || 0;
+        const startDt = item.proposedSlotStart || `${new Date(Date.now() + 86400000).toISOString().split("T")[0]}T11:00:00`;
+        const [dPart, tPart] = startDt.split("T");
+        const [hh, mm] = tPart.split(":").map(Number);
+        const endDate = new Date(2000, 0, 1, hh, mm + 15);
+        const endDt = `${dPart}T${String(endDate.getHours()).padStart(2, "0")}:${String(endDate.getMinutes()).padStart(2, "0")}:00`;
+        try {
+          const calendarRes = await calendarCreate(
+            uId,
+            `Demo Silvania CoreAgent - ${item.leadName}`,
+            startDt,
+            endDt,
+            `Demostración de 15 minutos de Silvania CoreAgent con ${item.leadName} (${item.leadRole}).\nOrigen: Setter IA (${item.channel || "LinkedIn"}).`
+          );
+          calendarLine = `🎉 *¡CITA PROGRAMADA EN GOOGLE CALENDAR!* 🎥\n${calendarRes}`;
+        } catch (calErr: any) {
+          calendarLine = `⚠️ *No se pudo crear la cita en Calendar:* ${calErr.message}`;
+        }
+      }
+
+      const meetKeyboard = alsoSchedule
+        ? undefined
+        : new InlineKeyboard().text("📅 Agendar Google Meet", `setter_meet_${id}`);
+
+      const approvedMsg =
+        `✅ *Respuesta APROBADA*\n` +
         `───────────────────────────\n\n` +
         `👤 *Destinatario:* ${item.leadName} (${item.leadRole})\n` +
-        (item.leadProfileUrl ? `🔗 *Perfil:* [Ver LinkedIn](${item.leadProfileUrl})\n\n` : `\n`) +
-        `💬 *Texto Listo:* (Copia y pega en LinkedIn):\n` +
-        `\`\`\`text\n${item.suggestedReply}\n\`\`\`\n` +
-        `*(Si el prospecto acepta una de las horas propuestas, pulsa abajo para agendar de inmediato en tu Google Calendar)*`;
+        (item.leadProfileUrl ? `🔗 *Perfil:* [Ver Perfil](${item.leadProfileUrl})\n\n` : `\n`) +
+        `${sendStatusLine}\n\n` +
+        `${calendarLine}`;
 
       try {
         await ctx.editMessageText(approvedMsg, {
           parse_mode: "Markdown",
-          reply_markup: meetKeyboard
+          ...(meetKeyboard ? { reply_markup: meetKeyboard } : {})
         });
       } catch {
         await ctx.reply(approvedMsg, {
           parse_mode: "Markdown",
-          reply_markup: meetKeyboard
+          ...(meetKeyboard ? { reply_markup: meetKeyboard } : {})
         });
       }
       return true;

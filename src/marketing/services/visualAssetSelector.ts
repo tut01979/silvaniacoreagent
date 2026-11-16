@@ -36,6 +36,7 @@ export interface VisualVectorChunk {
   emotions: string[];
   objective: string;
   keywords: string[];
+  attributes?: string[];
   copyrightStatus?: string;
   vector?: number[];
 }
@@ -244,17 +245,19 @@ export const visualAssetSelector = {
       });
 
       let cycleResetTriggered = false;
-      // Si se agotaron las imágenes "sin_usar" de este producto, reiniciamos el ciclo para no cruzar productos incompatibles
       if (unusedPool.length === 0) {
         marketingDb.resetAssetPoolToUnused("visual");
         usageMap = marketingDb.getAssetUsageMap("visual");
-        unusedPool = candidateChunks.filter((c) => {
-          const abs = path.resolve(process.cwd(), c.relPath).toLowerCase();
-          return !usedInVideo.has(abs);
-        });
-        if (unusedPool.length === 0) unusedPool = candidateChunks;
         cycleResetTriggered = true;
       }
+
+      // Evaluar TODO el pool del producto no usado aún en este vídeo para que la coherencia semántica
+      // con el guion gane siempre, manteniendo un bonus (+1.2) para imágenes "sin_usar"
+      const evaluationPool = candidateChunks.filter((c) => {
+        const abs = path.resolve(process.cwd(), c.relPath).toLowerCase();
+        return !usedInVideo.has(abs);
+      });
+      const finalPool = evaluationPool.length > 0 ? evaluationPool : candidateChunks;
 
       const queryText = [
         product,
@@ -268,20 +271,26 @@ export const visualAssetSelector = {
       const queryVec = computeSemanticVector(queryText);
       const normQuery = normalizeToken(queryText);
 
-      let bestChunk = unusedPool[0];
+      let bestChunk = finalPool[0];
       let bestScore = -Infinity;
       let bestMatchedEmotions: string[] = [];
       let bestMatchedKeywords: string[] = [];
 
-      for (const chunk of unusedPool) {
+      for (const chunk of finalPool) {
         const chunkVec =
           chunk.vector && chunk.vector.length > 0
             ? chunk.vector
             : computeSemanticVector(
-                `${chunk.product} ${chunk.category} ${chunk.title} ${chunk.description} ${chunk.emotions.join(" ")} ${chunk.objective} ${chunk.keywords.join(" ")}`
+                `${chunk.product} ${chunk.category} ${chunk.title} ${chunk.description} ${chunk.emotions.join(" ")} ${chunk.objective} ${chunk.keywords.join(" ")} ${(chunk.attributes || []).join(" ")}`
               );
 
         let score = cosineSimilarity(queryVec, chunkVec) * 10;
+
+        // Bonus de rotación para variedad entre vídeos sin sacrificar coherencia del guion
+        const isUnused = (usageMap.get(chunk.id)?.status ?? "sin_usar") === "sin_usar";
+        if (isUnused) {
+          score += 1.2;
+        }
 
         // Afinidad directa con el producto objetivo
         if (chunk.product === product) {
@@ -307,6 +316,15 @@ export const visualAssetSelector = {
           if (nkw.length >= 3 && normQuery.includes(nkw)) {
             score += 0.7;
             matchedKeywords.push(kw);
+          }
+        }
+
+        // Afinidad con atributos visuales enriquecidos (tono, escenario, estilo)
+        for (const attr of chunk.attributes || []) {
+          const nattr = normalizeToken(attr.replace(/_/g, " "));
+          if (nattr.length >= 3 && normQuery.includes(nattr)) {
+            score += 1.1;
+            matchedKeywords.push(attr);
           }
         }
 
