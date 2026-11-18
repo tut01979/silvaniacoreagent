@@ -267,7 +267,7 @@ export const leadSetter = {
   /**
    * Calcula 2 huecos reales en los próximos días laborables consultando Google Calendar si está conectado.
    */
-  async getSuggestedCalendarSlots(userId: number): Promise<{ primaryStart: string; primaryLabel: string; secondaryLabel: string }> {
+  async getSuggestedCalendarSlots(userId: number): Promise<{ primaryStart: string; primaryLabel: string; secondaryStart: string; secondaryLabel: string }> {
     const candidateDays: Date[] = [];
     const cursor = new Date();
     cursor.setDate(cursor.getDate() + 1);
@@ -306,10 +306,12 @@ export const leadSetter = {
     const h1 = pickHourForDay(d1, ["10:30", "11:30", "16:30"]);
     const h2 = pickHourForDay(d2, ["16:30", "12:00", "10:30"]);
     const d1Iso = d1.toISOString().split("T")[0];
+    const d2Iso = d2.toISOString().split("T")[0];
 
     return {
       primaryStart: `${d1Iso}T${h1}:00`,
       primaryLabel: formatDayLabel(d1, h1),
+      secondaryStart: `${d2Iso}T${h2}:00`,
       secondaryLabel: formatDayLabel(d2, h2),
     };
   },

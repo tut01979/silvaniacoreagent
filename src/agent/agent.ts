@@ -1825,11 +1825,15 @@ export function filterFinalOutput(text: string, history?: any[]): string {
     }
   }
 
-  // 6. Detectar patrones repetitivos infinitos (ej. secuencias de 6+ caracteres repetidas consecutivamente 4+ veces)
+  // 6. Detectar patrones repetitivos infinitos (ej. secuencias de 6+ caracteres alfanuméricos/texto repetidas consecutivamente 4+ veces)
+  // Ignoramos líneas separadoras decorativas (ej. "━━━━━━", "------", "======") para no destruir respuestas válidas de Calendar/Drive.
   const cleanTrimmed = cleaned.trim();
   for (let len = 6; len <= 30; len++) {
     for (let i = 0; i <= cleanTrimmed.length - len * 4; i++) {
       const chunk = cleanTrimmed.substring(i, i + len);
+      if (!/[a-zA-Z0-9áéíóúñÁÉÍÓÚÑ]/.test(chunk) || /^(.)\1+$/.test(chunk.trim())) {
+        continue;
+      }
       const rest = cleanTrimmed.substring(i + len);
       if (rest.startsWith(chunk + chunk + chunk) || rest.startsWith("-" + chunk + "-" + chunk + "-" + chunk)) {
         console.warn(`🚨 [Output Filter] Detectada repetición infinita del chunk "${chunk}".`);
