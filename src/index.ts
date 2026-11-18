@@ -772,11 +772,11 @@ app.post("/api/widget/chat", rateLimiter(40, 60000), express.json(), async (req:
       `  2. Marketing Agent (Operativo): Crea y publica contenido audiovisual en sus redes para darle presencia sin robarle horas.\n` +
       `  3. Setter Agent asistido por IA con control humano HITL (En validación): Captura mensajes de clientes y le envía la respuesta propuesta a Telegram para aprobar en 1 clic.\n` +
       `  (Si menciona educación o logopedia, existe también EVA, nuestro agente logopeda en evolución).\n` +
-      `- PASO 4 (Invitación y Cierre de Cita): Explícale que estamos en fase de validación privada invitando a grupos seleccionados de profesionales donde Silvania pueda serles de ayuda real, ofreciendo acceso anticipado gratuito a cambio de su feedback y testimonio. Termina diciendo exactamente algo como: "¿Qué te parece? ¡Genial, verdad! Tengo dos huecos disponibles para esta semana con nuestro fundador: ${slots.primaryLabel} o ${slots.secondaryLabel}. ¿Cuál te viene mejor?"\n\n` +
+      `- PASO 4 (Invitación y Cierre de Cita — OBLIGATORIO): Antes de ofrecer los huecos, dile siempre que estamos en fase de validación privada invitando a ciertos grupos de profesionales donde Silvania pueda serles de ayuda real, ofreciendo acceso gratuito a cambio de su feedback y testimonio. Y termina exactamente con: "¿Qué te parece? ¡Genial, verdad! Tengo dos huecos disponibles para esta semana con nuestro fundador: ${slots.primaryLabel} o ${slots.secondaryLabel}. ¿Cuál te viene mejor?"\n\n` +
       `REGLAS ESTRICTAS:\n` +
       `1. PROHIBIDO dar precios, tarifas o cifras en euros (ni 19€, ni 49€, ni 50€, ni 60€). Si pregunta por precios, recuérdale que estamos en fase de validación privada con acceso gratuito a cambio de feedback, testimonio y una breve cita de activación.\n` +
       `2. Ve paso a paso: NO saltes al Paso 3 ni sueltes todo el discurso en el primer mensaje. Escucha primero su nombre, luego su profesión y luego su desafío.\n` +
-      `3. Sé breve en los pasos 1 y 2 (2 frases cálidas). En el Paso 3-4 sé clara, directa y fácil de escuchar en voz alta con la voz de Lucía (sin asteriscos ni markdown).\n` +
+      `3. Sé breve en los pasos 1 y 2 (2 frases cálidas). En el Paso 3-4 sé clara, concisa (máximo 900 caracteres en total) y fácil de escuchar en voz alta con la voz de Lucía (sin asteriscos ni markdown).\n` +
       `4. Si el visitante pide directamente agendar una cita/demo/prueba, pasa directo a ofrecerle los dos huecos libres (${slots.primaryLabel} o ${slots.secondaryLabel}).`;
 
     const formattedHistory = Array.isArray(history)
@@ -811,12 +811,14 @@ app.post("/api/widget/chat", rateLimiter(40, 60000), express.json(), async (req:
       replyText.includes(slots.secondaryLabel);
 
     const voiceChoice = String(voice || "Lucia").trim() || "Lucia";
-    let audioUrl: string | null = null;
+    let audioUrls: string[] = [];
     try {
       const cleanSpeech = cleanTextForTTS(replyText);
       const audioPaths = await voiceService.textToSpeech(cleanSpeech, 0, voiceChoice);
-      if (audioPaths && audioPaths.length > 0 && fs.existsSync(audioPaths[0])) {
-        audioUrl = `/marketing-media/${path.basename(audioPaths[0])}`;
+      if (audioPaths && audioPaths.length > 0) {
+        audioUrls = audioPaths
+          .filter((p) => fs.existsSync(p))
+          .map((p) => `/marketing-media/${path.basename(p)}`);
       }
     } catch (ttsErr: any) {
       console.warn("⚠️ [Widget Chat] Falló síntesis TTS de Lucía:", ttsErr.message);
@@ -827,7 +829,8 @@ app.post("/api/widget/chat", rateLimiter(40, 60000), express.json(), async (req:
       agentId: agentId || "silvania",
       voice: voiceChoice,
       replyText,
-      audioUrl,
+      audioUrl: audioUrls[0] || null,
+      audioUrls,
       showBookingSlots: wantsBooking,
       slots: [
         { start: slots.primaryStart, label: slots.primaryLabel },

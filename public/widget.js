@@ -134,30 +134,48 @@
       .replace(/"/g, "&quot;");
   }
 
-  function playAudioUrl(url) {
-    if (!url || !state.voiceEnabled) return;
-    try {
+  function playAudioUrls(urls) {
+    if (!state.voiceEnabled) return;
+    var list = Array.isArray(urls) ? urls.filter(Boolean) : (urls ? [urls] : []);
+    if (!list.length) return;
+    var idx = 0;
+
+    function playNext() {
+      if (idx >= list.length || !state.voiceEnabled) return;
+      var url = list[idx++];
       var fullUrl = url.indexOf("http") === 0 ? url : baseUrl + url;
-      state.audioEl.pause();
+      state.audioEl.onended = playNext;
       state.audioEl.src = fullUrl;
       state.audioEl.play().catch(function () {});
+    }
+
+    try {
+      state.audioEl.pause();
+      state.audioEl.onended = null;
+      playNext();
     } catch (e) {}
   }
 
-  function addMessageBubble(role, text, audioUrl) {
+  function formatBubbleText(text) {
+    return escapeHtml(text)
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\n/g, "<br>");
+  }
+
+  function addMessageBubble(role, text, audioUrls) {
+    var list = Array.isArray(audioUrls) ? audioUrls.filter(Boolean) : (audioUrls ? [audioUrls] : []);
     var div = document.createElement("div");
     div.className = "sv-msg " + (role === "user" ? "sv-msg-user" : "sv-msg-bot");
-    div.innerHTML = "<div>" + escapeHtml(text).replace(/\n/g, "<br>") + "</div>";
+    div.innerHTML = "<div>" + formatBubbleText(text) + "</div>";
 
-    if (role === "assistant" && audioUrl) {
+    if (role === "assistant" && list.length > 0) {
       var playBtn = document.createElement("button");
       playBtn.className = "sv-play-mini";
       playBtn.innerHTML = "▶ Escuchar a Lucía";
       playBtn.onclick = function () {
-        var prevVoice = state.voiceEnabled;
         state.voiceEnabled = true;
-        playAudioUrl(audioUrl);
-        state.voiceEnabled = prevVoice;
+        voiceToggleBtn.textContent = "🔊";
+        playAudioUrls(list);
       };
       div.appendChild(playBtn);
     }
@@ -245,8 +263,9 @@
         .then(function (data) {
           container.remove();
           if (data && data.success) {
-            addMessageBubble("assistant", data.replyText, data.audioUrl);
-            playAudioUrl(data.audioUrl);
+            var bookUrls = data.audioUrls || (data.audioUrl ? [data.audioUrl] : []);
+            addMessageBubble("assistant", data.replyText, bookUrls);
+            playAudioUrls(bookUrls);
           } else {
             addMessageBubble("assistant", "Hubo un problema al confirmar la cita. Inténtalo de nuevo o escribe tu email en el chat.");
           }
@@ -307,9 +326,10 @@
         sendBtn.disabled = false;
 
         if (data && data.replyText) {
+          var chatUrls = data.audioUrls || (data.audioUrl ? [data.audioUrl] : []);
           state.history.push({ role: "assistant", content: data.replyText });
-          addMessageBubble("assistant", data.replyText, data.audioUrl);
-          playAudioUrl(data.audioUrl);
+          addMessageBubble("assistant", data.replyText, chatUrls);
+          playAudioUrls(chatUrls);
           if (data.showBookingSlots && data.slots && data.slots.length) {
             renderBookingSlots(data.slots);
           }
@@ -387,6 +407,8 @@
       if (state.isListening) {
         recognition.stop();
       } else {
+        state.audioEl.pause();
+        state.audioEl.onended = null;
         state.isListening = true;
         micBtn.classList.add("sv-recording");
         recognition.start();
