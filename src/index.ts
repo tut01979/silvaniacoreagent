@@ -772,7 +772,8 @@ app.post("/api/widget/chat", rateLimiter(40, 60000), express.json(), async (req:
       `  2. Marketing Agent (Operativo): Crea y publica contenido audiovisual en sus redes para darle presencia sin robarle horas.\n` +
       `  3. Setter Agent asistido por IA con control humano HITL (En validación): Captura mensajes de clientes y le envía la respuesta propuesta a Telegram para aprobar en 1 clic.\n` +
       `  (Si menciona educación o logopedia, existe también EVA, nuestro agente logopeda en evolución).\n` +
-      `- PASO 4 (Invitación y Cierre de Cita — OBLIGATORIO): Antes de ofrecer los huecos, dile siempre que estamos en fase de validación privada invitando a ciertos grupos de profesionales donde Silvania pueda serles de ayuda real, ofreciendo acceso gratuito a cambio de su feedback y testimonio. Y termina exactamente con: "¿Qué te parece? ¡Genial, verdad! Tengo dos huecos disponibles para esta semana con nuestro fundador: ${slots.primaryLabel} o ${slots.secondaryLabel}. ¿Cuál te viene mejor?"\n\n` +
+      `- PASO 4 (Invitación y Cierre de Cita — OBLIGATORIO): Antes de ofrecer los huecos, dile siempre que estamos en fase de validación privada invitando a ciertos grupos de profesionales donde Silvania pueda serles de ayuda real, ofreciendo acceso gratuito a cambio de su feedback y testimonio. Y termina exactamente con: "¿Qué te parece? ¡Genial, verdad! Tengo dos huecos disponibles para esta semana con nuestro fundador: ${slots.primaryLabel} o ${slots.secondaryLabel}. ¿Cuál te viene mejor?"\n` +
+      `- PASO 5 (Si el visitante elige día por voz o texto sin usar el botón): NUNCA des la cita por confirmada todavía ni le pidas que dicte el correo por voz. Dile con naturalidad: "¡Perfecto! Para enviarte la invitación de Google Meet sin errores, por favor introduce tu nombre y tu correo electrónico en el formulario verde que acabo de abrirte aquí abajo."\n\n` +
       `REGLAS ESTRICTAS:\n` +
       `1. PROHIBIDO dar precios, tarifas o cifras en euros (ni 19€, ni 49€, ni 50€, ni 60€). Si pregunta por precios, recuérdale que estamos en fase de validación privada con acceso gratuito a cambio de feedback, testimonio y una breve cita de activación.\n` +
       `2. Ve paso a paso: NO saltes al Paso 3 ni sueltes todo el discurso en el primer mensaje. Escucha primero su nombre, luego su profesión y luego su desafío.\n` +
@@ -804,7 +805,24 @@ app.post("/api/widget/chat", rateLimiter(40, 60000), express.json(), async (req:
       replyText = `¡Mucho gusto! En Silvania hemos creado un ecosistema inteligente para ayudar a microempresarios y autónomos a ahorrar tiempo en tareas rutinarias. Estamos en fase de validación a cambio de feedback y testimonio; tengo dos huecos disponibles esta semana: ${slots.primaryLabel} o ${slots.secondaryLabel}.`;
     }
 
+    const normUser = userMessage.toLowerCase();
+    const day1Word = slots.primaryLabel.split(",")[0].trim().toLowerCase();
+    const day2Word = slots.secondaryLabel.split(",")[0].trim().toLowerCase();
+    const historyMentionedSlots = formattedHistory.some(
+      (m) => m.role === "assistant" && (/huecos disponibles/i.test(m.content) || m.content.includes(day1Word) || m.content.includes(day2Word))
+    );
+
+    let autoOpenSlot: { start: string; label: string } | null = null;
+    if (historyMentionedSlots) {
+      if ((day1Word && normUser.includes(day1Word)) || /\b(primer[oa]?|opci[oó]n 1|10:30)\b/i.test(normUser)) {
+        autoOpenSlot = { start: slots.primaryStart, label: slots.primaryLabel };
+      } else if ((day2Word && normUser.includes(day2Word)) || /\b(segund[oa]?|opci[oó]n 2|16:30)\b/i.test(normUser)) {
+        autoOpenSlot = { start: slots.secondaryStart, label: slots.secondaryLabel };
+      }
+    }
+
     const wantsBooking =
+      Boolean(autoOpenSlot) ||
       /cita|reuni[oó]n|demo|agendar|agenda|reservar|hueco|horario|llamar|llamada/i.test(userMessage) ||
       /huecos disponibles|cu[aá]l te viene mejor|cu[aá]l te encaja/i.test(replyText) ||
       replyText.includes(slots.primaryLabel) ||
@@ -832,6 +850,7 @@ app.post("/api/widget/chat", rateLimiter(40, 60000), express.json(), async (req:
       audioUrl: audioUrls[0] || null,
       audioUrls,
       showBookingSlots: wantsBooking,
+      autoOpenSlot,
       slots: [
         { start: slots.primaryStart, label: slots.primaryLabel },
         { start: slots.secondaryStart, label: slots.secondaryLabel },

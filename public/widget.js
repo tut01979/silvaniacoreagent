@@ -184,7 +184,7 @@
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
-  function renderBookingSlots(slots) {
+  function renderBookingSlots(slots, autoOpenSlot) {
     if (!slots || !slots.length) return;
     var existing = document.getElementById("sv-active-slots");
     if (existing) existing.remove();
@@ -192,6 +192,12 @@
     var box = document.createElement("div");
     box.id = "sv-active-slots";
     box.className = "sv-slots-box";
+
+    if (autoOpenSlot) {
+      messagesEl.appendChild(box);
+      showBookingForm(box, autoOpenSlot);
+      return;
+    }
 
     var title = document.createElement("p");
     title.className = "sv-slots-title";
@@ -281,6 +287,7 @@
     form.appendChild(submitBtn);
     container.appendChild(form);
     messagesEl.scrollTop = messagesEl.scrollHeight;
+    setTimeout(function () { nameInput.focus(); }, 100);
   }
 
   function showTyping() {
@@ -331,7 +338,7 @@
           addMessageBubble("assistant", data.replyText, chatUrls);
           playAudioUrls(chatUrls);
           if (data.showBookingSlots && data.slots && data.slots.length) {
-            renderBookingSlots(data.slots);
+            renderBookingSlots(data.slots, data.autoOpenSlot);
           }
         } else {
           addMessageBubble("assistant", "Disculpa, tuve un microcorte de conexión. ¿Puedes repetirlo?");
