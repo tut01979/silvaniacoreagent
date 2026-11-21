@@ -371,9 +371,23 @@ export const visualAssetSelector = {
         // Afinidad directa por Taxonomía Estructurada (perfil comercial, situación, dolor, escenario)
         if (chunk.structuredAttributes) {
           const sa = chunk.structuredAttributes;
+          const profileSynonyms: Record<string, string[]> = {
+            inmobiliarias: ["inmobiliar", "vivienda", "propiedad", "piso", "casa", "alquiler", "real estate"],
+            clinicas_dentales: ["dental", "dentista", "odontolog", "clinica", "diente", "sonrisa"],
+            abogados: ["abogad", "juridic", "bufete", "legal", "contrato", "despacho"],
+            comerciantes: ["comerc", "tienda", "retail", "local", "venta", "cliente"],
+            autonomos: ["autonom", "profesional", "oficio", "presupuesto", "factura"],
+            freelance: ["freelance", "independiente", "creador", "remoto"],
+            microempresas: ["microempresa", "pyme", "pequena empresa", "negocio", "equipo"],
+          };
+          const syns = profileSynonyms[sa.industryProfile] || [];
           const profileNorm = normalizeToken(sa.industryProfile.replace(/_/g, " "));
-          if (profileNorm && profileNorm !== "general" && normQuery.includes(profileNorm)) {
-            score += 3.5;
+          const matchesProfile =
+            (profileNorm && profileNorm !== "general" && normQuery.includes(profileNorm)) ||
+            syns.some((s) => normQuery.includes(s));
+
+          if (matchesProfile) {
+            score += 6.0;
             matchedKeywords.push(`perfil:${sa.industryProfile}`);
           }
           for (const sit of sa.situations || []) {

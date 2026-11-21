@@ -248,7 +248,8 @@ export const unipileService = {
 
     const dsn = this.getDsnUrl();
     const apiKey = process.env.UNIPILE_API_KEY!;
-    const safeNote = message.trim().slice(0, 295);
+    // LinkedIn cuentas gratuitas tienen un límite estricto de 200 caracteres en notas de invitación
+    const safeNote = message.trim().slice(0, 198);
 
     try {
       const res = await fetch(`${dsn}/api/v1/users/invite`, {

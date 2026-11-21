@@ -736,7 +736,7 @@ export const leadSetter = {
 
       for (const p of batch) {
         const firstName = p.name.split(" ")[0] || p.name;
-        const note = `Hola ${firstName}, veo tu labor en el sector. En Silvania estamos validando una Oficina Ejecutiva con IA en Telegram para ahorrar horas en agenda, redes y leads, dando acceso gratuito a cambio de feedback y testimonio. ¿Conectamos?`.slice(0, 290);
+        const note = `Hola ${firstName}, veo tu labor en el sector. Validamos Silvania, una IA en Telegram que ahorra horas en agenda y leads (acceso gratis por feedback). ¿Conectamos?`.slice(0, 195);
         const sendRes = await unipileService.sendLinkedInInvite(p.id, note);
         if (sendRes.ok) {
           sentCount++;
@@ -761,7 +761,7 @@ export const leadSetter = {
 
     for (const p of searchRes.prospects) {
       const firstName = p.name.split(" ")[0] || p.name;
-      const note = `Hola ${firstName}, veo tu labor en el sector. En Silvania estamos validando una Oficina Ejecutiva con IA en Telegram para ahorrar horas en agenda, redes y leads, dando acceso gratuito a cambio de feedback y testimonio. ¿Conectamos?`.slice(0, 290);
+      const note = `Hola ${firstName}, veo tu labor en el sector. Validamos Silvania, una IA en Telegram que ahorra horas en agenda y leads (acceso gratis por feedback). ¿Conectamos?`.slice(0, 195);
 
       const id = `inv_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
       const inviteItem: PendingLinkedInInvite = {
