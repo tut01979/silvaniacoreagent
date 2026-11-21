@@ -151,11 +151,22 @@ const pendingReplies = new Map<string, PendingLeadReply>();
 const MAX_DAILY_LEADS = 10;
 const dailyUsageTracker = new Map<string, { date: string; count: number }>();
 
+export type SetterMode = "hitl" | "auto";
+const setterModeTracker = new Map<number, SetterMode>();
+
 function getTodayKey(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Madrid" }); // YYYY-MM-DD
 }
 
 export const leadSetter = {
+  getSetterMode(userId: number): SetterMode {
+    return setterModeTracker.get(userId) || "hitl";
+  },
+
+  setSetterMode(userId: number, mode: SetterMode): void {
+    setterModeTracker.set(userId, mode);
+  },
+
   /**
    * Comprueba si el usuario ha alcanzado el límite diario seguro (10 leads).
    */
@@ -642,11 +653,54 @@ export const leadSetter = {
       return true;
     }
 
+    // Cambiar modo híbrido (Autónomo Total vs Asistido HITL)
+    if (data === "setter_mode_auto" || data === "setter_mode_hitl") {
+      const uId = ctx.from?.id || 1572946817;
+      const newMode: SetterMode = data === "setter_mode_auto" ? "auto" : "hitl";
+      this.setSetterMode(uId, newMode);
+      const kb = new InlineKeyboard()
+        .text(newMode === "auto" ? "🤖 Autónomo Total (Activo ✅)" : "🤖 Autónomo Total", "setter_mode_auto")
+        .text(newMode === "hitl" ? "🛡️ Asistido HITL (Activo ✅)" : "🛡️ Asistido HITL", "setter_mode_hitl");
+      const label = newMode === "auto"
+        ? "🤖 *MODO AUTÓNOMO TOTAL ACTIVADO*\nEl Setter IA responderá automáticamente los mensajes entrantes por Unipile y enviará invitaciones directas (respetando el tope seguro de 10/día) enviándote solo el resumen a Telegram."
+        : "🛡️ *MODO ASISTIDO HITL ACTIVADO*\nEl Setter IA preparará cada respuesta e invitación y esperará tu clic en Telegram antes de enviarla.";
+      try {
+        await ctx.editMessageText(label, { parse_mode: "Markdown", reply_markup: kb });
+      } catch {
+        await ctx.reply(label, { parse_mode: "Markdown", reply_markup: kb });
+      }
+      return true;
+    }
+
     return false;
   },
 
   /**
-   * Busca prospectos en LinkedIn vía Unipile y envía tarjetas HITL a Telegram para aprobar invitaciones en 1 clic.
+   * Procesa un mensaje entrante de Unipile según el modo activo del usuario (HITL o Autónomo Total).
+   */
+  async processIncomingLeadMessage(bot: any, chatId: number, reply: PendingLeadReply): Promise<void> {
+    const mode = this.getSetterMode(chatId);
+    if (mode === "auto" && reply.unipileChatId) {
+      const sendRes = await unipileService.sendMessage(reply.unipileChatId, reply.suggestedReply);
+      if (sendRes.ok) {
+        reply.status = "approved";
+        const badge = sendRes.simulated ? "🧪 Simulado" : "📤 Enviado en vivo";
+        const kb = new InlineKeyboard().text("📅 Agendar Cita en Calendar", `setter_meet_${reply.id}`);
+        await bot.api.sendMessage(
+          chatId,
+          `🤖 *[MODO AUTÓNOMO] Respuesta enviada a ${reply.leadName}* (${reply.channel || "LINKEDIN"} · ${badge})\n\n` +
+          `💬 *Mensaje del lead:* "${reply.messageText}"\n\n` +
+          `✅ *Respuesta enviada:* "${reply.suggestedReply}"`,
+          { parse_mode: "Markdown", reply_markup: kb }
+        );
+        return;
+      }
+    }
+    await this.sendApprovalAlert(bot, chatId, reply);
+  },
+
+  /**
+   * Busca prospectos en LinkedIn vía Unipile y envía tarjetas HITL (o ejecuta envío autónomo si está en modo 'auto').
    */
   async searchAndPresentProspects(bot: any, chatId: number, keywords: string, limit: number = 5): Promise<void> {
     const limitCheck = this.checkDailyLimit(chatId);
@@ -659,7 +713,9 @@ export const leadSetter = {
       return;
     }
 
-    await bot.api.sendMessage(chatId, `🔎 Buscando prospectos reales en tu LinkedIn para: *"${keywords}"*...`, { parse_mode: "Markdown" });
+    const mode = this.getSetterMode(chatId);
+    const modeTag = mode === "auto" ? "🤖 Autónomo Total" : "🛡️ Asistido HITL";
+    await bot.api.sendMessage(chatId, `🔎 Buscando prospectos reales en tu LinkedIn para: *"${keywords}"* (${modeTag})...`, { parse_mode: "Markdown" });
 
     const searchRes = await unipileService.searchLinkedInPeople(keywords, limit);
     if (!searchRes.ok) {
@@ -669,6 +725,37 @@ export const leadSetter = {
 
     if (searchRes.prospects.length === 0) {
       await bot.api.sendMessage(chatId, `⚠️ No encontré nuevos contactos (no conectados aún) para "${keywords}". Prueba con otras palabras clave.`);
+      return;
+    }
+
+    if (mode === "auto") {
+      const remaining = Math.max(0, limitCheck.max - limitCheck.currentCount);
+      const batch = searchRes.prospects.slice(0, remaining);
+      const results: string[] = [];
+      let sentCount = 0;
+
+      for (const p of batch) {
+        const firstName = p.name.split(" ")[0] || p.name;
+        const note = `Hola ${firstName}, veo tu labor en el sector. En Silvania estamos validando una Oficina Ejecutiva con IA en Telegram para ahorrar horas en agenda, redes y leads, dando acceso gratuito a cambio de feedback y testimonio. ¿Conectamos?`.slice(0, 290);
+        const sendRes = await unipileService.sendLinkedInInvite(p.id, note);
+        if (sendRes.ok) {
+          sentCount++;
+          this.incrementDailyCount(chatId, 1);
+          results.push(`✅ *${p.name}* — ${p.headline}`);
+        } else {
+          results.push(`⚠️ *${p.name}* — Error: ${sendRes.error || "no enviado"}`);
+        }
+        await new Promise((r) => setTimeout(r, 1200));
+      }
+
+      await bot.api.sendMessage(
+        chatId,
+        `🤖 *RESUMEN PROSPECCIÓN AUTÓNOMA (${sentCount}/${batch.length} invitaciones enviadas)*\n` +
+        `───────────────────────────\n` +
+        results.join("\n") +
+        `\n\n🛡️ _Cupo diario restante protegido anti-baneo._`,
+        { parse_mode: "Markdown" }
+      );
       return;
     }
 

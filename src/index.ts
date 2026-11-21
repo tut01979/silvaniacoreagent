@@ -728,8 +728,8 @@ app.post("/api/unipile/webhook", express.json(), async (req: any, res: any) => {
       unipileChatId: parsed.chatId,
       channel: parsed.provider,
     });
-    await leadSetter.sendApprovalAlert(bot, adminId, pending);
-    return res.json({ success: true, pendingId: pending.id, channel: parsed.provider });
+    await leadSetter.processIncomingLeadMessage(bot, adminId, pending);
+    return res.json({ success: true, pendingId: pending.id, channel: parsed.provider, mode: leadSetter.getSetterMode(adminId) });
   } catch (err: any) {
     console.error("❌ Error en webhook /api/unipile/webhook:", err);
     return res.status(500).json({ error: err.message });
@@ -2710,6 +2710,38 @@ bot.command(["setter", "prospecting", "leads"], async (ctx) => {
       "Puedes solicitar tu playbook ejecutando:\n" +
       "👉 `/setter inmobiliaria [ciudad]` (o `autonomos`, `comerciales`, `emprendedores`).",
       { parse_mode: "Markdown" }
+    );
+  }
+
+  // 2A. Selector de Modo Híbrido (/setter auto | /setter hitl | /setter modo)
+  if (subCmd === "auto" || subCmd === "autonomo") {
+    leadSetter.setSetterMode(userId, "auto");
+    const kb = new InlineKeyboard()
+      .text("🤖 Autónomo Total (Activo ✅)", "setter_mode_auto")
+      .text("🛡️ Asistido HITL", "setter_mode_hitl");
+    return ctx.reply(
+      "🤖 *MODO AUTÓNOMO TOTAL ACTIVADO*\nEl Setter IA responderá automáticamente los mensajes entrantes por Unipile y enviará invitaciones directas (tope seguro 10/día) enviándote el resumen a Telegram.",
+      { parse_mode: "Markdown", reply_markup: kb }
+    );
+  }
+  if (subCmd === "hitl" || subCmd === "asistido" || subCmd === "manual") {
+    leadSetter.setSetterMode(userId, "hitl");
+    const kb = new InlineKeyboard()
+      .text("🤖 Autónomo Total", "setter_mode_auto")
+      .text("🛡️ Asistido HITL (Activo ✅)", "setter_mode_hitl");
+    return ctx.reply(
+      "🛡️ *MODO ASISTIDO HITL ACTIVADO*\nEl Setter IA preparará cada respuesta e invitación y esperará tu clic en Telegram antes de enviarla.",
+      { parse_mode: "Markdown", reply_markup: kb }
+    );
+  }
+  if (subCmd === "modo" || subCmd === "mode") {
+    const current = leadSetter.getSetterMode(userId);
+    const kb = new InlineKeyboard()
+      .text(current === "auto" ? "🤖 Autónomo Total (Activo ✅)" : "🤖 Autónomo Total", "setter_mode_auto")
+      .text(current === "hitl" ? "🛡️ Asistido HITL (Activo ✅)" : "🛡️ Asistido HITL", "setter_mode_hitl");
+    return ctx.reply(
+      `⚙️ *Modo Actual del Setter IA:* ${current === "auto" ? "🤖 Autónomo Total" : "🛡️ Asistido HITL"}\n\nElige cómo quieres operar:`,
+      { parse_mode: "Markdown", reply_markup: kb }
     );
   }
 
