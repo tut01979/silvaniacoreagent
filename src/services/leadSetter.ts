@@ -37,6 +37,20 @@ export interface PendingLeadReply {
   proposedSlotLabel?: string;
 }
 
+export interface PendingLinkedInInvite {
+  id: string;
+  providerId: string;
+  name: string;
+  headline: string;
+  location: string;
+  profileUrl: string;
+  note: string;
+  chatId: number;
+  status: "pending" | "sent" | "discarded";
+}
+
+const pendingInvites = new Map<string, PendingLinkedInInvite>();
+
 export const PERSONAS: Record<string, ProspectingPersona> = {
   inmobiliaria: {
     key: "inmobiliaria",
@@ -580,6 +594,118 @@ export const leadSetter = {
       return true;
     }
 
+    // Enviar invitación de LinkedIn vía Unipile (HITL)
+    if (data.startsWith("setter_inv_send_")) {
+      const id = data.replace("setter_inv_send_", "");
+      const item = pendingInvites.get(id);
+      if (!item) {
+        await ctx.reply("⚠️ Esta invitación ya ha expirado.");
+        return true;
+      }
+
+      const limit = this.checkDailyLimit(item.chatId);
+      if (!limit.allowed) {
+        await ctx.reply("🛡️ Límite diario de seguridad alcanzado (10/10). Escribe `/setter more` para autorizar otro lote.", { parse_mode: "Markdown" });
+        return true;
+      }
+
+      const res = await unipileService.sendLinkedInInvite(item.providerId, item.note);
+      if (res.ok) {
+        item.status = "sent";
+        this.incrementDailyCount(item.chatId, 1);
+        const badge = res.simulated ? "🧪 Simulado" : "📤 Enviada en vivo por Unipile";
+        try {
+          await ctx.editMessageText(
+            `✅ *Invitación a conectar enviada* (${badge})\n\n` +
+            `👤 *Prospecto:* ${item.name}\n` +
+            `💼 ${item.headline}\n` +
+            `💬 _"${item.note}"_`,
+            { parse_mode: "Markdown" }
+          );
+        } catch {
+          await ctx.reply(`✅ Invitación enviada a *${item.name}*.`, { parse_mode: "Markdown" });
+        }
+      } else {
+        await ctx.reply(`❌ No se pudo enviar la invitación a *${item.name}*: ${res.error || "Error desconocido"}`, { parse_mode: "Markdown" });
+      }
+      return true;
+    }
+
+    // Descartar invitación de LinkedIn
+    if (data.startsWith("setter_inv_disc_")) {
+      const id = data.replace("setter_inv_disc_", "");
+      const item = pendingInvites.get(id);
+      if (item) item.status = "discarded";
+      try {
+        await ctx.editMessageText(`❌ Prospecto *${item?.name || "LinkedIn"}* descartado.`, { parse_mode: "Markdown" });
+      } catch {}
+      return true;
+    }
+
     return false;
+  },
+
+  /**
+   * Busca prospectos en LinkedIn vía Unipile y envía tarjetas HITL a Telegram para aprobar invitaciones en 1 clic.
+   */
+  async searchAndPresentProspects(bot: any, chatId: number, keywords: string, limit: number = 5): Promise<void> {
+    const limitCheck = this.checkDailyLimit(chatId);
+    if (!limitCheck.allowed) {
+      await bot.api.sendMessage(
+        chatId,
+        "🛡️ *LÍMITE DIARIO DE SEGURIDAD ALCANZADO (10/10)*\nPara proteger tu cuenta de LinkedIn, escribe `/setter more` si deseas desbloquear otro lote.",
+        { parse_mode: "Markdown" }
+      );
+      return;
+    }
+
+    await bot.api.sendMessage(chatId, `🔎 Buscando prospectos reales en tu LinkedIn para: *"${keywords}"*...`, { parse_mode: "Markdown" });
+
+    const searchRes = await unipileService.searchLinkedInPeople(keywords, limit);
+    if (!searchRes.ok) {
+      await bot.api.sendMessage(chatId, `❌ Error buscando en LinkedIn vía Unipile: ${searchRes.error}`);
+      return;
+    }
+
+    if (searchRes.prospects.length === 0) {
+      await bot.api.sendMessage(chatId, `⚠️ No encontré nuevos contactos (no conectados aún) para "${keywords}". Prueba con otras palabras clave.`);
+      return;
+    }
+
+    for (const p of searchRes.prospects) {
+      const firstName = p.name.split(" ")[0] || p.name;
+      const note = `Hola ${firstName}, veo tu labor en el sector. En Silvania estamos validando una Oficina Ejecutiva con IA en Telegram para ahorrar horas en agenda, redes y leads, dando acceso gratuito a cambio de feedback y testimonio. ¿Conectamos?`.slice(0, 290);
+
+      const id = `inv_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      const inviteItem: PendingLinkedInInvite = {
+        id,
+        providerId: p.id,
+        name: p.name,
+        headline: p.headline,
+        location: p.location,
+        profileUrl: p.profileUrl,
+        note,
+        chatId,
+        status: "pending",
+      };
+      pendingInvites.set(id, inviteItem);
+
+      const kb = new InlineKeyboard()
+        .text("📨 Enviar Invitación", `setter_inv_send_${id}`)
+        .text("❌ Descartar", `setter_inv_disc_${id}`);
+
+      const msg =
+        `👤 *${p.name}*\n` +
+        `💼 ${p.headline}\n` +
+        (p.location ? `📍 ${p.location}\n` : "") +
+        (p.profileUrl ? `🔗 [Ver Perfil](${p.profileUrl})\n\n` : "\n") +
+        `📝 *Nota de invitación (<300 car.):*\n_"${note}"_`;
+
+      await bot.api.sendMessage(chatId, msg, {
+        parse_mode: "Markdown",
+        reply_markup: kb,
+        link_preview_options: { is_disabled: true },
+      });
+    }
   }
 };

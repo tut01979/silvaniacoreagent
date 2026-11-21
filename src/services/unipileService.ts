@@ -22,6 +22,15 @@ export interface UnipileSendResult {
   error?: string;
 }
 
+export interface UnipileLinkedInProspect {
+  id: string;
+  name: string;
+  headline: string;
+  location: string;
+  profileUrl: string;
+  networkDistance: string;
+}
+
 export const unipileService = {
   isConfigured(): boolean {
     return Boolean(process.env.UNIPILE_DSN && process.env.UNIPILE_API_KEY);
@@ -138,6 +147,134 @@ export const unipileService = {
       return { ok: true, simulated: false, providerResponse: data };
     } catch (err: any) {
       console.error(`❌ [Unipile] Excepción enviando mensaje:`, err.message);
+      return { ok: false, simulated: false, error: err.message };
+    }
+  },
+
+  /**
+   * Obtiene el account_id de LinkedIn activo en Unipile (desde env o consultando /api/v1/accounts).
+   */
+  async getLinkedInAccountId(): Promise<string | null> {
+    if (process.env.UNIPILE_ACCOUNT_ID?.trim()) {
+      return process.env.UNIPILE_ACCOUNT_ID.trim();
+    }
+    if (!this.isConfigured()) return null;
+
+    const dsn = this.getDsnUrl();
+    const apiKey = process.env.UNIPILE_API_KEY!;
+    try {
+      const res = await fetch(`${dsn}/api/v1/accounts`, {
+        headers: { "X-API-KEY": apiKey, Accept: "application/json" },
+      });
+      const data: any = await res.json().catch(() => ({}));
+      const items = Array.isArray(data?.items) ? data.items : [];
+      const linkedin = items.find((a: any) => String(a.type).toUpperCase() === "LINKEDIN");
+      return linkedin?.id || null;
+    } catch (err: any) {
+      console.warn("⚠️ [Unipile] Error obteniendo account_id de LinkedIn:", err.message);
+      return null;
+    }
+  },
+
+  /**
+   * Busca prospectos reales en LinkedIn vía Unipile filtrando conexiones de 2º/3er grado (no conectados aún).
+   */
+  async searchLinkedInPeople(keywords: string, limit: number = 5): Promise<{ ok: boolean; prospects: UnipileLinkedInProspect[]; error?: string }> {
+    if (!this.isConfigured()) {
+      return { ok: false, prospects: [], error: "Unipile no está configurado (faltan UNIPILE_DSN / UNIPILE_API_KEY)." };
+    }
+
+    const accountId = await this.getLinkedInAccountId();
+    if (!accountId) {
+      return { ok: false, prospects: [], error: "No hay ninguna cuenta de LinkedIn vinculada en Unipile." };
+    }
+
+    const dsn = this.getDsnUrl();
+    const apiKey = process.env.UNIPILE_API_KEY!;
+    const safeLimit = Math.min(Math.max(limit, 1), 10);
+
+    try {
+      const res = await fetch(`${dsn}/api/v1/linkedin/search?account_id=${encodeURIComponent(accountId)}&limit=${safeLimit}`, {
+        method: "POST",
+        headers: {
+          "X-API-KEY": apiKey,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          api: "classic",
+          category: "people",
+          keywords,
+        }),
+      });
+
+      const data: any = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const errMsg = data?.message || data?.detail || `HTTP ${res.status}`;
+        return { ok: false, prospects: [], error: errMsg };
+      }
+
+      const rawItems = Array.isArray(data?.items) ? data.items : [];
+      const prospects: UnipileLinkedInProspect[] = rawItems
+        .filter((it: any) => it.id && it.network_distance !== "DISTANCE_1")
+        .slice(0, safeLimit)
+        .map((it: any) => ({
+          id: String(it.id),
+          name: String(it.name || "Profesional"),
+          headline: String(it.headline || "Profesional B2B"),
+          location: String(it.location || ""),
+          profileUrl: String(it.public_profile_url || it.profile_url || ""),
+          networkDistance: String(it.network_distance || "DISTANCE_2"),
+        }));
+
+      return { ok: true, prospects };
+    } catch (err: any) {
+      return { ok: false, prospects: [], error: err.message };
+    }
+  },
+
+  /**
+   * Envía una invitación a conectar en LinkedIn con nota personalizada vía Unipile (tras aprobación HITL).
+   */
+  async sendLinkedInInvite(providerId: string, message: string): Promise<UnipileSendResult> {
+    if (!this.isConfigured()) {
+      return { ok: true, simulated: true };
+    }
+
+    const accountId = await this.getLinkedInAccountId();
+    if (!accountId) {
+      return { ok: false, simulated: false, error: "No hay cuenta de LinkedIn vinculada en Unipile." };
+    }
+
+    const dsn = this.getDsnUrl();
+    const apiKey = process.env.UNIPILE_API_KEY!;
+    const safeNote = message.trim().slice(0, 295);
+
+    try {
+      const res = await fetch(`${dsn}/api/v1/users/invite`, {
+        method: "POST",
+        headers: {
+          "X-API-KEY": apiKey,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          account_id: accountId,
+          provider_id: providerId,
+          message: safeNote,
+        }),
+      });
+
+      const data: any = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const errMsg = data?.message || data?.detail || `HTTP ${res.status}`;
+        console.error(`❌ [Unipile] Error enviando invitación a ${providerId}: ${errMsg}`);
+        return { ok: false, simulated: false, error: errMsg, providerResponse: data };
+      }
+
+      console.log(`✅ [Unipile] Invitación de LinkedIn enviada a ${providerId}`);
+      return { ok: true, simulated: false, providerResponse: data };
+    } catch (err: any) {
       return { ok: false, simulated: false, error: err.message };
     }
   },

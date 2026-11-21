@@ -2713,6 +2713,16 @@ bot.command(["setter", "prospecting", "leads"], async (ctx) => {
     );
   }
 
+  // 2B. Búsqueda en vivo de prospectos en LinkedIn vía Unipile + Invitaciones HITL
+  if (subCmd === "buscar" || subCmd === "search" || subCmd === "leads") {
+    const query = parts.slice(1).join(" ").trim();
+    if (!query) {
+      return ctx.reply("⚠️ Uso: `/setter buscar [sector y ciudad]`\nEjemplo: `/setter buscar agente inmobiliario Madrid`", { parse_mode: "Markdown" });
+    }
+    await leadSetter.searchAndPresentProspects(bot, userId, query, 5);
+    return;
+  }
+
   // 3. Responder a un mensaje específico: /setter responder [leadName | mensaje]
   if (subCmd === "responder" || subCmd === "reply") {
     const rest = rawArgs.substring(subCmd.length).trim();
@@ -3114,6 +3124,21 @@ bot.on("message:text", async (ctx) => {
   // ─── CAMBIO RÁPIDO DE VOZ EN LENGUAJE NATURAL (Álvaro / Lucía) ───
   if (await handleVoiceChangeIntent(userId, text, ctx)) {
     return;
+  }
+
+  // ─── PROSPECCIÓN ACTIVA EN LINKEDIN VÍA UNIPILE (ADMIN HITL) ───
+  const adminIds = config.marketing?.adminIds || [1572946817];
+  if (adminIds.includes(userId) && /linkedin/i.test(text) && /(busca|b[uú]scame|encuentra|prospectos|leads|invita)/i.test(text)) {
+    const cleanedQuery = text
+      .replace(/^(por favor|oye|silvania|coreagent)[,\s]*/i, "")
+      .replace(/(b[uú]scame|busca|encuentra|invita)\s*(leads|prospectos|contactos|personas|perfiles|a)?\s*(en\s*linkedin|linkedin)?\s*(de|sobre|para)?\s*/gi, "")
+      .replace(/\s*(en\s*linkedin|con\s*invitaci[oó]n|para\s*invitarlos|y\s*m[aá]ndales.*|y\s*inv[ií]talos.*)$/gi, "")
+      .trim();
+    if (cleanedQuery.length >= 3) {
+      const { leadSetter } = await import("./services/leadSetter.js");
+      await leadSetter.searchAndPresentProspects(bot, userId, cleanedQuery, 5);
+      return;
+    }
   }
 
   // Notificar que está pensando con un intervalo para mantener el estado "escribiendo"
