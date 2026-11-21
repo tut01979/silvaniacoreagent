@@ -14,6 +14,45 @@ export type ProductBrand =
   | "nature_climates"
   | "emotions";
 
+export type CommercialProfile =
+  | "general"
+  | "freelance"
+  | "comerciantes"
+  | "autonomos"
+  | "microempresas"
+  | "clinicas_dentales"
+  | "inmobiliarias"
+  | "abogados"
+  | "educacion_logopedia";
+
+export type NarrativeRole =
+  | "hook_dolor"
+  | "transicion"
+  | "solucion_agente"
+  | "resultado_exito"
+  | "cierre_cta";
+
+export type VisualGenre =
+  | "corporativo_real"
+  | "tecnologia_futurista"
+  | "lifestyle_profesional"
+  | "clinico_salud"
+  | "educativo_infantil"
+  | "redes_marketing";
+
+export interface VisualStructuredAttributes {
+  industryProfile: CommercialProfile;
+  narrativeRole: NarrativeRole;
+  genre: VisualGenre;
+  emotions: string[];
+  situations: string[];
+  painPoints: string[];
+  agentAffinity: Array<"coreagent" | "marketing" | "setter_ia" | "eva">;
+  setting: string;
+  visualStyle: "fotografia_real" | "ilustracion_3d" | "holograma_futurista" | "editorial_minimalista";
+  brandSafety: "clean_no_trademarks";
+}
+
 export interface VisualCatalogItem {
   id: string;
   product: ProductBrand;
@@ -37,6 +76,7 @@ export interface VisualVectorChunk {
   objective: string;
   keywords: string[];
   attributes?: string[];
+  structuredAttributes?: VisualStructuredAttributes;
   copyrightStatus?: string;
   vector?: number[];
 }
@@ -325,6 +365,30 @@ export const visualAssetSelector = {
           if (nattr.length >= 3 && normQuery.includes(nattr)) {
             score += 1.1;
             matchedKeywords.push(attr);
+          }
+        }
+
+        // Afinidad directa por Taxonomía Estructurada (perfil comercial, situación, dolor, escenario)
+        if (chunk.structuredAttributes) {
+          const sa = chunk.structuredAttributes;
+          const profileNorm = normalizeToken(sa.industryProfile.replace(/_/g, " "));
+          if (profileNorm && profileNorm !== "general" && normQuery.includes(profileNorm)) {
+            score += 3.5;
+            matchedKeywords.push(`perfil:${sa.industryProfile}`);
+          }
+          for (const sit of sa.situations || []) {
+            const ns = normalizeToken(sit);
+            if (ns.length >= 4 && normQuery.includes(ns)) {
+              score += 1.3;
+              matchedKeywords.push(sit);
+            }
+          }
+          for (const pain of sa.painPoints || []) {
+            const np = normalizeToken(pain);
+            if (np.length >= 4 && normQuery.includes(np)) {
+              score += 1.5;
+              matchedKeywords.push(pain);
+            }
           }
         }
 
