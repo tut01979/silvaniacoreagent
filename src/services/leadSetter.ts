@@ -786,7 +786,7 @@ export const leadSetter = {
         `💼 ${p.headline}\n` +
         (p.location ? `📍 ${p.location}\n` : "") +
         (p.profileUrl ? `🔗 [Ver Perfil](${p.profileUrl})\n\n` : "\n") +
-        `📝 *Nota de invitación (<300 car.):*\n_"${note}"_`;
+        `📝 *Nota de invitación (${note.length}/200 car.):*\n_"${note}"_`;
 
       await bot.api.sendMessage(chatId, msg, {
         parse_mode: "Markdown",
