@@ -112,6 +112,15 @@ export async function runMarketingDailyDraft(
     return draft;
   } catch (err: any) {
     console.error(`❌ [Marketing Cron] Error generando borrador para ${product.name}:`, err.message);
+    try {
+      await bot.api.sendMessage(
+        adminId,
+        `⚠️ *Error en Marketing Cron (11:00)*\n` +
+        `No se pudo generar el borrador diario de *${product.name}*.\n\n` +
+        `🧾 *Error real:* \`${String(err.message || err).slice(0, 400)}\``,
+        { parse_mode: "Markdown" }
+      );
+    } catch {}
     return null;
   }
 }

@@ -136,19 +136,39 @@ Responde ÚNICAMENTE con un JSON válido con esta estructura:
       post.copy = ensureOfficialLinks(post.copy || "", platform === "x");
       return { data: post, llmModel: preferredModel };
     } catch (err: any) {
-      console.warn("⚠️ Falló OpenRouter en SocialPost, usando Groq (Llama-3.3-70b):", err.message);
-      const groqCompletion = await groq.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
-        messages: [{ role: "user", content: prompt + "\n\nResponde SOLO con JSON válido." }],
-        temperature: 0.65,
-      });
+      console.warn("⚠️ Falló OpenRouter en SocialPost, usando Groq fallback:", err.message);
+      const groqModels = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"];
+      for (const gm of groqModels) {
+        try {
+          const groqCompletion = await groq.chat.completions.create({
+            model: gm,
+            messages: [{ role: "user", content: prompt + "\n\nResponde SOLO con JSON válido." }],
+            temperature: 0.65,
+          });
+          const raw = groqCompletion.choices[0].message?.content || "{}";
+          const cleanJson = raw.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
+          const post = JSON.parse(cleanJson) as SocialPost;
+          post.platform = platform;
+          post.copy = ensureOfficialLinks(post.copy || "", platform === "x");
+          return { data: post, llmModel: gm };
+        } catch (groqErr: any) {
+          console.warn(`⚠️ Groq (${gm}) falló en SocialPost:`, groqErr.message);
+        }
+      }
 
-      const raw = groqCompletion.choices[0].message?.content || "{}";
-      const cleanJson = raw.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
-      const post = JSON.parse(cleanJson) as SocialPost;
-      post.platform = platform;
-      post.copy = ensureOfficialLinks(post.copy || "", platform === "x");
-      return { data: post, llmModel: "llama-3.3-70b-versatile" };
+      // Edge copy mínimo determinista si OpenRouter (ej. 402 sin créditos) y Groq fallan
+      const fallbackPost: SocialPost = {
+        platform,
+        title: topic.slice(0, 70),
+        copy: ensureOfficialLinks(
+          `🚀 ${topic}\n\nDescubre la Oficina Ejecutiva Inteligente de Silvania AI: multiplica tu capacidad de ejecución con agentes especializados.\n\n👉 https://silvania.ai`,
+          platform === "x"
+        ),
+        hashtags: ["#SilvaniaAI", "#CoreAgent", "#ProductividadIA"],
+        callToAction: "Descubre más en https://silvania.ai",
+        imagePrompt: `Modern clean corporate workspace showing Silvania AI digital productivity, clean high contrast photography without any third-party logos`,
+      };
+      return { data: fallbackPost, llmModel: "edge-fallback-copy" };
     }
   },
 

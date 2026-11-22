@@ -884,7 +884,7 @@ export const llmService = {
 
           const response = await groq.chat.completions.create({
             messages: groqMessages as any,
-            model: "llama-3.1-70b-versatile",
+            model: "llama-3.3-70b-versatile",
             temperature: 0.5,
             tools,
           });
@@ -892,8 +892,21 @@ export const llmService = {
           delete (msg as any).refusal;
           return msg;
         } catch (fallbackError: any) {
-          console.error("❌ Todos los modelos de LLM fallaron:", fallbackError.message);
-          throw fallbackError;
+          console.warn("⚠️ Groq llama-3.3-70b-versatile falló, intentando llama-3.1-8b-instant:", fallbackError.message);
+          try {
+            const response = await groq.chat.completions.create({
+              messages: messages.slice(-6) as any,
+              model: "llama-3.1-8b-instant",
+              temperature: 0.5,
+              tools,
+            });
+            const msg = response.choices[0].message;
+            delete (msg as any).refusal;
+            return msg;
+          } catch (errFinal: any) {
+            console.error("❌ Todos los modelos de LLM fallaron:", errFinal.message);
+            throw errFinal;
+          }
         }
       }
     }
@@ -912,21 +925,21 @@ export const llmService = {
     } catch (error: any) {
       console.warn("⚠️ OpenRouter principal sin herramientas falló:", error.message);
       try {
-        const response = await openRouter.chat.completions.create({
-          messages,
-          model: "meta-llama/llama-3.3-70b-instruct",
+        const groqRes = await groq.chat.completions.create({
+          messages: messages as any,
+          model: "llama-3.3-70b-versatile",
           temperature: 0.3,
         });
-        return response.choices[0].message.content || "";
-      } catch (fallbackError: any) {
-        console.warn("⚠️ Fallback secundario de OpenRouter falló, probando Gemini 2.0 Flash:", fallbackError.message);
+        return groqRes.choices[0].message.content || "";
+      } catch (groqErr1: any) {
+        console.warn("⚠️ Groq llama-3.3-70b-versatile falló, probando llama-3.1-8b-instant:", groqErr1.message);
         try {
-          const response = await openRouter.chat.completions.create({
-            messages,
-            model: "google/gemini-2.0-flash-001",
+          const groqRes2 = await groq.chat.completions.create({
+            messages: messages as any,
+            model: "llama-3.1-8b-instant",
             temperature: 0.3,
           });
-          return response.choices[0].message.content || "";
+          return groqRes2.choices[0].message.content || "";
         } catch (err3: any) {
           console.error("❌ Todos los fallbacks de chat sin herramientas fallaron:", err3.message);
           throw err3;

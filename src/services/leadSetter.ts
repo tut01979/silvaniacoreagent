@@ -153,6 +153,8 @@ const dailyUsageTracker = new Map<string, { date: string; count: number }>();
 
 export type SetterMode = "hitl" | "auto";
 const setterModeTracker = new Map<number, SetterMode>();
+const seenProspectIdsByUser = new Map<number, Set<string>>();
+const searchCursorByUserQuery = new Map<string, string>();
 
 function getTodayKey(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Madrid" }); // YYYY-MM-DD
@@ -342,34 +344,48 @@ export const leadSetter = {
   },
 
   /**
-   * Genera una respuesta inteligente con IA a un mensaje entrante (LinkedIn / Unipile) con huecos reales de Calendar
+   * Genera una respuesta inteligente con IA a un mensaje entrante (LinkedIn / Unipile) usando el contexto del hilo.
+   * Distingue tono peer/networking vs. interés real en llamada; prohibido el pitch genérico si no piden call o el hilo no está maduro.
    */
   async generateSuggestedReply(
     leadName: string,
     leadRole: string,
     messageText: string,
     personaKey?: string,
-    slots?: { primaryLabel: string; secondaryLabel: string }
+    slots?: { primaryLabel: string; secondaryLabel: string },
+    threadHistory?: Array<{ sender: "me" | "lead"; text: string }>
   ): Promise<string> {
     const slot1 = slots?.primaryLabel || "mañana a las 10:30";
     const slot2 = slots?.secondaryLabel || "pasado mañana a las 16:30";
+
+    const historyText = threadHistory && threadHistory.length > 0
+      ? threadHistory.map((m) => `${m.sender === "me" ? "Nosotros" : leadName}: "${m.text}"`).join("\n")
+      : "(Primer mensaje / sin historial previo)";
+
+    const leadTurns = (threadHistory || []).filter((m) => m.sender === "lead").length;
+    const explicitCallRequest = /reuni[oó]n|llamada|call|meet|demo|hueco|agendar|verlo|cu[aá]ndo hablamos|ens[eé]ñame|probarlo/i.test(messageText);
+    const isMatureThread = leadTurns >= 3 && /interesa|silvania|funciona|tiempo|probar/i.test(messageText);
+    const canOfferCalendar = explicitCallRequest || isMatureThread;
+
     try {
       const prompt =
-        `Eres Silvania Setter AI, un asistente de prospección B2B de élite para Silvania CoreAgent (tu oficina ejecutiva en Telegram conectada con Google Workspace: Calendar, Gmail, Sheets, Drive).\n` +
-        `Un prospecto ha respondido a nuestro contacto:\n` +
+        `Eres Eduardo (fundador de Silvania AI) respondiendo un mensaje real en LinkedIn.\n\n` +
+        `DATOS DEL CONTACTO:\n` +
         `- Nombre: ${leadName}\n` +
-        `- Cargo/Sector: ${leadRole}\n` +
-        `- Mensaje recibido del prospecto: "${messageText}"\n` +
-        `- Huecos libres reales en nuestro Google Calendar: "${slot1}" o "${slot2}"\n\n` +
-        `Tu misión: Redactar la respuesta ideal en español para continuar la conversación con naturalidad, empatía y efectividad.\n` +
-        `Reglas indispensables:\n` +
-        `1. Longitud: 2 a 3 frases cortas (< 280 caracteres). Tono humano y cercano, cero lenguaje robótico o de venta agresiva.\n` +
-        `2. Desactiva su objeción de inmediato (si no tiene tiempo, dile que por eso le ayuda a ganar 2 horas al día; si pregunta precio, indícale prueba gratis y tarifa plana reducida).\n` +
-        `3. Si muestra interés o pide cita, propón exactamente nuestros huecos libres reales (${slot1} o ${slot2}) para una demo de 10 min por Google Meet.\n` +
-        `4. Devuelve EXCLUSIVAMENTE el texto de la respuesta, sin saludos introductorios ni comillas extras.`;
+        `- Cargo/Bio: ${leadRole}\n\n` +
+        `ÚLTIMOS MENSAJES DEL HILO:\n${historyText}\n\n` +
+        `ÚLTIMO MENSAJE RECIBIDO:\n"${messageText}"\n\n` +
+        `REGLAS ESTRICTAS DE RESPUESTA:\n` +
+        `1. Longitud: 2 a 3 frases cortas, tono humano real, cercano y entre colegas (cero tono robótico o comercial agresivo).\n` +
+        `2. DETECCIÓN PEER / NETWORKING: Si es otro fundador, CEO o profesional contándonos su propio producto/proyecto, haciendo networking o respondiendo cordialmente SIN pedir una demo, RESPONDE DIRECTAMENTE AL CONTENIDO de lo que nos cuenta (muestra interés genuino en su trabajo o comenta su punto). PROHIBIDO soltar el pitch genérico de "10 min por Google Meet" o mencionar huecos.\n` +
+        (canOfferCalendar
+          ? `3. El contacto pide llamada/demo o el hilo ya está maduro: propón amablemente nuestros huecos libres reales (${slot1} o ${slot2}) para verlo en 10 min por Google Meet.\n`
+          : `3. NO ofrezcas huecos de calendario ni pidas videollamada todavía porque aún no ha pedido call ni el hilo está maduro para cerrar.\n`) +
+        `4. Nunca inventes precios ni tarifas (estamos en validación privada a cambio de feedback/testimonio).\n` +
+        `5. Devuelve EXCLUSIVAMENTE el texto de la respuesta, sin comillas ni explicaciones.`;
 
       const response = await llmService.chatSimple([
-        { role: "system", content: "Eres Silvania Setter AI, el copiloto de prospección y cierre de reuniones B2B." },
+        { role: "system", content: "Respondes mensajes reales de LinkedIn con naturalidad, empatía y contexto exacto del hilo." },
         { role: "user", content: prompt }
       ]);
 
@@ -379,7 +395,11 @@ export const leadSetter = {
       console.warn("⚠️ Falló llamada a LLM para respuesta sugerida, usando fallback contextual:", err.message);
     }
 
-    return `¡Genial ${leadName}! En 10 min por Google Meet te enseño cómo CoreAgent agenda y organiza Google Workspace por voz. Tengo libre ${slot1} o ${slot2}, ¿cuál te encaja mejor?`;
+    const firstName = leadName.split(" ")[0] || leadName;
+    if (canOfferCalendar) {
+      return `¡Genial ${firstName}! Si quieres te lo enseño en 10 min por Google Meet. Tengo libre ${slot1} o ${slot2}, ¿cuál te encaja mejor?`;
+    }
+    return `¡Muchas gracias por compartirlo, ${firstName}! Me parece muy interesante lo que comentas. ¿Qué es lo que más tiempo te consume ahora mismo en tu día a día?`;
   },
 
   /**
@@ -398,7 +418,17 @@ export const leadSetter = {
   }): Promise<PendingLeadReply> {
     const id = `lr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const slots = await this.getSuggestedCalendarSlots(opts.chatId);
-    const suggested = opts.customSuggestedReply || await this.generateSuggestedReply(opts.leadName, opts.leadRole, opts.messageText, opts.personaKey, slots);
+    const threadHistory = opts.unipileChatId
+      ? await unipileService.getChatMessages(opts.unipileChatId, 6)
+      : [];
+    const suggested = opts.customSuggestedReply || await this.generateSuggestedReply(
+      opts.leadName,
+      opts.leadRole,
+      opts.messageText,
+      opts.personaKey,
+      slots,
+      threadHistory
+    );
 
     const pending: PendingLeadReply = {
       id,
@@ -715,22 +745,106 @@ export const leadSetter = {
 
     const mode = this.getSetterMode(chatId);
     const modeTag = mode === "auto" ? "🤖 Autónomo Total" : "🛡️ Asistido HITL";
-    await bot.api.sendMessage(chatId, `🔎 Buscando prospectos reales en tu LinkedIn para: *"${keywords}"* (${modeTag})...`, { parse_mode: "Markdown" });
 
-    const searchRes = await unipileService.searchLinkedInPeople(keywords, limit);
-    if (!searchRes.ok) {
-      await bot.api.sendMessage(chatId, `❌ Error buscando en LinkedIn vía Unipile: ${searchRes.error}`);
+    // Parseo de ciudad pedida e intención de autónomo / pequeño negocio
+    const normKw = keywords.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const cityMatch = normKw.match(/\ben\s+([a-z\s]{3,25})$/i);
+    const knownCities = ["valencia", "madrid", "barcelona", "sevilla", "malaga", "bilbao", "zaragoza", "alicante", "murcia", "palma", "vigo", "granada", "cordoba", "valladolid"];
+    const requestedCity = (cityMatch ? cityMatch[1].trim() : knownCities.find((c) => normKw.includes(c))) || "";
+    const wantsSmallBiz = /autonom|pequen|microempresa|negocio local|comercio|tienda|freelance|independiente/i.test(normKw);
+
+    // Reforzar keywords de búsqueda (quitando conectores vacíos para mejorar precisión en LinkedIn)
+    const searchQuery = keywords
+      .replace(/\b(con negocio peque[ñn]o|negocio peque[ñn]o)\b/gi, "autónomo pequeño negocio")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    await bot.api.sendMessage(
+      chatId,
+      `🔎 Buscando prospectos reales en tu LinkedIn para: *"${keywords}"* (${modeTag})...`,
+      { parse_mode: "Markdown" }
+    );
+
+    if (!seenProspectIdsByUser.has(chatId)) {
+      seenProspectIdsByUser.set(chatId, new Set<string>());
+    }
+    const seenIds = seenProspectIdsByUser.get(chatId)!;
+    const cursorKey = `${chatId}:${normKw}`;
+    let cursor = searchCursorByUserQuery.get(cursorKey);
+
+    const candidatePool: any[] = [];
+    let lastError: string | undefined;
+
+    // Hasta 2 páginas para garantizar suficientes perfiles nuevos no repetidos y bien filtrados
+    for (let page = 0; page < 2; page++) {
+      const searchRes = await unipileService.searchLinkedInPeople(searchQuery, 20, cursor);
+      if (!searchRes.ok) {
+        lastError = searchRes.error;
+        break;
+      }
+      if (searchRes.nextCursor) {
+        cursor = searchRes.nextCursor;
+        searchCursorByUserQuery.set(cursorKey, cursor);
+      } else {
+        searchCursorByUserQuery.delete(cursorKey);
+      }
+
+      for (const p of searchRes.prospects) {
+        if (!seenIds.has(p.id) && !candidatePool.some((c) => c.id === p.id)) {
+          candidatePool.push(p);
+        }
+      }
+      if (candidatePool.length >= 12 || !searchRes.nextCursor) break;
+    }
+
+    if (lastError && candidatePool.length === 0) {
+      await bot.api.sendMessage(chatId, `❌ Error buscando en LinkedIn vía Unipile: ${lastError}`);
       return;
     }
 
-    if (searchRes.prospects.length === 0) {
-      await bot.api.sendMessage(chatId, `⚠️ No encontré nuevos contactos (no conectados aún) para "${keywords}". Prueba con otras palabras clave.`);
+    // Puntuación y filtrado por relevancia (ciudad + perfil autónomo/pequeño negocio vs corporativo)
+    const scored = candidatePool.map((p) => {
+      let score = 0;
+      const locNorm = (p.location || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const headNorm = (p.headline || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+      if (requestedCity) {
+        if (locNorm.includes(requestedCity) || headNorm.includes(requestedCity)) {
+          score += 20;
+        } else if (locNorm.length > 0) {
+          score -= 25;
+        }
+      }
+
+      if (wantsSmallBiz) {
+        if (/\b(director|specification manager|multinacional|enterprise|head of|vp|vice president|corporate)\b/i.test(headNorm)) {
+          score -= 15;
+        }
+        if (/\b(autonom|freelance|independiente|propietari|duen|fundador|tienda|comercio|clinica|despacho|consultor|pequen|pyme|gerente)\b/i.test(headNorm)) {
+          score += 10;
+        }
+      }
+
+      return { prospect: p, score };
+    });
+
+    scored.sort((a, b) => b.score - a.score);
+    const strictMatches = scored.filter((s) => s.score >= 0).map((s) => s.prospect);
+    const selectedProspects = (strictMatches.length >= limit ? strictMatches : scored.map((s) => s.prospect)).slice(0, limit);
+
+    if (selectedProspects.length === 0) {
+      await bot.api.sendMessage(chatId, `⚠️ No encontré nuevos contactos (no vistos aún) para "${keywords}". Prueba con otras palabras clave.`);
       return;
+    }
+
+    // Marcar como vistos para que la siguiente búsqueda igual no repita estos perfiles
+    for (const p of selectedProspects) {
+      seenIds.add(p.id);
     }
 
     if (mode === "auto") {
       const remaining = Math.max(0, limitCheck.max - limitCheck.currentCount);
-      const batch = searchRes.prospects.slice(0, remaining);
+      const batch = selectedProspects.slice(0, remaining);
       const results: string[] = [];
       let sentCount = 0;
 
@@ -759,7 +873,7 @@ export const leadSetter = {
       return;
     }
 
-    for (const p of searchRes.prospects) {
+    for (const p of selectedProspects) {
       const firstName = p.name.split(" ")[0] || p.name;
       const note = `Hola ${firstName}, veo tu labor en el sector. Validamos Silvania, una IA en Telegram que ahorra horas en agenda y leads (acceso gratis por feedback). ¿Conectamos?`.slice(0, 195);
 

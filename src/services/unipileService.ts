@@ -177,9 +177,42 @@ export const unipileService = {
   },
 
   /**
-   * Busca prospectos reales en LinkedIn vía Unipile filtrando conexiones de 2º/3er grado (no conectados aún).
+   * Obtiene los últimos mensajes de un chat de Unipile para dar contexto real del hilo al Setter IA.
    */
-  async searchLinkedInPeople(keywords: string, limit: number = 5): Promise<{ ok: boolean; prospects: UnipileLinkedInProspect[]; error?: string }> {
+  async getChatMessages(chatId: string, limit: number = 6): Promise<Array<{ sender: "me" | "lead"; text: string }>> {
+    if (!this.isConfigured() || !chatId || chatId.startsWith("sim_")) return [];
+
+    const dsn = this.getDsnUrl();
+    const apiKey = process.env.UNIPILE_API_KEY!;
+    try {
+      const res = await fetch(`${dsn}/api/v1/chats/${encodeURIComponent(chatId)}/messages?limit=${Math.min(limit, 20)}`, {
+        headers: { "X-API-KEY": apiKey, Accept: "application/json" },
+      });
+      if (!res.ok) return [];
+      const data: any = await res.json().catch(() => ({}));
+      const items = Array.isArray(data?.items) ? data.items : [];
+      return items
+        .map((m: any) => ({
+          sender: (m.is_sender ? "me" : "lead") as "me" | "lead",
+          text: String(m.text || m.body || "").trim(),
+        }))
+        .filter((m: any) => m.text.length > 0)
+        .reverse();
+    } catch (err: any) {
+      console.warn(`⚠️ [Unipile] No se pudo cargar historial de chat ${chatId}:`, err.message);
+      return [];
+    }
+  },
+
+  /**
+   * Busca prospectos reales en LinkedIn vía Unipile filtrando conexiones de 2º/3er grado (no conectados aún).
+   * Soporta `cursor` de paginación para evitar repetir los mismos perfiles en búsquedas seguidas.
+   */
+  async searchLinkedInPeople(
+    keywords: string,
+    limit: number = 15,
+    cursor?: string
+  ): Promise<{ ok: boolean; prospects: UnipileLinkedInProspect[]; nextCursor?: string; error?: string }> {
     if (!this.isConfigured()) {
       return { ok: false, prospects: [], error: "Unipile no está configurado (faltan UNIPILE_DSN / UNIPILE_API_KEY)." };
     }
@@ -191,10 +224,11 @@ export const unipileService = {
 
     const dsn = this.getDsnUrl();
     const apiKey = process.env.UNIPILE_API_KEY!;
-    const safeLimit = Math.min(Math.max(limit, 1), 10);
+    const safeLimit = Math.min(Math.max(limit, 1), 25);
 
     try {
-      const res = await fetch(`${dsn}/api/v1/linkedin/search?account_id=${encodeURIComponent(accountId)}&limit=${safeLimit}`, {
+      const cursorParam = cursor ? `&cursor=${encodeURIComponent(cursor)}` : "";
+      const res = await fetch(`${dsn}/api/v1/linkedin/search?account_id=${encodeURIComponent(accountId)}&limit=${safeLimit}${cursorParam}`, {
         method: "POST",
         headers: {
           "X-API-KEY": apiKey,
@@ -217,7 +251,6 @@ export const unipileService = {
       const rawItems = Array.isArray(data?.items) ? data.items : [];
       const prospects: UnipileLinkedInProspect[] = rawItems
         .filter((it: any) => it.id && it.network_distance !== "DISTANCE_1")
-        .slice(0, safeLimit)
         .map((it: any) => ({
           id: String(it.id),
           name: String(it.name || "Profesional"),
@@ -227,7 +260,7 @@ export const unipileService = {
           networkDistance: String(it.network_distance || "DISTANCE_2"),
         }));
 
-      return { ok: true, prospects };
+      return { ok: true, prospects, nextCursor: data?.cursor ? String(data.cursor) : undefined };
     } catch (err: any) {
       return { ok: false, prospects: [], error: err.message };
     }
