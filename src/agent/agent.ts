@@ -354,7 +354,9 @@ export async function runAgent(userId: number, userMessage: string) {
             : "";
           const textBody = d.socialContent
             ? d.socialContent.copy.slice(0, 450)
-            : [d.videoScript?.hook, ...(d.videoScript?.scenes || []).map((s) => `Escena ${s.sceneNumber}: ${s.narration}`)].filter(Boolean).join(" | ").slice(0, 900);
+            : (d.transcriptText
+                ? d.transcriptText.slice(0, 1000)
+                : [d.videoScript?.hook, ...(d.videoScript?.scenes || []).map((s) => `Escena ${s.sceneNumber}: ${s.narration}`)].filter(Boolean).join(" | ").slice(0, 900));
           return (
             `[${idx + 1}] ID #${d.id.slice(0, 8)} | Estado: ${d.status} | Formato: ${d.format} | Título: "${title}"` +
             (urls ? ` | URLs Publicadas: { ${urls} }` : "") +

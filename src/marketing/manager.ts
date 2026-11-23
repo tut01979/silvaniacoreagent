@@ -13,6 +13,7 @@ import { config } from "../config/config.js";
 import { visualAssetSelector } from "./services/visualAssetSelector.js";
 import { musicAssetSelector } from "./services/musicAssetSelector.js";
 import { brandDriveAssets } from "./services/brandDriveAssets.js";
+import { generateTimedSrtAndTranscript } from "./services/subtitleGenerator.js";
 
 export const marketingManager = {
   /**
@@ -215,6 +216,21 @@ export const marketingManager = {
             draft.realDurationSeconds = realAudioDuration;
           } catch (voiceErr: any) {
             draft.videoError = "Error al sintetizar el audio: " + voiceErr.message;
+          }
+        }
+
+        // 3B. Generación automática de subtítulos .srt y transcripción completa
+        if (draft.audioUrls.length > 0 && realAudioDuration > 0) {
+          try {
+            const effectiveDurations = sceneDurations.length === scenesToRender.length
+              ? sceneDurations
+              : scenesToRender.map(() => Number((realAudioDuration / scenesToRender.length).toFixed(2)));
+            const srtRes = generateTimedSrtAndTranscript(scenesToRender, effectiveDurations, scriptRes.data.hook, 0.35);
+            draft.srtPath = srtRes.srtPath;
+            draft.transcriptText = srtRes.transcriptText;
+            console.log(`💬 [Marketing Video] Subtítulos .srt generados (${srtRes.cueCount} bloques): ${srtRes.srtPath}`);
+          } catch (srtErr: any) {
+            console.warn("⚠️ No se pudo generar .srt:", srtErr.message);
           }
         }
       }
@@ -428,6 +444,7 @@ export const marketingManager = {
               visualStyle,
               enableZoomPan: true,
               transitionStyle: "auto",
+              srtPath: draft.srtPath,
             }
           );
           draft.videoPath = videoRes.videoPath;

@@ -43,10 +43,12 @@ export interface VideoAssembleOptions {
   enableZoomPan?: boolean; // true por defecto (Ken Burns)
   transitionStyle?: TransitionStylePreset; // "auto" por defecto
   transitionDurationSec?: number; // 0.55s por defecto
+  srtPath?: string; // Ruta opcional al archivo .srt para quemar subtítulos dinámicos sincronizados
 }
 
 export interface VideoAssembleResult {
   videoPath: string;
+  srtPath?: string;
   durationSeconds: number;
   sceneCount: number;
   distinctImageCount: number;
@@ -452,11 +454,36 @@ export const videoAssembler = {
         throw new Error("El archivo MP4 generado está vacío o no se creó correctamente.");
       }
 
+      let subtitlesBurned = false;
+      if (options?.srtPath && fs.existsSync(options.srtPath)) {
+        const subOutPath = outputPath.replace(/\.mp4$/i, "_sub.mp4");
+        const relSrt = path.relative(process.cwd(), options.srtPath).replace(/\\/g, "/");
+        const isVertical = height > width;
+        const fontSize = isVertical ? 14 : 18;
+        const marginV = isVertical ? 44 : 26;
+        const styleStr = `FontName=Arial,FontSize=${fontSize},PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BackColour=&H88000000,BorderStyle=3,Outline=1,Shadow=0,Alignment=2,MarginV=${marginV}`;
+        const subCmd = `"${ffmpegBin}" -y -i "${outputPath}" -vf "subtitles='${relSrt}':force_style='${styleStr}'" -c:v libx264 -preset ultrafast -crf 22 -pix_fmt yuv420p -c:a copy "${subOutPath}"`;
+        try {
+          console.log(`💬 [VideoAssembler] Quemando subtítulos sincronizados (${relSrt})...`);
+          await execAsync(subCmd, { timeout: 180_000, maxBuffer: 10 * 1024 * 1024 });
+          if (fs.existsSync(subOutPath) && fs.statSync(subOutPath).size > 1000) {
+            try { fs.unlinkSync(outputPath); } catch {}
+            fs.renameSync(subOutPath, outputPath);
+            subtitlesBurned = true;
+            console.log(`✅ [VideoAssembler] Subtítulos quemados con éxito en el MP4.`);
+          }
+        } catch (subErr: any) {
+          console.warn(`⚠️ [VideoAssembler] No se pudieron quemar subtítulos (${subErr?.message?.slice(0, 120)}); se conserva el MP4 limpio y el .srt.`);
+          try { if (fs.existsSync(subOutPath)) fs.unlinkSync(subOutPath); } catch {}
+        }
+      }
+
       const fileStats = fs.statSync(outputPath);
-      console.log(`✅ VideoAssembler: Vídeo MP4 generado con éxito (${fileStats.size} bytes, ${totalAudioDuration.toFixed(1)}s, ${distinctImages.size} imágenes distintas) en ${outputPath}`);
+      console.log(`✅ VideoAssembler: Vídeo MP4 generado con éxito (${fileStats.size} bytes, ${totalAudioDuration.toFixed(1)}s, ${distinctImages.size} imágenes distintas${subtitlesBurned ? ", subtítulos quemados" : ""}) en ${outputPath}`);
 
       return {
         videoPath: outputPath,
+        srtPath: options?.srtPath,
         durationSeconds: totalAudioDuration,
         sceneCount: scenes.length,
         distinctImageCount: distinctImages.size,

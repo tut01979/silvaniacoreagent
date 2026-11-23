@@ -58,6 +58,8 @@ export interface MarketingDraft {
   imageError?: string;
   videoPath?: string;
   videoUrl?: string;
+  srtPath?: string;
+  transcriptText?: string;
   sceneImageCount?: number;
   distinctImageCount?: number;
   networkImageCount?: number;

@@ -79,6 +79,30 @@ export const youtubePublisher = {
 
       console.log(`✅ [YouTubePublisher] ¡Vídeo publicado con éxito en @silvania_ai! URL: ${videoUrl}`);
 
+      // Intentar subir pista de subtítulos CC (.srt) si existe y el token tiene permisos
+      if (videoId && draft.srtPath && fs.existsSync(draft.srtPath)) {
+        try {
+          await youtube.captions.insert({
+            part: ["snippet"],
+            requestBody: {
+              snippet: {
+                videoId,
+                language: "es",
+                name: "Español (Silvania AI)",
+                isDraft: false,
+              },
+            },
+            media: {
+              mimeType: "application/octet-stream",
+              body: fs.createReadStream(draft.srtPath),
+            },
+          });
+          console.log(`💬 [YouTubePublisher] Pista de subtítulos CC (.srt) adjuntada al vídeo ${videoId}.`);
+        } catch (capErr: any) {
+          console.warn(`⚠️ [YouTubePublisher] No se pudo adjuntar pista CC (el vídeo ya lleva subtítulos quemados): ${capErr?.response?.data?.error?.message || capErr.message}`);
+        }
+      }
+
       return {
         platform: "YouTube",
         success: true,
