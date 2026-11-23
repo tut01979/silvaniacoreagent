@@ -58,11 +58,17 @@ export async function analyzeDocument({ file_id, prompt, userId }: { file_id: st
         if (typeof PDFParseClass === "function") {
           const parser = new PDFParseClass({ data: dataBuffer });
           const textResult = await parser.getText();
-          textContent = textResult.text || "El PDF no contiene texto extraíble.";
+          const extracted = (textResult.text || "").trim();
+          textContent = extracted.length >= 10
+            ? extracted
+            : "ATENCIÓN: Este PDF no contiene capa de texto digital legible porque está formado por páginas con imágenes o documentos escaneados. NO afirmes que el archivo está vacío; indica claramente que contiene páginas escaneadas sin texto OCR extraíble.";
           if (parser.destroy) await parser.destroy();
         } else if (typeof pdfParseModule.default === "function") {
           const textResult = await pdfParseModule.default(dataBuffer);
-          textContent = textResult.text || "El PDF no contiene texto extraíble.";
+          const extracted = (textResult.text || "").trim();
+          textContent = extracted.length >= 10
+            ? extracted
+            : "ATENCIÓN: Este PDF no contiene capa de texto digital legible porque está formado por páginas con imágenes o documentos escaneados. NO afirmes que el archivo está vacío; indica claramente que contiene páginas escaneadas sin texto OCR extraíble.";
         } else {
           textContent = "[PDF text extraction error: No se encontró un motor compatible para parsear el PDF]";
         }

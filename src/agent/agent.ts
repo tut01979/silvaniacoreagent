@@ -341,6 +341,35 @@ export async function runAgent(userId: number, userMessage: string) {
 - Para enviar correos: destinatario + contenido usando \`gmail_send\`.
 - Nunca inventes correos ni enlaces.`;
 
+    // 3.b Cargar memoria reciente de Marketing Studio (vídeos y posts creados/publicados) para mantener continuidad
+    let marketingContextBlock = "";
+    try {
+      const { marketingDb } = await import("../marketing/database.js");
+      const recentDrafts = marketingDb.listUserDrafts(userId, 5);
+      if (recentDrafts.length > 0) {
+        const items = recentDrafts.map((d, idx) => {
+          const title = d.socialContent?.title || d.videoScript?.title || d.topic;
+          const urls = d.publishedUrls
+            ? Object.entries(d.publishedUrls).map(([k, v]) => `${k}: ${v}`).join(", ")
+            : "";
+          const textBody = d.socialContent
+            ? d.socialContent.copy.slice(0, 450)
+            : [d.videoScript?.hook, ...(d.videoScript?.scenes || []).map((s) => `Escena ${s.sceneNumber}: ${s.narration}`)].filter(Boolean).join(" | ").slice(0, 900);
+          return (
+            `[${idx + 1}] ID #${d.id.slice(0, 8)} | Estado: ${d.status} | Formato: ${d.format} | Título: "${title}"` +
+            (urls ? ` | URLs Publicadas: { ${urls} }` : "") +
+            (textBody ? `\n    Contenido/Guión: ${textBody}` : "")
+          );
+        }).join("\n");
+        marketingContextBlock =
+          `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `## 📢 MEMORIA RECIENTE DE MARKETING STUDIO (TUS VÍDEOS Y POSTS CREADOS/PUBLICADOS)\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `Tienes visibilidad directa de los últimos contenidos generados o publicados para este usuario. Si pregunta por el último vídeo o post publicado, pide un comentario para redes o un análisis, USA DIRECTAMENTE esta información (nunca digas que falta la transcripción ni vuelvas a pedirle el tema):\n` +
+          `${items}\n`;
+      }
+    } catch {}
+
     // 4. Configurar System Prompt
     const systemPrompt = `Eres Silvania CoreAgent, el asistente ejecutivo modular de Silvania.ai que opera desde Telegram.
 Silvania.ai es una plataforma SaaS multi-usuario de agentes de inteligencia artificial con estricta separación de productos.
@@ -350,6 +379,7 @@ Formato ISO local: ${isoLocal}
 Zona horaria: Europe/Madrid (${offsetStr}). Usa estas fechas y offset para crear eventos o calcular fechas. NO llames a get_current_time.
 
 ${calendarText}
+${marketingContextBlock}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## 🔷 IDENTIDAD DEL AGENTE (SILVANIA COREAGENT)
@@ -480,7 +510,7 @@ ${userTier === "prod" ? `
    - Cada titular o resultado listado en tu respuesta DEBE llevar obligatoriamente la URL devuelta por la herramienta en formato Markdown \`[Titular](url_https_completa)\`.
    - Si un titular o ítem no tiene URL devuelta por la herramienta, OMITE el ítem por completo. Prohibido listar titulares sin URL.
 6. BÚSQUEDA EN YOUTUBE (\`youtube_search\`):
-   - Si el idioma del usuario/config es \`es\` o el mensaje va en español, incluye SIEMPRE \`"en español"\` en el \`query\` desde la primera llamada a \`youtube_search\`, no solo tras corrección del usuario.
+   - Cuando busques por nombre de canal o creador (ej. "Alejavi Rivera"), busca el nombre exacto sin añadir palabras extra que puedan filtrar sus vídeos, y usa \`max_results: 5\` (nunca \`1\`). Solo añade "en español" si busca temas generales y no viene de un nombre propio.
    - Cada vídeo listado debe incluir su enlace completo \`[Título del vídeo](https://www.youtube.com/watch?v=...)\`.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━

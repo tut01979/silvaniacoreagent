@@ -108,7 +108,13 @@ export const marketingManager = {
       const isTikTok = format === "tiktok";
       const isWhatsApp = format === "whatsapp_video";
       const isShort = format === "youtube_short" || isTikTok || isWhatsApp;
-      const minutes = format === "youtube_long" ? 2 : 1;
+      const durationMatch = topic.match(/(\d+(?:[.,]\d+)?)\s*(?:min(?:utos?)?|m\b)/i);
+      const parsedMinutes = durationMatch ? parseFloat(durationMatch[1].replace(",", ".")) : null;
+      const minutes = isShort
+        ? 1
+        : parsedMinutes && parsedMinutes > 0
+          ? Math.min(15, Math.max(1, parsedMinutes))
+          : 2;
 
       // 1. Guión Estructurado (LLM)
       const scriptRes = isWhatsApp
@@ -119,8 +125,8 @@ export const marketingManager = {
       draft.videoScript = scriptRes.data;
       draft.llmModel = scriptRes.llmModel;
 
-      // Cap y selección de escenas según la red:
-      // - YouTube (16:9): Capacidad extendida de hasta 30 escenas si se solicitan explícitamente (o 8 por defecto)
+      // Cap y selección de escenas según la red y duración pedida:
+      // - YouTube (16:9): Capacidad extendida de hasta 30 escenas si se solicitan escenas o minutos largos (ej. 5 min -> ~13 escenas)
       // - WhatsApp (9:16): 3 escenas ágiles (~30 segundos)
       // - TikTok / Short (9:16): Condensado ágil a 3-4 escenas de alto impacto
       const isShortTest = /3\s*escena|corto|short|prueba|test|60s/i.test(topic);
@@ -136,6 +142,8 @@ export const marketingManager = {
         maxScenes = Math.min(30, Math.max(1, parsedRequested));
       } else if (isShortTest) {
         maxScenes = 3;
+      } else if (parsedMinutes && parsedMinutes >= 3) {
+        maxScenes = Math.min(20, Math.max(8, Math.round(minutes * 2.5)));
       } else {
         maxScenes = 8;
       }
@@ -259,6 +267,14 @@ export const marketingManager = {
       const lastBeatIdx = totalBeats - 1;
       let bankCursor = 0;
 
+      const wantsOutroLogo = /logo.*final|principio.*final|al final.*logo|silvania\.ai/i.test(topic);
+      const effectiveOutroPath =
+        brandBundle.outroImagePath && fs.existsSync(brandBundle.outroImagePath)
+          ? brandBundle.outroImagePath
+          : wantsOutroLogo && brandBundle.introImagePath && fs.existsSync(brandBundle.introImagePath)
+            ? brandBundle.introImagePath
+            : null;
+
       for (let idx = 0; idx < beatPlans.length; idx++) {
         const plan = beatPlans[idx];
         const { sceneIdx: i, beatIdxInScene: b, beatCount, beatDur, scene, beatSnippet } = plan;
@@ -267,9 +283,9 @@ export const marketingManager = {
         if (idx === 0 && brandBundle.introImagePath && fs.existsSync(brandBundle.introImagePath)) {
           sceneImgPath = brandBundle.introImagePath;
           console.log(`🏷️ [BrandDrive] Beat ${idx + 1}/${totalBeats}: Imagen intrínseca 01_inicio aplicada.`);
-        } else if (idx === lastBeatIdx && brandBundle.outroImagePath && fs.existsSync(brandBundle.outroImagePath)) {
-          sceneImgPath = brandBundle.outroImagePath;
-          console.log(`🏷️ [BrandDrive] Beat ${idx + 1}/${totalBeats}: Imagen intrínseca 03_cierre aplicada.`);
+        } else if (idx === lastBeatIdx && effectiveOutroPath) {
+          sceneImgPath = effectiveOutroPath;
+          console.log(`🏷️ [BrandDrive] Beat ${idx + 1}/${totalBeats}: Logo/cierre final aplicado (${path.basename(effectiveOutroPath)}).`);
         } else if (totalBeats >= 3 && idx === middleBeatIdx && brandBundle.middleImagePath && fs.existsSync(brandBundle.middleImagePath)) {
           sceneImgPath = brandBundle.middleImagePath;
           console.log(`🏷️ [BrandDrive] Beat ${idx + 1}/${totalBeats}: Imagen intrínseca 02_medio aplicada.`);

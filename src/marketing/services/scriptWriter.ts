@@ -52,6 +52,13 @@ CONOCIMIENTO DEL ECOSISTEMA DE PRODUCTO (SILVANIA.AI):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
 
+function isPureStorytellingTopic(topic: string): boolean {
+  const t = (topic || "").toLowerCase();
+  const hasAdIntent = /\b(publicidad|anuncio|comercial|vende|promocion\w*|coreagent|setter|eva|campa[ñn]a|suscripci[oó]n|workspace)\b/i.test(t);
+  if (hasAdIntent) return false;
+  return /\b(narra\w*|narraci[oó]n|historia|relato|cuento|f[aá]bula|documental|biograf[ií]a|liderazgo|filosof[ií]a|psicolog[ií]a|reflexi[oó]n|motivaci[oó]n|leyenda|misterio|cosmos|universo|naturaleza|biblia)\b/i.test(t);
+}
+
 export const scriptWriter = {
   /**
    * Genera un post de alto impacto orientado a retención y conversión sutil hacia silvania.ai.
@@ -178,6 +185,14 @@ Responde ÚNICAMENTE con un JSON válido con esta estructura:
    */
   async generateYouTubeScript(topic: string, targetDurationMinutes: number = 2, brandRules?: string): Promise<ScriptResult<VideoScript>> {
     const isShortTest = /3\s*escena|corto|short|prueba|test|60s/i.test(topic);
+    const isStory = isPureStorytellingTopic(topic);
+
+    // Parsear duración explícita en minutos (ej: "5 min", "5 minutos", "10 min") si existe en el topic
+    const durationMatch = topic.match(/(\d+(?:[.,]\d+)?)\s*(?:min(?:utos?)?|m\b)/i);
+    const parsedMinutes = durationMatch ? parseFloat(durationMatch[1].replace(",", ".")) : null;
+    const effectiveMinutes = parsedMinutes && parsedMinutes > 0
+      ? Math.min(15, Math.max(1, parsedMinutes))
+      : targetDurationMinutes;
 
     // Detección de petición explícita de escenas (ej: "30 escenas", "20 imágenes", "15 fotos")
     const explicitScenesMatch = topic.match(/(?:(\d+))\s*(?:escenas?|im[aá]genes?|fotos?)/i);
@@ -194,16 +209,21 @@ Responde ÚNICAMENTE con un JSON válido con esta estructura:
         wordsPerScene = "55 a 70 palabras de locución fluida y reflexiva con pausas (garantizar > 2 minutos de duración total)";
         durationSeconds = Math.max(120, targetScenes * 25);
       } else {
-        wordsPerScene = "25 a 35 palabras por escena con ritmo ágil";
-        durationSeconds = targetScenes * 16;
+        wordsPerScene = effectiveMinutes >= 4 ? "55 a 70 palabras por escena" : "25 a 35 palabras por escena con ritmo ágil";
+        durationSeconds = Math.max(effectiveMinutes * 60, targetScenes * 16);
       }
     } else if (isShortTest) {
       targetScenes = 3;
       wordsPerScene = "25 a 30 palabras por escena";
       durationSeconds = 60;
+    } else if (effectiveMinutes >= 3) {
+      // Vídeos narrativos o largos (ej. 5 minutos = ~13 escenas de ~65 palabras -> ~850 palabras ≈ 5 min reales)
+      targetScenes = Math.min(20, Math.max(8, Math.round(effectiveMinutes * 2.5)));
+      wordsPerScene = `60 a 75 palabras de locución profunda, fluida y pausada por escena (IMPRESCINDIBLE mantener esta extensión en TODAS las ${targetScenes} escenas para alcanzar ${Math.round(effectiveMinutes)} minutos reales)`;
+      durationSeconds = Math.round(effectiveMinutes * 60);
     } else {
       // Por defecto para YouTube Horizontal (16:9): duración mínima de 2 a 3 minutos (120 - 180s)
-      targetScenes = Math.min(8, Math.max(5, Math.round(targetDurationMinutes * 2.5)));
+      targetScenes = Math.min(8, Math.max(5, Math.round(effectiveMinutes * 2.5)));
       wordsPerScene = "55 a 70 palabras de locución fluida, profunda y reflexiva con pausas fonéticas naturales (crucial para alcanzar mínimo 2 minutos de duración)";
       durationSeconds = Math.max(130, targetScenes * 24);
     }
@@ -246,13 +266,23 @@ Responde ÚNICAMENTE con un JSON válido con esta estructura:
       visualPromptGuide = "National Geographic cinematic landscape photography, dramatic lightning storm, glowing green aurora borealis reflecting on water, majestic natural beauty, 8k, ultra-detailed, no text";
       onScreenExample = "Fenómenos de la Tierra (ej: 'EL BAILE DE LAS AURORAS', 'EL PODER DEL OCÉANO')";
       hookInstruction = "Describe con intensidad la majestuosidad indomable de la naturaleza.";
+    } else if (isStory) {
+      genreName = "NARRATIVA HUMANA, LIDERAZGO Y STORYTELLING PURO";
+      toneInstruction = "Tono de NARRADOR DE DOCUMENTALES E HISTORIAS HUMANAS: profundo, cinematográfico, reflexivo y cálido. Construye un relato con planteamiento, conflicto real, aprendizaje y desenlace inspirador. ¡ESTRICTAMENTE PROHIBIDO mencionar apps, CoreAgent, Telegram, Google Workspace ni hacer publicidad comercial dentro de la historia!";
+      visualPromptGuide = "Cinematic storytelling photography, dramatic warm lighting, emotional human expressions, contemplative scenes, inspiring atmosphere, 8k photorealistic film still, no text";
+      onScreenExample = "Frases evocadoras de capítulos de la historia (ej: 'EL PESO DEL SILENCIO', 'CUANDO EL EJEMPLO HABLA', 'EL VERDADERO LEGADO')";
+      hookInstruction = "Comienza con un relato vívido, una metáfora poderosa o una pregunta humana profunda que enganche desde el primer segundo sin sonar a anuncio.";
     }
+
+    const closingCtaInstruction = isStory
+      ? `- CIERRE NARRATIVO AUTÉNTICO (CERO PUBLICIDAD): La ÚLTIMA escena (escena ${targetScenes}) debe cerrar la historia o reflexión con una conclusión emotiva e inspiradora acorde al tema. PROHIBIDO vender software, mencionar CoreAgent, Telegram o pedir que usen silvania.ai dentro de la narración hablada (el logo de silvania.ai ya aparece visualmente).`
+      : `- LLAMADA A LA ACCIÓN FINAL OBLIGATORIA: La ÚLTIMA escena (escena ${targetScenes}) debe cerrar SIEMPRE con una llamada a la acción clara, directa y persuasiva invitando a descubrir o probar Silvania en silvania.ai (tanto en "narration" como en "onScreenText", ej: "USA COREAGENT EN SILVANIA.AI"). Si el tema trata sobre un producto "Próximamente" (Eva Agent o Marketing Agent), el cierre DEBE promover empezar a usar HOY **Silvania CoreAgent** (ya activo en producción) en silvania.ai.`;
 
     const prompt = `Eres el guionista y narrador principal de Silvania Studios.
 Tu género objetivo para esta pieza es: ${genreName}.
 
 Tema Solicitado: "${topic}"
-${brandRules ? `\nREGLAS Y MARCA DEL USUARIO (DRIVE):\n${brandRules}\n` : ""}
+${brandRules && !isStory ? `\nREGLAS Y MARCA DEL USUARIO (DRIVE):\n${brandRules}\n` : ""}
 
 Instrucciones de Voz y Tono para este género:
 - ${toneInstruction}
@@ -260,7 +290,7 @@ Instrucciones de Voz y Tono para este género:
 - Frases cortas y ágiles (8 a 14 palabras máx por oración) con pausas fonéticas naturales (puntos y seguido frecuentes, puntos suspensivos...).
 - ${hookInstruction}
 - EXACTAMENTE ${targetScenes} escenas secuenciales (array "scenes").
-- LLAMADA A LA ACCIÓN FINAL OBLIGATORIA: La ÚLTIMA escena (escena ${targetScenes}) debe cerrar SIEMPRE con una llamada a la acción clara, directa y persuasiva invitando a descubrir o probar Silvania en silvania.ai (tanto en "narration" como en "onScreenText", ej: "USA COREAGENT EN SILVANIA.AI"). Si el tema trata sobre un producto "Próximamente" (Eva Agent o Marketing Agent), el cierre DEBE promover empezar a usar HOY **Silvania CoreAgent** (ya activo en producción) en silvania.ai.
+${closingCtaInstruction}
 - Cada escena debe tener:
   * "narration": locución fluida de ${wordsPerScene}.
   * "onScreenText": texto clave de 3 a 6 palabras en mayúsculas (${onScreenExample}).
@@ -479,6 +509,13 @@ Responde ÚNICAMENTE con un JSON válido con esta estructura:
  */
 function ensureClosingCta(script: VideoScript, topic: string): VideoScript {
   if (!script.scenes || script.scenes.length === 0) return script;
+
+  // Si es una historia / relato / narración pura (no comercial), respetar el cierre narrativo sin meter publicidad de CoreAgent
+  if (isPureStorytellingTopic(topic)) {
+    script.description = ensureOfficialLinks(script.description || "");
+    return script;
+  }
+
   const lastScene = script.scenes[script.scenes.length - 1];
   const lowerTopic = topic.toLowerCase();
   const isUpcomingProduct =

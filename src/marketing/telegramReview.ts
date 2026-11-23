@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { MarketingDraft, CampaignPackDraft } from "./types.js";
 import { marketingDb } from "./database.js";
+import { dbService } from "../database/db.js";
 import { config } from "../config/config.js";
 import { socialPublisher } from "./services/socialPublisher.js";
 
@@ -274,6 +275,19 @@ export const telegramReview = {
         console.warn("⚠️ Falló envío de aviso videoError:", err.message);
       }
     }
+
+    // Registrar en el historial conversacional del usuario para que CoreAgent recuerde el borrador generado
+    try {
+      const contentTitle = draft.socialContent?.title || draft.videoScript?.title || draft.topic;
+      const bodyPreview = draft.socialContent
+        ? draft.socialContent.copy.slice(0, 700)
+        : [draft.videoScript?.hook, ...(draft.videoScript?.scenes || []).map((s) => `Escena ${s.sceneNumber}: ${s.narration}`)].filter(Boolean).join("\n").slice(0, 1200);
+      await dbService.addMessage(
+        draft.userId,
+        "assistant",
+        `[MARKETING BORRADOR GENERADO #${draft.id.slice(0, 8)} | Formato: ${draft.format} | Título: ${contentTitle}]\n${bodyPreview}`
+      );
+    } catch {}
   },
 
   /**
@@ -361,6 +375,7 @@ export const telegramReview = {
 
       // 2. Publicar en YouTube de forma nativa si hay vídeo MP4 y credenciales
       let publishedYoutubeUrl: string | undefined;
+      const publishedUrls: NonNullable<MarketingDraft["publishedUrls"]> = { ...(draft.publishedUrls || {}) };
       const isVideoFormat = draft.format === "youtube_long" || draft.format === "youtube_short" || draft.format === "tiktok" || draft.format === "whatsapp_video";
       if (draft.videoPath || isVideoFormat) {
         if (draft.videoPath && fs.existsSync(draft.videoPath)) {
@@ -371,6 +386,7 @@ export const telegramReview = {
               const ytRes = await youtubePublisher.publishVideo(draft);
               if (ytRes.success) {
                 publishedYoutubeUrl = ytRes.url;
+                if (ytRes.url) publishedUrls.youtube = ytRes.url;
                 publishReport.push(`🎬 *YouTube:* Publicado en @silvania\\_ai\n🔗 [Ver en YouTube](${ytRes.url})`);
               } else {
                 publishReport.push(`⚠️ *YouTube:* ${ytRes.error}`);
@@ -398,6 +414,7 @@ export const telegramReview = {
         }
         const twitterRes = await socialPublisher.publishToTwitter(twitterText, imagePath);
         if (twitterRes.success) {
+          if (twitterRes.url) publishedUrls.x = twitterRes.url;
           const tweetLink = twitterRes.url ? `\n🔗 [Ver Tweet en X](${twitterRes.url})` : "";
           publishReport.push(`𝕏 *X (Twitter):* Publicado en @Silvania\\_AI${tweetLink}`);
         } else {
@@ -414,6 +431,7 @@ export const telegramReview = {
         }
         const fbRes = await socialPublisher.publishToFacebook(fbText, imagePath);
         if (fbRes.success) {
+          if (fbRes.url) publishedUrls.facebook = fbRes.url;
           const fbLink = fbRes.url ? `\n🔗 [Ver en Facebook](${fbRes.url})` : "";
           publishReport.push(`📘 *Facebook Page:* Publicado en Silvania.ai${fbLink}`);
         } else {
@@ -431,6 +449,7 @@ export const telegramReview = {
         }
         const igRes = await socialPublisher.publishToInstagram(igCaption, imagePath, videoPath);
         if (igRes.success) {
+          if (igRes.url) publishedUrls.instagram = igRes.url;
           const igLink = igRes.url ? `\n🔗 [Ver en Instagram](${igRes.url})` : "";
           publishReport.push(`📸 *Instagram:* Publicado en @silvania.ai${igLink}`);
         } else {
@@ -447,6 +466,7 @@ export const telegramReview = {
         const imagePath = draft.imageUrls && draft.imageUrls.length > 0 ? draft.imageUrls[0] : undefined;
         const liRes = await socialPublisher.publishToLinkedIn(liText, publishedYoutubeUrl, imagePath);
         if (liRes.success) {
+          if (liRes.url) publishedUrls.linkedin = liRes.url;
           const liLink = liRes.url ? `\n🔗 [Ver en LinkedIn](${liRes.url})` : "";
           publishReport.push(`💼 *LinkedIn:* Publicado en Eduardo Quintero (Silvania AI)${liLink}`);
         } else {
@@ -496,21 +516,35 @@ export const telegramReview = {
             channelMsg = await bot.api.sendMessage(channelId, publishCaption);
           }
 
-          draft.status = "published";
-          draft.channelPublished = true;
-          draft.channelMessageId = channelMsg.message_id;
-          draft.publishedAt = new Date().toISOString();
-          draft.updatedAt = new Date().toISOString();
-          marketingDb.saveDraft(draft);
-
           let postLinkNote = "";
           const channelUrl = config.marketing?.telegramChannelUrl;
           if (channelUrl) {
             const cleanUrl = channelUrl.endsWith("/") ? channelUrl.slice(0, -1) : channelUrl;
-            postLinkNote = `\n🔗 [Ver en el canal](${cleanUrl}/${channelMsg.message_id})`;
+            const tgPostUrl = `${cleanUrl}/${channelMsg.message_id}`;
+            publishedUrls.telegram = tgPostUrl;
+            postLinkNote = `\n🔗 [Ver en el canal](${tgPostUrl})`;
           }
 
+          draft.status = "published";
+          draft.channelPublished = true;
+          draft.channelMessageId = channelMsg.message_id;
+          draft.publishedUrls = publishedUrls;
+          draft.publishedAt = new Date().toISOString();
+          draft.updatedAt = new Date().toISOString();
+          marketingDb.saveDraft(draft);
+
           publishReport.unshift(`📢 *Canal Telegram:* Publicado con éxito${postLinkNote}`);
+
+          // Guardar publicación en historial conversacional de CoreAgent para mantener coherencia en siguientes mensajes
+          try {
+            const pubTitle = draft.socialContent?.title || draft.videoScript?.title || draft.topic;
+            const urlList = Object.entries(publishedUrls).map(([k, v]) => `${k}: ${v}`).join(" | ");
+            await dbService.addMessage(
+              draft.userId,
+              "assistant",
+              `✅ [PUBLICACIÓN COMPLETADA #${draftId.slice(0, 8)} | ${draft.format}] "${pubTitle}"\nEnlaces publicados: ${urlList}`
+            );
+          } catch {}
 
           await ctx.answerCallbackQuery({ text: "🚀 ¡Aprobado y publicado!" }).catch(() => {});
           await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});

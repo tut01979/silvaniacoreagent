@@ -47,6 +47,14 @@ export interface MarketingDraft {
   llmModel?: string; // "gemini-2.5-flash" | "llama-3.3-70b"
   channelPublished?: boolean;
   channelMessageId?: number;
+  publishedUrls?: {
+    telegram?: string;
+    youtube?: string;
+    x?: string;
+    facebook?: string;
+    instagram?: string;
+    linkedin?: string;
+  };
   imageError?: string;
   videoPath?: string;
   videoUrl?: string;

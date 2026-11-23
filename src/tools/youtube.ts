@@ -289,6 +289,14 @@ export async function youtubeSearch(query: string, maxResults: number = 5, userI
       if (results.length >= maxResults) break;
     }
 
+    if (results.length === 0 && /\ben\s+espa[ñn]ol\b/i.test(effectiveQuery)) {
+      const strippedQuery = effectiveQuery.replace(/\ben\s+espa[ñn]ol\b/gi, "").replace(/\s+/g, " ").trim();
+      if (strippedQuery && strippedQuery !== effectiveQuery) {
+        console.log(`🔁 Reintentando youtubeSearch sin "en español": "${strippedQuery}"`);
+        return await youtubeSearch(strippedQuery, Math.max(maxResults, 5), userId);
+      }
+    }
+
     if (results.length === 0) {
       return `❌ No se encontraron videos para la búsqueda: "${query}".`;
     }
