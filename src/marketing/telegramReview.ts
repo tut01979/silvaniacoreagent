@@ -202,10 +202,12 @@ export const telegramReview = {
     }
 
     // 4. Enviar vídeo MP4 generado al administrador para revisión HITL
+    let videoDeliveryNote = "";
     if (draft.videoPath && fs.existsSync(draft.videoPath)) {
       try {
         const stats = fs.statSync(draft.videoPath);
         const maxTgBytes = 49 * 1024 * 1024; // 49 MB límite seguro Telegram Bot API
+        const sizeMb = (stats.size / (1024 * 1024)).toFixed(1);
         const realDurStr = draft.realDurationSeconds
           ? `${Math.floor(draft.realDurationSeconds / 60)}:${Math.round(draft.realDurationSeconds % 60) < 10 ? "0" : ""}${Math.round(draft.realDurationSeconds % 60)}`
           : `${Math.round(draft.videoScript?.totalEstimatedDurationSeconds || 60)}s`;
@@ -228,43 +230,45 @@ export const telegramReview = {
               supports_streaming: true,
             });
           }
+          videoDeliveryNote = `Vídeo MP4 (${sizeMb} MB) enviado directamente en Telegram. Aún pendiente de aprobar/publicar en redes y YouTube.`;
         } else {
-          // Si supera 50MB, subir a Google Drive si el admin tiene tier beta/permisos
+          // Si supera 50MB, subir a Google Drive (funciona tanto para prod como beta vía driveMemoryService)
           let uploaded = false;
-          const { isBetaUser } = await import("../services/authHelper.js");
-          if (isBetaUser(draft.userId)) {
-            try {
-              const { driveMemoryService } = await import("../services/driveMemory.js");
-              const folderId = await driveMemoryService.getOrCreateFolderPath(["silvania", "marketing", "videos"], draft.userId);
-              const fileName = path.basename(draft.videoPath);
-              const fileId = await driveMemoryService.uploadOrReplace(draft.userId, draft.videoPath, fileName, folderId);
-              if (fileId) {
-                const driveLink = `https://drive.google.com/file/d/${fileId}/view`;
-                draft.videoUrl = driveLink;
-                marketingDb.saveDraft(draft);
-                await bot.api.sendMessage(
-                  draft.userId,
-                  `🎬 *Vídeo MP4 generado (${(stats.size / (1024 * 1024)).toFixed(1)} MB)*\nSupera el límite de Telegram (50MB).\n\n📂 **Guardado en tu Google Drive:** [Abrir Vídeo](${driveLink})\n📁 Carpeta: \`silvania/marketing/videos\``,
-                  { parse_mode: "Markdown" }
-                );
-                uploaded = true;
-              }
-            } catch (driveErr: any) {
-              console.warn("⚠️ Falló subida de vídeo pesado a Google Drive:", driveErr.message);
+          try {
+            const { driveMemoryService } = await import("../services/driveMemory.js");
+            const folderId = await driveMemoryService.getOrCreateFolderPath(["silvania", "marketing", "videos"], draft.userId);
+            const fileName = path.basename(draft.videoPath);
+            const fileId = await driveMemoryService.uploadOrReplace(draft.userId, draft.videoPath, fileName, folderId);
+            if (fileId) {
+              const driveLink = `https://drive.google.com/file/d/${fileId}/view`;
+              draft.videoUrl = driveLink;
+              marketingDb.saveDraft(draft);
+              await bot.api.sendMessage(
+                draft.userId,
+                `🎬 *Vídeo MP4 generado (${sizeMb} MB)*\nSupera el límite de Telegram (50MB).\n\n📂 **Guardado en tu Google Drive:** [Abrir Vídeo](${driveLink})\n📁 Carpeta: \`silvania/marketing/videos\``,
+                { parse_mode: "Markdown" }
+              );
+              uploaded = true;
+              videoDeliveryNote = `Vídeo MP4 (${sizeMb} MB) superó 50MB de Telegram y fue subido a Google Drive: ${driveLink} (pendiente de aprobar/publicar en YouTube/redes).`;
             }
+          } catch (driveErr: any) {
+            console.warn("⚠️ Falló subida de vídeo pesado a Google Drive:", driveErr.message);
           }
           if (!uploaded) {
             await bot.api.sendMessage(
               draft.userId,
-              `🎬 *Vídeo MP4 generado (${(stats.size / (1024 * 1024)).toFixed(1)} MB)*\nSupera los 50MB de Telegram. Archivo local guardado en servidor:\n\`${draft.videoPath}\``,
+              `🎬 *Vídeo MP4 generado (${sizeMb} MB)*\nSupera los 50MB de Telegram. Archivo local guardado en servidor:\n\`${draft.videoPath}\``,
               { parse_mode: "Markdown" }
             );
+            videoDeliveryNote = `Vídeo MP4 (${sizeMb} MB) NO se pudo mostrar en Telegram (supera 50MB) ni subir a Drive; está guardado solo localmente en ${draft.videoPath} y aún NO se ha publicado en YouTube.`;
           }
         }
       } catch (videoSendErr: any) {
         console.warn("⚠️ Falló envío de vídeo MP4 en Telegram:", videoSendErr.message);
+        videoDeliveryNote = `Error enviando vídeo MP4 a Telegram: ${videoSendErr.message}`;
       }
     } else if (draft.videoError) {
+      videoDeliveryNote = `No se generó MP4 (${draft.videoError}).`;
       try {
         await bot.api.sendMessage(
           draft.userId,
@@ -285,7 +289,7 @@ export const telegramReview = {
       await dbService.addMessage(
         draft.userId,
         "assistant",
-        `[MARKETING BORRADOR GENERADO #${draft.id.slice(0, 8)} | Formato: ${draft.format} | Título: ${contentTitle}]\n${bodyPreview}`
+        `[MARKETING BORRADOR GENERADO #${draft.id.slice(0, 8)} | Formato: ${draft.format} | Título: ${contentTitle}]\n${videoDeliveryNote ? `Estado entrega vídeo: ${videoDeliveryNote}\n` : ""}${bodyPreview}`
       );
     } catch {}
   },
@@ -536,35 +540,32 @@ export const telegramReview = {
           // Guardar subtítulos (.srt) y transcripción (.txt) en Google Drive (silvania/marketing/videos) si está disponible
           if ((draft.srtPath && fs.existsSync(draft.srtPath)) || draft.transcriptText) {
             try {
-              const { isBetaUser } = await import("../services/authHelper.js");
-              if (isBetaUser(draft.userId)) {
-                const { driveMemoryService } = await import("../services/driveMemory.js");
-                const folderId = await driveMemoryService.getOrCreateFolderPath(["silvania", "marketing", "videos"], draft.userId);
-                const shortId = draftId.slice(0, 8);
-                let srtLink = "";
-                if (draft.srtPath && fs.existsSync(draft.srtPath)) {
-                  const srtFileId = await driveMemoryService.uploadOrReplace(draft.userId, draft.srtPath, `${shortId}_subtitles.srt`, folderId);
-                  if (srtFileId) srtLink = `https://drive.google.com/file/d/${srtFileId}/view`;
+              const { driveMemoryService } = await import("../services/driveMemory.js");
+              const folderId = await driveMemoryService.getOrCreateFolderPath(["silvania", "marketing", "videos"], draft.userId);
+              const shortId = draftId.slice(0, 8);
+              let srtLink = "";
+              if (draft.srtPath && fs.existsSync(draft.srtPath)) {
+                const srtFileId = await driveMemoryService.uploadOrReplace(draft.userId, draft.srtPath, `${shortId}_subtitles.srt`, folderId);
+                if (srtFileId) srtLink = `https://drive.google.com/file/d/${srtFileId}/view`;
+              }
+              let txtLink = "";
+              if (draft.transcriptText) {
+                const tmpTxtPath = path.resolve(process.cwd(), "temp", `mkt_txt_${shortId}_${Date.now()}.txt`);
+                try {
+                  fs.mkdirSync(path.dirname(tmpTxtPath), { recursive: true });
+                  fs.writeFileSync(tmpTxtPath, draft.transcriptText, "utf-8");
+                  const txtFileId = await driveMemoryService.uploadOrReplace(draft.userId, tmpTxtPath, `${shortId}_transcript.txt`, folderId);
+                  if (txtFileId) txtLink = `https://drive.google.com/file/d/${txtFileId}/view`;
+                } finally {
+                  if (fs.existsSync(tmpTxtPath)) fs.unlinkSync(tmpTxtPath);
                 }
-                let txtLink = "";
-                if (draft.transcriptText) {
-                  const tmpTxtPath = path.resolve(process.cwd(), "temp", `mkt_txt_${shortId}_${Date.now()}.txt`);
-                  try {
-                    fs.mkdirSync(path.dirname(tmpTxtPath), { recursive: true });
-                    fs.writeFileSync(tmpTxtPath, draft.transcriptText, "utf-8");
-                    const txtFileId = await driveMemoryService.uploadOrReplace(draft.userId, tmpTxtPath, `${shortId}_transcript.txt`, folderId);
-                    if (txtFileId) txtLink = `https://drive.google.com/file/d/${txtFileId}/view`;
-                  } finally {
-                    if (fs.existsSync(tmpTxtPath)) fs.unlinkSync(tmpTxtPath);
-                  }
-                }
-                if (srtLink || txtLink) {
-                  const links = [
-                    srtLink ? `[SRT](${srtLink})` : "",
-                    txtLink ? `[TXT](${txtLink})` : "",
-                  ].filter(Boolean).join(" · ");
-                  publishReport.push(`📄 *Drive (Subtítulos/Transcripción):* ${links}`);
-                }
+              }
+              if (srtLink || txtLink) {
+                const links = [
+                  srtLink ? `[SRT](${srtLink})` : "",
+                  txtLink ? `[TXT](${txtLink})` : "",
+                ].filter(Boolean).join(" · ");
+                publishReport.push(`📄 *Drive (Subtítulos/Transcripción):* ${links}`);
               }
             } catch (driveErr: any) {
               console.warn("⚠️ Falló subida de subtítulos/transcripción a Drive:", driveErr?.message || driveErr);

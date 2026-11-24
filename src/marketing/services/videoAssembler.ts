@@ -330,7 +330,8 @@ export const videoAssembler = {
     );
     fs.writeFileSync(filterScriptPath, filterComplex, "utf8");
 
-    const advancedFfmpegCmd = `"${ffmpegBin}" -y ${inputArgs.join(" ")} -filter_complex_script "${filterScriptPath}" -map "[vout]" ${audioMapArg} -r ${fps} -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 160k -shortest -movflags +faststart "${outputPath}"`;
+    const targetCrf = totalAudioDuration > 210 ? 27 : totalAudioDuration > 120 ? 25 : 23;
+    const advancedFfmpegCmd = `"${ffmpegBin}" -y ${inputArgs.join(" ")} -filter_complex_script "${filterScriptPath}" -map "[vout]" ${audioMapArg} -r ${fps} -c:v libx264 -preset fast -crf ${targetCrf} -c:a aac -b:a 128k -shortest -movflags +faststart "${outputPath}"`;
 
     console.log(
       `🎬 VideoAssembler: Renderizando MP4 (${width}x${height} @ ${fps}fps, estilo=${visualStyle}, zoom=${enableZoomPan}, trans=${transitionStyle}, música=${hasMusic ? path.basename(options!.musicTrackPath!) : "ninguna"})...`
@@ -387,7 +388,7 @@ export const videoAssembler = {
             filterStr = `[0:v]format=yuv420p,scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},setsar=1,fps=${fps},fade=t=in:st=0:d=0.35,fade=t=out:st=${fadeOutSt}:d=0.35,${styleExpr},format=yuv420p[vout]`;
           }
 
-          const clipCmd = `"${ffmpegBin}" -y ${clipInputArg} -filter_complex "${filterStr}" -map "[vout]" -an -r ${fps} -c:v libx264 -preset fast -crf 23 -t ${sceneDur.toFixed(3)} "${clipPath}"`;
+          const clipCmd = `"${ffmpegBin}" -y ${clipInputArg} -filter_complex "${filterStr}" -map "[vout]" -an -r ${fps} -c:v libx264 -preset fast -crf ${targetCrf} -t ${sceneDur.toFixed(3)} "${clipPath}"`;
           await execAsync(clipCmd, { timeout: 60_000, maxBuffer: 5 * 1024 * 1024 });
           clipPaths.push(clipPath);
         }
@@ -462,7 +463,8 @@ export const videoAssembler = {
         const fontSize = isVertical ? 14 : 18;
         const marginV = isVertical ? 44 : 26;
         const styleStr = `FontName=Arial,FontSize=${fontSize},PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BackColour=&H88000000,BorderStyle=3,Outline=1,Shadow=0,Alignment=2,MarginV=${marginV}`;
-        const subCmd = `"${ffmpegBin}" -y -i "${outputPath}" -vf "subtitles='${relSrt}':force_style='${styleStr}'" -c:v libx264 -preset ultrafast -crf 22 -pix_fmt yuv420p -c:a copy "${subOutPath}"`;
+        const subCrf = totalAudioDuration > 210 ? 28 : totalAudioDuration > 120 ? 26 : 24;
+        const subCmd = `"${ffmpegBin}" -y -i "${outputPath}" -vf "subtitles='${relSrt}':force_style='${styleStr}'" -c:v libx264 -preset veryfast -crf ${subCrf} -pix_fmt yuv420p -c:a copy -movflags +faststart "${subOutPath}"`;
         try {
           console.log(`💬 [VideoAssembler] Quemando subtítulos sincronizados (${relSrt})...`);
           await execAsync(subCmd, { timeout: 180_000, maxBuffer: 10 * 1024 * 1024 });
