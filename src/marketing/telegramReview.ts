@@ -533,6 +533,44 @@ export const telegramReview = {
           draft.updatedAt = new Date().toISOString();
           marketingDb.saveDraft(draft);
 
+          // Guardar subtítulos (.srt) y transcripción (.txt) en Google Drive (silvania/marketing/videos) si está disponible
+          if ((draft.srtPath && fs.existsSync(draft.srtPath)) || draft.transcriptText) {
+            try {
+              const { isBetaUser } = await import("../services/authHelper.js");
+              if (isBetaUser(draft.userId)) {
+                const { driveMemoryService } = await import("../services/driveMemory.js");
+                const folderId = await driveMemoryService.getOrCreateFolderPath(["silvania", "marketing", "videos"], draft.userId);
+                const shortId = draftId.slice(0, 8);
+                let srtLink = "";
+                if (draft.srtPath && fs.existsSync(draft.srtPath)) {
+                  const srtFileId = await driveMemoryService.uploadOrReplace(draft.userId, draft.srtPath, `${shortId}_subtitles.srt`, folderId);
+                  if (srtFileId) srtLink = `https://drive.google.com/file/d/${srtFileId}/view`;
+                }
+                let txtLink = "";
+                if (draft.transcriptText) {
+                  const tmpTxtPath = path.resolve(process.cwd(), "temp", `mkt_txt_${shortId}_${Date.now()}.txt`);
+                  try {
+                    fs.mkdirSync(path.dirname(tmpTxtPath), { recursive: true });
+                    fs.writeFileSync(tmpTxtPath, draft.transcriptText, "utf-8");
+                    const txtFileId = await driveMemoryService.uploadOrReplace(draft.userId, tmpTxtPath, `${shortId}_transcript.txt`, folderId);
+                    if (txtFileId) txtLink = `https://drive.google.com/file/d/${txtFileId}/view`;
+                  } finally {
+                    if (fs.existsSync(tmpTxtPath)) fs.unlinkSync(tmpTxtPath);
+                  }
+                }
+                if (srtLink || txtLink) {
+                  const links = [
+                    srtLink ? `[SRT](${srtLink})` : "",
+                    txtLink ? `[TXT](${txtLink})` : "",
+                  ].filter(Boolean).join(" · ");
+                  publishReport.push(`📄 *Drive (Subtítulos/Transcripción):* ${links}`);
+                }
+              }
+            } catch (driveErr: any) {
+              console.warn("⚠️ Falló subida de subtítulos/transcripción a Drive:", driveErr?.message || driveErr);
+            }
+          }
+
           publishReport.unshift(`📢 *Canal Telegram:* Publicado con éxito${postLinkNote}`);
 
           // Guardar publicación en historial conversacional de CoreAgent para mantener coherencia en siguientes mensajes
@@ -705,10 +743,11 @@ function cleanupDraftTempMedia(draft: MarketingDraft): void {
     ...(draft.imageUrls || []),
     ...(draft.audioUrls || []),
     ...(draft.videoPath ? [draft.videoPath] : []),
+    ...(draft.srtPath ? [draft.srtPath] : []),
   ];
   for (const filePath of candidates) {
     try {
-      if (filePath && filePath.includes("temp_media") && fs.existsSync(filePath)) {
+      if (filePath && (filePath.includes("temp_media") || filePath === draft.srtPath) && fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
     } catch {
