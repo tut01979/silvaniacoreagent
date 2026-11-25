@@ -56,7 +56,7 @@ function isPureStorytellingTopic(topic: string): boolean {
   const t = (topic || "").toLowerCase();
   const hasAdIntent = /\b(publicidad|anuncio|comercial|vende|promocion\w*|coreagent|setter|eva|campa[ñn]a|suscripci[oó]n|workspace)\b/i.test(t);
   if (hasAdIntent) return false;
-  return /\b(narra\w*|narraci[oó]n|historia|relato|cuento|f[aá]bula|documental|biograf[ií]a|liderazgo|filosof[ií]a|psicolog[ií]a|reflexi[oó]n|motivaci[oó]n|leyenda|misterio|cosmos|universo|naturaleza|biblia)\b/i.test(t);
+  return /\b(narra\w*|narraci[oó]n|historia|relato|cuento|f[aá]bula|documental|biograf[ií]a|liderazgo|filosof[ií]a|psicolog[ií]a|reflexi[oó]n|motivaci[oó]n|leyenda|misterio|cosmos|universo|naturaleza|biblia|despertar|amanecer|estado\s+de\s+[aá]nimo|emoci[oó]n\w*|sentimiento\w*|mentalidad|h[aá]bito\w*|disciplina|superaci[oó]n|riqueza|millonario\w*|fortuna|inversi[oó]n|bienestar|meditaci[oó]n|calma|felicidad)\b/i.test(t);
 }
 
 export const scriptWriter = {
@@ -294,7 +294,9 @@ ${closingCtaInstruction}
 - Cada escena debe tener:
   * "narration": locución fluida de ${wordsPerScene}.
   * "onScreenText": texto clave de 3 a 6 palabras en mayúsculas (${onScreenExample}).
-  * "visualPrompt": descripción fotográfica en inglés optimizada (${visualPromptGuide}).
+  * "visualPrompt": descripción fotográfica CONCRETA Y ÚNICA para esa escena en inglés (${visualPromptGuide}), nombrando el lugar físico, momento del día y acción humana exacta que ilustra la locución (ej. si habla de despertar, describir persona despertando en la cama con luz matinal o amanecer dorado en la playa; si habla de tristeza, lluvia en ventana o persona cabizbaja; PROHIBIDO repetir descripciones genéricas idénticas entre escenas).
+  * "visualMood": 2 a 4 palabras del estado de ánimo/emoción exacta de la escena en español e inglés (ej: "calma, esperanza, amanecer, serenity").
+  * "visualConcepts": array de 4 a 7 sustantivos/acciones visuales concretas en español e inglés ligadas literalmente a esa escena (ej: ["despertar", "cama", "amanecer", "playa", "luz matinal", "sunrise", "bed"]).
 
 Responde ÚNICAMENTE con un JSON:
 {
@@ -308,6 +310,8 @@ Responde ÚNICAMENTE con un JSON:
       "sceneNumber": 1,
       "timestamp": "00:00 - 00:20",
       "visualPrompt": "${visualPromptGuide}",
+      "visualMood": "emocion1, emocion2",
+      "visualConcepts": ["concepto concreto 1", "concepto concreto 2", "mood"],
       "narration": "Texto de la locución",
       "onScreenText": "TEXTO EN PANTALLA"
     }
@@ -369,9 +373,10 @@ Reglas obligatorias de TikTok:
    REGLA DE CONDENSACIÓN: Si el tema menciona muchas escenas (por ejemplo 10, 20 o 30 escenas), NUNCA intentes meterlas aquí. En TikTok el usuario busca inmediatez; extrae ÚNICAMENTE los 3 o 4 momentos cumbre de mayor gancho emocional o viral.
 3. Texto en pantalla (onScreenText) con palabras clave en mayúsculas para mantener la vista fija.
 4. Locución conversacional, dinámica y persuasiva en español natural (15 a 25 palabras por escena).
-5. Prompt visual fotorrealista para FLUX en inglés (formato 9:16 vertical cinematográfico).
-6. Tags relevantes para TikTok y Shorts (#TechTok, #Productividad, #SilvaniaAI, #IA).
-7. LLAMADA A LA ACCIÓN FINAL OBLIGATORIA: La última micro-escena debe cerrar SIEMPRE con una llamada a la acción directa en voz ("narration") y en pantalla ("onScreenText"), invitando a probarlo en silvania.ai (ej: "USA COREAGENT EN SILVANIA.AI"). Si el tema trata sobre un producto "Próximamente" (Eva Agent o Marketing Agent), el cierre DEBE promover usar HOY **Silvania CoreAgent** (ya activo) en silvania.ai.
+5. Prompt visual fotorrealista para FLUX en inglés (formato 9:16 vertical cinematográfico) describiendo literalmente la escena y estado de ánimo (no genérico).
+6. Añade en cada escena "visualMood" (2-3 emociones ES/EN) y "visualConcepts" (4-6 palabras concretas visibles ES/EN para la memoria vectorial de imágenes).
+7. Tags relevantes para TikTok y Shorts (#TechTok, #Productividad, #SilvaniaAI, #IA).
+8. LLAMADA A LA ACCIÓN FINAL OBLIGATORIA: La última micro-escena debe cerrar SIEMPRE con una llamada a la acción directa en voz ("narration") y en pantalla ("onScreenText"), invitando a probarlo en silvania.ai (ej: "USA COREAGENT EN SILVANIA.AI"). Si el tema trata sobre un producto "Próximamente" (Eva Agent o Marketing Agent), el cierre DEBE promover usar HOY **Silvania CoreAgent** (ya activo) en silvania.ai.
 
 Responde ÚNICAMENTE con un JSON válido con esta estructura:
 {
@@ -384,7 +389,9 @@ Responde ÚNICAMENTE con un JSON válido con esta estructura:
     {
       "sceneNumber": 1,
       "timestamp": "00:00 - 00:08",
-      "visualPrompt": "Vertical 9:16 cinematic close-up shot, vivid lighting, dynamic perspective",
+      "visualPrompt": "Vertical 9:16 cinematic close-up shot depicting concrete action and mood",
+      "visualMood": "emocion1, emocion2",
+      "visualConcepts": ["concepto1", "concepto2", "concepto3"],
       "narration": "Locución rápida del hook",
       "onScreenText": "TEXTO EN PANTALLA"
     }
@@ -445,7 +452,7 @@ Reglas obligatorias para WhatsApp 30s:
    - Escena 2 (00:10 - 00:20): Solución práctica y beneficio tangible de Silvania.
    - Escena 3 (00:20 - 00:30): LLAMADA A LA ACCIÓN FINAL OBLIGATORIA en voz ("narration") y pantalla ("onScreenText") invitando a escribir por WhatsApp o entrar en silvania.ai. Si el tema trata sobre un producto "Próximamente" (Eva Agent o Marketing Agent), el cierre DEBE promover usar HOY **Silvania CoreAgent** (ya activo) en silvania.ai.
 3. Texto en pantalla (onScreenText) claro y legible en móvil (3 a 6 palabras en mayúsculas).
-4. Prompt visual fotorrealista en inglés para FLUX (formato 9:16 vertical cinematográfico).
+4. Prompt visual fotorrealista en inglés para FLUX (formato 9:16 vertical cinematográfico) + "visualMood" y "visualConcepts" concretos ES/EN por escena.
 5. Texto persuasivo para WhatsApp ("description"): redacta un copy corto y muy persuasivo listo para copiar y pegar junto al vídeo en WhatsApp (gancho en la primera línea, 2-3 frases con beneficio claro usando *negritas* de WhatsApp y emojis moderados, y cierre con CTA directo a silvania.ai o a CoreAgent si el tema es un producto "Próximamente").
 
 Responde ÚNICAMENTE con un JSON válido con esta estructura:
@@ -459,7 +466,9 @@ Responde ÚNICAMENTE con un JSON válido con esta estructura:
     {
       "sceneNumber": 1,
       "timestamp": "00:00 - 00:10",
-      "visualPrompt": "Vertical 9:16 cinematic shot, clean lighting, modern lifestyle, photorealistic",
+      "visualPrompt": "Vertical 9:16 cinematic shot depicting concrete scene and emotion",
+      "visualMood": "emocion1, emocion2",
+      "visualConcepts": ["concepto1", "concepto2", "concepto3"],
       "narration": "Locución natural de 18 a 24 palabras",
       "onScreenText": "TEXTO EN PANTALLA"
     }

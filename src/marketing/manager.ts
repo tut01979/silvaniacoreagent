@@ -284,6 +284,9 @@ export const marketingManager = {
       let bankCursor = 0;
 
       const wantsOutroLogo = /logo.*final|principio.*final|al final.*logo|silvania\.ai/i.test(topic);
+      const explicitTopicProduct = visualAssetSelector.detectExplicitCommercialProduct(topic);
+      const isPureStory = !explicitTopicProduct;
+      let lastSelectedCategory = "";
       const effectiveOutroPath =
         brandBundle.outroImagePath && fs.existsSync(brandBundle.outroImagePath)
           ? brandBundle.outroImagePath
@@ -315,18 +318,18 @@ export const marketingManager = {
             .toLowerCase()
             .normalize("NFD")
             .replace(/[\u0300-\u036f]/g, "");
-          let sceneProduct = targetProduct;
+          let sceneProduct = explicitTopicProduct || undefined;
           if (/\bcoreagent\b|\bcore agent\b|gmail|calendar|google drive|ordenes por voz|asistente ejecutivo|productividad profesional/.test(normSceneCtx)) {
             sceneProduct = "coreagent";
           } else if (/\beva\b|ninos|jugando|escuela|escolar|profesora|fonema|logopedia|infantil/.test(normSceneCtx)) {
             sceneProduct = "eva";
-          } else if (/marketing studio|marketing agent|campana|redes sociales|hitl/.test(normSceneCtx)) {
+          } else if (/marketing studio|marketing agent|campana publicitaria|hitl/.test(normSceneCtx)) {
             sceneProduct = "marketing";
           }
 
           const visualPrompt = scene.visualPrompt && scene.visualPrompt.trim().length > 0
             ? `${beatSnippet}. ${scene.visualPrompt.trim()}`
-            : `${scriptRes.data.title}, scene ${scene.sceneNumber || i + 1}, ${beatSnippet}`;
+            : `${beatSnippet || scriptRes.data.title}`;
 
           try {
             const imgRes = await imageGenerator.generateImage(visualPrompt, {
@@ -340,7 +343,12 @@ export const marketingManager = {
               allowFallback: true,
               product: sceneProduct,
               usedImages,
+              targetEmotion: scene.visualMood || "",
+              visualConcepts: Array.isArray(scene.visualConcepts) ? scene.visualConcepts : [],
+              lastCategory: lastSelectedCategory,
+              pureStorytelling: isPureStory,
             });
+            lastSelectedCategory = imgRes.category || "";
             sceneImgPath = imgRes.filePath;
             if (imgRes.sourceAssetPath) {
               usedImages.push(imgRes.sourceAssetPath);

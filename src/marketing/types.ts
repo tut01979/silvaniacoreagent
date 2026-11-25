@@ -8,6 +8,8 @@ export interface SceneBreakdown {
   visualPrompt: string; // Prompt for image/B-roll generation
   narration: string; // Voiceover text for this scene
   onScreenText?: string; // Text overlay or subtitle emphasis
+  visualMood?: string; // Mood/emotions of the scene (ES/EN)
+  visualConcepts?: string[]; // Concrete visible nouns/actions/places (ES/EN)
 }
 
 export interface VideoScript {

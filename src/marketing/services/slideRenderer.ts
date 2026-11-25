@@ -36,6 +36,7 @@ export interface RenderSlideOptions {
   backgroundImagePath?: string | null;
   product?: ProductBrand;
   category?: string;
+  pureStorytelling?: boolean;
 }
 
 export interface SlideRenderResult {
@@ -392,8 +393,24 @@ export const slideRenderer = {
       options.product ||
       visualAssetSelector.detectProduct(`${options.topic || ""} ${options.title} ${options.onScreenText || ""}`);
 
-    const theme = BRAND_THEMES[product];
     const category = options.category || visualAssetSelector.detectCategory(product, `${options.title} ${options.onScreenText || ""}`, sceneIndex);
+    const isStoryCategory =
+      options.pureStorytelling ||
+      category === "storytelling_riqueza" ||
+      category === "vida_cotidiana" ||
+      category === "estados_animo";
+    const baseTheme = BRAND_THEMES[product] || BRAND_THEMES.emotions;
+    const theme: ThemeConfig =
+      isStoryCategory && (product === "marketing" || product === "coreagent")
+        ? {
+            ...baseTheme,
+            accent: "#F59E0B",
+            pillBg: "rgba(245, 158, 11, 0.20)",
+            tag: "🎬 HISTORIA, LEGADO & REFLEXIÓN",
+            brandTitle: "Silvania Studios",
+            brandWebsite: "silvania.ai",
+          }
+        : baseTheme;
 
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext("2d");

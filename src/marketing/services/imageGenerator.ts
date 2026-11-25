@@ -32,6 +32,10 @@ export interface GenerateImageOptions {
   category?: string;
   backgroundImagePath?: string | null;
   usedImages?: string[];
+  targetEmotion?: string;
+  visualConcepts?: string[];
+  lastCategory?: string;
+  pureStorytelling?: boolean;
 }
 
 // Circuit breaker para evitar saturar Pollinations tras recibir errores 402 consecutivos
@@ -62,7 +66,8 @@ export async function generateLocalSceneCard(
   subtitle?: string,
   product?: ProductBrand,
   category?: string,
-  backgroundImagePath?: string | null
+  backgroundImagePath?: string | null,
+  pureStorytelling?: boolean
 ): Promise<ImageResult> {
   const chosenProduct = product || visualAssetSelector.detectProduct(`${sceneTitle} ${onScreenText || ""}`);
   try {
@@ -78,6 +83,7 @@ export async function generateLocalSceneCard(
       product: chosenProduct,
       category,
       backgroundImagePath,
+      pureStorytelling,
     });
     return {
       filePath: slideRes.filePath,
@@ -133,14 +139,18 @@ export const imageGenerator = {
     const fileName = `mkt_img_${Date.now()}_${seed}.jpg`;
     const outputPath = path.join(tempDir, fileName);
 
-    // 1. Detección estricta de agente y selección de activo visual
+    // 1. Detección estricta de agente y selección semántica en memoria vectorial
     const selectedVisual = visualAssetSelector.selectAssetForScene({
       product: options.product,
       topic: prompt,
-      sceneText: options.onScreenText || sceneTitle,
+      sceneText: options.subtitle || options.onScreenText || sceneTitle,
+      targetEmotion: options.targetEmotion,
+      visualConcepts: options.visualConcepts,
       sceneIndex,
       totalScenes,
       usedImages: options.usedImages,
+      lastCategory: options.lastCategory,
+      pureStorytelling: options.pureStorytelling,
     });
 
     const activeProduct = selectedVisual.product;
@@ -163,7 +173,8 @@ export const imageGenerator = {
         options.subtitle,
         activeProduct,
         activeCategory,
-        libraryImagePath
+        libraryImagePath,
+        options.pureStorytelling
       );
     }
 
