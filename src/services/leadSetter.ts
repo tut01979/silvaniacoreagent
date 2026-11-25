@@ -2,6 +2,7 @@ import { InlineKeyboard } from "grammy";
 import { llmService } from "./llm.js";
 import { calendarCreate, calendarList } from "../tools/calendar.js";
 import { unipileService } from "./unipileService.js";
+import { agentProfilesService, SetterBusinessProfile } from "./agentProfiles.js";
 
 export interface ProspectingPersona {
   key: string;
@@ -215,9 +216,94 @@ export const leadSetter = {
   },
 
   /**
+   * Comprueba si el usuario ya configuró su carpeta silvania/setter/.
+   * Si las plantillas están en blanco, lanza onboarding escalonado sin suplantar otra marca.
+   */
+  async ensureConfiguredOrPromptOnboarding(
+    bot: any,
+    userId: number
+  ): Promise<{ ok: boolean; profile: SetterBusinessProfile }> {
+    const profile = await agentProfilesService.ensureSetterStructure(userId, true);
+    if (profile.configured) {
+      return { ok: true, profile };
+    }
+
+    const kb = new InlineKeyboard().text("✨ Configurar Mi Negocio (3 pasos)", "setter_onb_start");
+    if (agentProfilesService.isAdminUser(userId)) {
+      kb.row().text("🚀 Cargar Preset Silvania AI", "setter_onb_preset_silvania");
+    }
+
+    await bot.api.sendMessage(
+      userId,
+      `🎯 *Setter IA · Configura tu Negocio Primero*\n` +
+      `───────────────────────────\n\n` +
+      `Acabo de preparar tu carpeta en Google Drive (\`silvania/setter/\`) con plantillas en blanco:\n` +
+      `• \`empresa_y_oferta.md\`\n• \`icp_y_exclusiones.md\`\n• \`objeciones_y_tono.md\`\n\n` +
+      `Para no contactar ni responder en LinkedIn con datos genéricos, dime qué vendes y a quién buscas. Puedes pulsar el botón abajo o dictarme una nota de voz.`,
+      { parse_mode: "Markdown", reply_markup: kb }
+    );
+    return { ok: false, profile };
+  },
+
+  /**
+   * Construye una nota de invitación <= 195 caracteres adaptada al negocio configurado.
+   */
+  buildConnectionNoteForProspect(
+    firstName: string,
+    headline: string,
+    profile?: SetterBusinessProfile
+  ): string {
+    if (profile?.configured && profile.inviteTemplate) {
+      const sectorHint = (headline || "tu sector").split(/[|,–-]/)[0].trim().slice(0, 32) || "tu sector";
+      return profile.inviteTemplate
+        .replace(/\[Nombre\]/gi, firstName)
+        .replace(/\[Sector\]/gi, sectorHint)
+        .replace(/\[Empresa\]/gi, profile.companyName || "nuestro equipo")
+        .slice(0, 195);
+    }
+    if (profile?.configured) {
+      const biz = profile.companyName || "nuestro equipo";
+      const val = (profile.valuePropShort || profile.offerSummary || "").slice(0, 75);
+      return `Hola ${firstName}, veo tu labor en LinkedIn. Desde ${biz} ayudamos con ${val}. ¿Conectamos?`.slice(0, 195);
+    }
+    return `Hola ${firstName}, veo tu perfil en LinkedIn y me gustaría conectar contigo por aquí.`.slice(0, 195);
+  },
+
+  /**
    * Genera el pack completo de prospección adaptado a un nicho o perfil
    */
-  getPack(personaKey: string, city: string = "España"): ProspectingPersona | undefined {
+  getPack(personaKey: string, city: string = "España", profile?: SetterBusinessProfile): ProspectingPersona | undefined {
+    const cleanCity = city.trim();
+    if (profile?.configured && !profile.isSilvaniaPreset) {
+      const targetRole = profile.targetRoles.join(", ") || personaKey || "Clientes ideales";
+      const senderLabel = profile.companyName || "Nuestro equipo";
+      const offer = profile.offerSummary || profile.valuePropShort || "nuestra solución";
+      const cta = profile.goalCta || "una breve llamada de 15 min";
+      const dorkKw = (personaKey && personaKey !== "custom" ? personaKey : profile.targetRoles[0] || "director");
+      return {
+        key: "custom",
+        name: `${senderLabel} · ${personaKey || targetRole}`,
+        emoji: "🎯",
+        targetRole,
+        mainPain: `Clientes que necesitan ${offer}`,
+        dorkSearch: `site:linkedin.com/in ("${dorkKw}") ${cleanCity ? `"${cleanCity}"` : ""}`.trim(),
+        connectionNote: this.buildConnectionNoteForProspect("[Nombre]", targetRole, profile),
+        followUpMessage:
+          `¡Hola [Nombre]! Gracias por conectar.\n\n` +
+          `En ${senderLabel} ayudamos a perfiles como el tuyo con ${offer}.\n\n` +
+          `¿Cómo estáis gestionando actualmente esta parte? Si te encaja, podemos ver cómo aplicarlo con ${cta}.`,
+        objections: {
+          noTime: profile.objectionNoTime || "Totalmente comprensible. Son solo 10-15 minutos enfocados en tu caso real.",
+          price: profile.objectionPrice || profile.pricingRule || "Se adapta a cada cliente; lo vemos sin compromiso.",
+          alreadyHaveTools: profile.objectionTools || "Complementamos lo que ya usas para mejorar resultados sin fricción.",
+        },
+        meetingProposal:
+          `Genial [Nombre]. Para verlo en directo (${cta}):\n` +
+          `📅 ¿Te viene mejor este Jueves a las 11:00 o Viernes a las 16:30?` +
+          (profile.calendarLinkOrFlow ? `\n🔗 ${profile.calendarLinkOrFlow}` : ""),
+      };
+    }
+
     const normKey = personaKey.toLowerCase().trim();
     let foundKey = "autonomos";
 
@@ -236,14 +322,42 @@ export const leadSetter = {
 
     return {
       ...persona,
-      dorkSearch: persona.dorkSearch.replace("[CIUDAD]", city.trim() ? `"${city.trim()}"` : "")
+      dorkSearch: persona.dorkSearch.replace("[CIUDAD]", cleanCity ? `"${cleanCity}"` : "")
     };
   },
 
   /**
    * Formatea el pack de prospección en Markdown listo para el chat de Telegram
    */
-  formatTelegramReport(persona: ProspectingPersona, city: string = "España"): string {
+  formatTelegramReport(persona: ProspectingPersona, city: string = "España", profile?: SetterBusinessProfile): string {
+    if (profile?.configured && !profile.isSilvaniaPreset) {
+      const searchKw = persona.targetRole.split(",")[0]?.trim() || "profesional";
+      const linkedinDirectUrl = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(`${searchKw} ${city}`)}`;
+      const googleDirectUrl = `https://www.google.com/search?q=${encodeURIComponent(persona.dorkSearch)}`;
+
+      return (
+        `🎯 *PLAYBOOK SETTER (${(profile.companyName || "TU NEGOCIO").toUpperCase()})*\n` +
+        `───────────────────────────\n\n` +
+        `👤 *Remitente:* ${profile.senderName || "Equipo"} (${profile.roleTitle || "-"})\n` +
+        `📌 *Perfil Objetivo:* ${persona.targetRole}\n` +
+        `💡 *Oferta:* _${profile.offerSummary || profile.valuePropShort}_\n\n` +
+        `🚀 *Búsqueda Directa en 1 Clic:*\n` +
+        `• 👉 [Abrir Lista en LinkedIn](${linkedinDirectUrl})\n` +
+        `• 🌐 [Abrir Perfiles en Google](${googleDirectUrl})\n\n` +
+        `📨 *1. Nota de Invitación (${persona.connectionNote.length}/198 car.):*\n` +
+        `\`\`\`text\n${persona.connectionNote}\n\`\`\`\n\n` +
+        `💬 *2. Primer Mensaje tras Conectar:*\n` +
+        `\`\`\`text\n${persona.followUpMessage}\n\`\`\`\n\n` +
+        `🛡️ *3. Manejo de Objeciones:*\n` +
+        `• *Sin tiempo:* _${persona.objections.noTime}_\n` +
+        `• *Precio:* _${persona.objections.price}_\n` +
+        `• *Ya tiene proveedor:* _${persona.objections.alreadyHaveTools}_\n\n` +
+        `📅 *4. Propuesta de Cierre:*\n` +
+        `\`\`\`text\n${persona.meetingProposal}\n\`\`\`\n\n` +
+        `🛡️ *Límite Anti-Baneo:* 10/día (ampliable con \`/setter more\`). Para editar tu perfil: \`/setter config\`.`
+      );
+    }
+
     const keywordMap: Record<string, string> = {
       inmobiliaria: "asesor inmobiliario",
       autonomos: "consultor autonomo",
@@ -344,8 +458,8 @@ export const leadSetter = {
   },
 
   /**
-   * Genera una respuesta inteligente con IA a un mensaje entrante (LinkedIn / Unipile) usando el contexto del hilo.
-   * Distingue tono peer/networking vs. interés real en llamada; prohibido el pitch genérico si no piden call o el hilo no está maduro.
+   * Genera una respuesta inteligente con IA a un mensaje entrante (LinkedIn / Unipile) usando el contexto del hilo
+   * y la personalidad/oferta configurada en silvania/setter/.
    */
   async generateSuggestedReply(
     leadName: string,
@@ -353,7 +467,8 @@ export const leadSetter = {
     messageText: string,
     personaKey?: string,
     slots?: { primaryLabel: string; secondaryLabel: string },
-    threadHistory?: Array<{ sender: "me" | "lead"; text: string }>
+    threadHistory?: Array<{ sender: "me" | "lead"; text: string }>,
+    setterProfile?: SetterBusinessProfile
   ): Promise<string> {
     const slot1 = slots?.primaryLabel || "mañana a las 10:30";
     const slot2 = slots?.secondaryLabel || "pasado mañana a las 16:30";
@@ -363,29 +478,46 @@ export const leadSetter = {
       : "(Primer mensaje / sin historial previo)";
 
     const leadTurns = (threadHistory || []).filter((m) => m.sender === "lead").length;
-    const explicitCallRequest = /reuni[oó]n|llamada|call|meet|demo|hueco|agendar|verlo|cu[aá]ndo hablamos|ens[eé]ñame|probarlo/i.test(messageText);
-    const isMatureThread = leadTurns >= 3 && /interesa|silvania|funciona|tiempo|probar/i.test(messageText);
+    const explicitCallRequest = /reuni[oó]n|llamada|call|meet|demo|hueco|agendar|verlo|cu[aá]ndo hablamos|ens[eé]ñame|probarlo|presupuesto|informaci[oó]n|precio/i.test(messageText);
+    const isMatureThread = leadTurns >= 3 && /interesa|funciona|tiempo|probar|servicio|presupuesto|equipo/i.test(messageText);
     const canOfferCalendar = explicitCallRequest || isMatureThread;
+
+    const hasCustomBiz = Boolean(setterProfile?.configured);
+    const identityLine = hasCustomBiz
+      ? `${setterProfile!.senderName || "el responsable"} (${setterProfile!.roleTitle || "Dirección"} de ${setterProfile!.companyName || "nuestra empresa"})`
+      : "el remitente comercial";
+    const offerContext = hasCustomBiz
+      ? `\nCONTEXTO DEL NEGOCIO QUE REPRESENTAS (silvania/setter/):\n` +
+        `- Empresa: ${setterProfile!.companyName || "-"}\n` +
+        `- Qué ofrecemos: ${setterProfile!.offerSummary || setterProfile!.valuePropShort || "-"}\n` +
+        `- Precios/Prueba: ${setterProfile!.pricingRule || "Consultar sin compromiso"}\n` +
+        `- Objetivo de cierre: ${setterProfile!.goalCta || "Llamada o reunión breve"}\n` +
+        `- Tono deseado: ${setterProfile!.tone || "Cercano, profesional y humano"}\n` +
+        (setterProfile!.objectionNoTime ? `- Si dice no tengo tiempo: ${setterProfile!.objectionNoTime}\n` : "") +
+        (setterProfile!.objectionPrice ? `- Si pregunta precio: ${setterProfile!.objectionPrice}\n` : "") +
+        (setterProfile!.objectionTools ? `- Si ya trabaja con otro proveedor: ${setterProfile!.objectionTools}\n` : "")
+      : "";
 
     try {
       const prompt =
-        `Eres Eduardo (fundador de Silvania AI) respondiendo un mensaje real en LinkedIn.\n\n` +
+        `Eres ${identityLine} respondiendo un mensaje real en LinkedIn.\n` +
+        `${offerContext}\n` +
         `DATOS DEL CONTACTO:\n` +
         `- Nombre: ${leadName}\n` +
         `- Cargo/Bio: ${leadRole}\n\n` +
         `ÚLTIMOS MENSAJES DEL HILO:\n${historyText}\n\n` +
         `ÚLTIMO MENSAJE RECIBIDO:\n"${messageText}"\n\n` +
         `REGLAS ESTRICTAS DE RESPUESTA:\n` +
-        `1. Longitud: 2 a 3 frases cortas, tono humano real, cercano y entre colegas (cero tono robótico o comercial agresivo).\n` +
-        `2. DETECCIÓN PEER / NETWORKING: Si es otro fundador, CEO o profesional contándonos su propio producto/proyecto, haciendo networking o respondiendo cordialmente SIN pedir una demo, RESPONDE DIRECTAMENTE AL CONTENIDO de lo que nos cuenta (muestra interés genuino en su trabajo o comenta su punto). PROHIBIDO soltar el pitch genérico de "10 min por Google Meet" o mencionar huecos.\n` +
+        `1. Longitud: 2 a 3 frases cortas, tono humano real, cercano y natural (cero tono robótico o spam).\n` +
+        `2. DETECCIÓN PEER / NETWORKING: Si es otro fundador, CEO o profesional contándonos su propio producto/proyecto, haciendo networking o respondiendo cordialmente SIN pedir una llamada/demo, RESPONDE DIRECTAMENTE AL CONTENIDO de lo que nos cuenta. PROHIBIDO soltar pitch genérico ni mencionar huecos.\n` +
         (canOfferCalendar
-          ? `3. El contacto pide llamada/demo o el hilo ya está maduro: propón amablemente nuestros huecos libres reales (${slot1} o ${slot2}) para verlo en 10 min por Google Meet.\n`
+          ? `3. El contacto pide llamada/info/demo o el hilo ya está maduro: propón amablemente avanzar hacia "${setterProfile?.goalCta || "una breve llamada de 10-15 min"}" usando nuestros huecos reales (${slot1} o ${slot2}).\n`
           : `3. NO ofrezcas huecos de calendario ni pidas videollamada todavía porque aún no ha pedido call ni el hilo está maduro para cerrar.\n`) +
-        `4. Nunca inventes precios ni tarifas (estamos en validación privada a cambio de feedback/testimonio).\n` +
+        `4. Nunca inventes precios ni datos que no estén en el contexto del negocio.\n` +
         `5. Devuelve EXCLUSIVAMENTE el texto de la respuesta, sin comillas ni explicaciones.`;
 
       const response = await llmService.chatSimple([
-        { role: "system", content: "Respondes mensajes reales de LinkedIn con naturalidad, empatía y contexto exacto del hilo." },
+        { role: "system", content: "Respondes mensajes reales de LinkedIn con naturalidad, empatía y fidelidad al negocio configurado." },
         { role: "user", content: prompt }
       ]);
 
@@ -397,9 +529,9 @@ export const leadSetter = {
 
     const firstName = leadName.split(" ")[0] || leadName;
     if (canOfferCalendar) {
-      return `¡Genial ${firstName}! Si quieres te lo enseño en 10 min por Google Meet. Tengo libre ${slot1} o ${slot2}, ¿cuál te encaja mejor?`;
+      return `¡Genial ${firstName}! Si te encaja podemos comentarlo brevemente. Tengo libre ${slot1} o ${slot2}, ¿cuál te viene mejor?`;
     }
-    return `¡Muchas gracias por compartirlo, ${firstName}! Me parece muy interesante lo que comentas. ¿Qué es lo que más tiempo te consume ahora mismo en tu día a día?`;
+    return `¡Muchas gracias por compartirlo, ${firstName}! Me parece muy interesante lo que comentas. ¿Qué enfoque estáis priorizando ahora mismo?`;
   },
 
   /**
@@ -421,13 +553,15 @@ export const leadSetter = {
     const threadHistory = opts.unipileChatId
       ? await unipileService.getChatMessages(opts.unipileChatId, 6)
       : [];
+    const setterProfile = await agentProfilesService.ensureSetterStructure(opts.chatId, false);
     const suggested = opts.customSuggestedReply || await this.generateSuggestedReply(
       opts.leadName,
       opts.leadRole,
       opts.messageText,
       opts.personaKey,
       slots,
-      threadHistory
+      threadHistory,
+      setterProfile
     );
 
     const pending: PendingLeadReply = {
@@ -518,6 +652,8 @@ export const leadSetter = {
       let calendarLine = `*(Si el prospecto acepta, pulsa abajo para agendar en Google Calendar)*`;
       if (alsoSchedule) {
         const uId = ctx.from?.id || item.chatId || 0;
+        const prof = agentProfilesService.getCachedSetterProfile(uId);
+        const calBrand = prof.configured && prof.companyName ? prof.companyName : "Silvania CoreAgent";
         const startDt = item.proposedSlotStart || `${new Date(Date.now() + 86400000).toISOString().split("T")[0]}T11:00:00`;
         const [dPart, tPart] = startDt.split("T");
         const [hh, mm] = tPart.split(":").map(Number);
@@ -526,10 +662,10 @@ export const leadSetter = {
         try {
           const calendarRes = await calendarCreate(
             uId,
-            `Demo Silvania CoreAgent - ${item.leadName}`,
+            `Reunión ${calBrand} - ${item.leadName}`,
             startDt,
             endDt,
-            `Demostración de 15 minutos de Silvania CoreAgent con ${item.leadName} (${item.leadRole}).\nOrigen: Setter IA (${item.channel || "LinkedIn"}).`
+            `Reunión breve con ${calBrand} junto a ${item.leadName} (${item.leadRole}).\nOrigen: Setter IA (${item.channel || "LinkedIn"}).`
           );
           calendarLine = `🎉 *¡CITA PROGRAMADA EN GOOGLE CALENDAR!* 🎥\n${calendarRes}`;
         } catch (calErr: any) {
@@ -613,12 +749,14 @@ export const leadSetter = {
       const endDateTime = `${dateStr}T11:15:00+02:00`;
 
       try {
+        const prof = agentProfilesService.getCachedSetterProfile(uId);
+        const calBrand = prof.configured && prof.companyName ? prof.companyName : "Silvania CoreAgent";
         const calendarRes = await calendarCreate(
           uId,
-          `Demo Silvania CoreAgent - ${leadTitle}`,
+          `Reunión ${calBrand} - ${leadTitle}`,
           startDateTime,
           endDateTime,
-          `Demostración de 10 minutos de Silvania CoreAgent para Google Workspace con ${leadTitle}.\nProspecto originado en LinkedIn.`
+          `Reunión de 15 minutos (${calBrand}) con ${leadTitle}.\nProspecto originado en LinkedIn.`
         );
 
         await ctx.reply(
@@ -702,6 +840,29 @@ export const leadSetter = {
       return true;
     }
 
+    // Onboarding guiado del Setter IA o carga de preset admin Silvania
+    if (data === "setter_onb_start") {
+      const uId = ctx.from?.id || 0;
+      const qMsg = agentProfilesService.startGuidedOnboarding(uId, "setter");
+      await ctx.reply(qMsg, { parse_mode: "Markdown" });
+      return true;
+    }
+
+    if (data === "setter_onb_preset_silvania") {
+      const uId = ctx.from?.id || 0;
+      if (!agentProfilesService.isAdminUser(uId)) {
+        await ctx.reply("⛔ Preset disponible solo para administradores de Silvania.");
+        return true;
+      }
+      await agentProfilesService.loadSilvaniaSetterPreset(uId);
+      await ctx.reply(
+        `✅ *Preset Silvania AI cargado en \`silvania/setter/\`*\n\n` +
+        `Ya puedes usar \`/setter inmobiliaria Madrid\`, \`/setter buscar ...\` o responder con tu perfil de Silvania intacto.`,
+        { parse_mode: "Markdown" }
+      );
+      return true;
+    }
+
     return false;
   },
 
@@ -733,6 +894,10 @@ export const leadSetter = {
    * Busca prospectos en LinkedIn vía Unipile y envía tarjetas HITL (o ejecuta envío autónomo si está en modo 'auto').
    */
   async searchAndPresentProspects(bot: any, chatId: number, keywords: string, limit: number = 5): Promise<void> {
+    const checkCfg = await this.ensureConfiguredOrPromptOnboarding(bot, chatId);
+    if (!checkCfg.ok) return;
+    const setterProfile = checkCfg.profile;
+
     const limitCheck = this.checkDailyLimit(chatId);
     if (!limitCheck.allowed) {
       await bot.api.sendMessage(
@@ -802,7 +967,14 @@ export const leadSetter = {
       return;
     }
 
-    // Puntuación y filtrado por relevancia (ciudad + perfil autónomo/pequeño negocio vs corporativo)
+    // Puntuación y filtrado por relevancia (ciudad + ICP y exclusiones personalizadas de silvania/setter/)
+    const normExcludes = (setterProfile.excludeKeywords || []).map((k) =>
+      k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim()
+    ).filter((k) => k.length >= 3);
+    const normTargets = (setterProfile.targetRoles || []).map((k) =>
+      k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim()
+    ).filter((k) => k.length >= 3);
+
     const scored = candidatePool.map((p) => {
       let score = 0;
       const locNorm = (p.location || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -814,6 +986,13 @@ export const leadSetter = {
         } else if (locNorm.length > 0) {
           score -= 25;
         }
+      }
+
+      if (normExcludes.some((ex) => headNorm.includes(ex))) {
+        score -= 20;
+      }
+      if (normTargets.some((tg) => headNorm.includes(tg))) {
+        score += 10;
       }
 
       if (wantsSmallBiz) {
@@ -850,7 +1029,7 @@ export const leadSetter = {
 
       for (const p of batch) {
         const firstName = p.name.split(" ")[0] || p.name;
-        const note = `Hola ${firstName}, veo tu labor en el sector. Validamos Silvania, una IA en Telegram que ahorra horas en agenda y leads (acceso gratis por feedback). ¿Conectamos?`.slice(0, 195);
+        const note = this.buildConnectionNoteForProspect(firstName, p.headline || "", setterProfile);
         const sendRes = await unipileService.sendLinkedInInvite(p.id, note);
         if (sendRes.ok) {
           sentCount++;
@@ -875,7 +1054,7 @@ export const leadSetter = {
 
     for (const p of selectedProspects) {
       const firstName = p.name.split(" ")[0] || p.name;
-      const note = `Hola ${firstName}, veo tu labor en el sector. Validamos Silvania, una IA en Telegram que ahorra horas en agenda y leads (acceso gratis por feedback). ¿Conectamos?`.slice(0, 195);
+      const note = this.buildConnectionNoteForProspect(firstName, p.headline || "", setterProfile);
 
       const id = `inv_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
       const inviteItem: PendingLinkedInInvite = {

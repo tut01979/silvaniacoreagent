@@ -8,6 +8,7 @@ import fs from "fs";
 import path from "path";
 import { isBetaUser, getGoogleCredentials } from "../services/authHelper.js";
 import { config } from "../config/config.js";
+import { agentProfilesService } from "../services/agentProfiles.js";
 
 const MAX_ITERATIONS = 10;
 
@@ -151,6 +152,7 @@ export async function runAgent(userId: number, userMessage: string) {
     const introducedName = extractUserNameIntroduction(userMessage);
     if (introducedName) {
       await saveUserPreferredName(userId, introducedName);
+      agentProfilesService.updateCoreAgentProfileFields(userId, { nombre: introducedName }).catch(() => {});
     }
 
     if (!hasTaskOrQuestionIntent(userMessage)) {
@@ -747,13 +749,15 @@ Si detectas un error de red o de "Conflict", informa al usuario que estás reini
       console.error("Error leyendo prompts locales de caché:", e.message);
     }
 
+    const coreProfileStr = agentProfilesService.getCoreAgentProfilePromptBlock(userId);
+
     // Ruteo de modelos: google/gemini-2.5-flash por defecto, gpt-4o-mini en cortesías ultra-simples.
     const isCourtesy = isUltraSimpleCourtesy(userMessage);
     const targetModel = isCourtesy ? "openai/gpt-4o-mini" : "google/gemini-2.5-flash";
     console.log(`🤖 [Agent] Ruteo de modelo para "${userMessage}": ${targetModel}`);
 
     let history: any[] = [
-      { role: "system", content: systemPrompt + customPromptStr + drivePromptsStr },
+      { role: "system", content: systemPrompt + coreProfileStr + customPromptStr + drivePromptsStr },
       ...(await dbService.getHistory(userId))
     ];
     const turnStartIdx = history.length; // Inicio del turno actual (para guards acotados al turno)

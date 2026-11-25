@@ -165,6 +165,9 @@ export const driveMemoryService = {
         await this.getOrCreateFolderPath(["silvania", "documentos"], userId);
         await this.getOrCreateFolderPath(["silvania", "temas"], userId);
         await this.getOrCreateFolderPath(["silvania", "historial"], userId);
+        import("./agentProfiles.js")
+          .then(({ agentProfilesService }) => agentProfilesService.ensureCoreAgentStructure(userId, true))
+          .catch(() => {});
       } catch (folderErr: any) {
         console.error("⚠️ [Drive Memory] Error al asegurar directorios en Drive:", folderErr.message);
         // Continuamos de todas formas ya que los gestores configManager/skillLoader tienen sus propios fallbacks

@@ -25,8 +25,13 @@ export const marketingManager = {
     format: ContentFormat,
     userId: number,
     bot: Bot,
-    options: { targetPlatform?: SocialPlatform; requestedScenes?: number } = {}
+    options: { targetPlatform?: SocialPlatform; requestedScenes?: number; projectName?: string } = {}
   ): Promise<MarketingDraft> {
+    const projMatch = topic.match(/\bproyecto:([^\s]+)/i);
+    const explicitProject = options.projectName || (projMatch ? projMatch[1].trim() : undefined);
+    if (projMatch) {
+      topic = topic.replace(projMatch[0], "").replace(/\s+/g, " ").trim() || `Video del proyecto ${explicitProject}`;
+    }
     const draftId = crypto.randomUUID();
     const now = new Date().toISOString();
 
@@ -48,14 +53,17 @@ export const marketingManager = {
 
     const targetProduct = visualAssetSelector.detectProduct(topic);
 
-    // 0. Revisar siempre Google Drive primero: verificar/crear carpetas canónicas y cargar marca/activos propios
+    // 0. Revisar siempre Google Drive primero: verificar/crear carpetas canónicas y cargar marca/activos/clips propios
     const brandBundle = await brandDriveAssets.loadBrandContextAndAssets(
       userId,
       topic,
-      format === "social_post" ? 1 : 6
+      format === "social_post" ? 1 : 6,
+      explicitProject
     );
     const brandParts: string[] = [];
+    if (brandBundle.activeProject) brandParts.push(`proyecto:${brandBundle.activeProject}`);
     if (brandBundle.intrinsicCount > 0) brandParts.push(`${brandBundle.intrinsicCount} intrínsecas`);
+    if (brandBundle.clipCount > 0) brandParts.push(`${brandBundle.clipCount} clips MP4`);
     if (brandBundle.bankCount > 0) brandParts.push(`${brandBundle.bankCount} banco Drive`);
     if (brandParts.length > 0) {
       draft.brandDriveSummary = brandParts.join(" + ");
@@ -281,6 +289,7 @@ export const marketingManager = {
       const totalBeats = beatPlans.length;
       const middleBeatIdx = Math.floor(totalBeats / 2);
       const lastBeatIdx = totalBeats - 1;
+      let clipCursor = 0;
       let bankCursor = 0;
 
       const wantsOutroLogo = /logo.*final|principio.*final|al final.*logo|silvania\.ai/i.test(topic);
@@ -299,6 +308,7 @@ export const marketingManager = {
         const { sceneIdx: i, beatIdxInScene: b, beatCount, beatDur, scene, beatSnippet } = plan;
 
         let sceneImgPath: string | null = null;
+        let sceneMediaType: "image" | "video" = "image";
         if (idx === 0 && brandBundle.introImagePath && fs.existsSync(brandBundle.introImagePath)) {
           sceneImgPath = brandBundle.introImagePath;
           console.log(`🏷️ [BrandDrive] Beat ${idx + 1}/${totalBeats}: Imagen intrínseca 01_inicio aplicada.`);
@@ -308,6 +318,11 @@ export const marketingManager = {
         } else if (totalBeats >= 3 && idx === middleBeatIdx && brandBundle.middleImagePath && fs.existsSync(brandBundle.middleImagePath)) {
           sceneImgPath = brandBundle.middleImagePath;
           console.log(`🏷️ [BrandDrive] Beat ${idx + 1}/${totalBeats}: Imagen intrínseca 02_medio aplicada.`);
+        } else if (clipCursor < brandBundle.bankClips.length && fs.existsSync(brandBundle.bankClips[clipCursor].localPath) && (idx % 2 === 1 || bankCursor >= brandBundle.bankImages.length)) {
+          sceneImgPath = brandBundle.bankClips[clipCursor].localPath;
+          sceneMediaType = "video";
+          console.log(`🎞️ [BrandDrive] Beat ${idx + 1}/${totalBeats}: Clip corto MP4 '${brandBundle.bankClips[clipCursor].name}'.`);
+          clipCursor++;
         } else if (bankCursor < brandBundle.bankImages.length && fs.existsSync(brandBundle.bankImages[bankCursor].localPath)) {
           sceneImgPath = brandBundle.bankImages[bankCursor].localPath;
           console.log(`📂 [BrandDrive] Beat ${idx + 1}/${totalBeats}: Imagen propia '${brandBundle.bankImages[bankCursor].name}'.`);
@@ -369,9 +384,10 @@ export const marketingManager = {
             sceneNumber: sceneMediaList.length + 1,
             narrationText: beatSnippet || scene.narration || "",
             imagePath: sceneImgPath,
+            mediaType: sceneMediaType,
             durationSeconds: beatDur,
           });
-          console.log(`🖼️ [Marketing Video] Escena ${i + 1}.${b + 1}/${beatCount}: OK -> ${sceneImgPath} (${beatDur}s)`);
+          console.log(`🖼️ [Marketing Video] Escena ${i + 1}.${b + 1}/${beatCount}: OK (${sceneMediaType}) -> ${sceneImgPath} (${beatDur}s)`);
         }
       }
 

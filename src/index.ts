@@ -2546,9 +2546,131 @@ bot.command("eva", async (ctx) => {
   );
 });
 
+// Comando /perfil para revisar o configurar progresivamente la identidad y objetivos en silvania/coreagent/
+bot.command("perfil", async (ctx) => {
+  const userId = ctx.from!.id;
+  const rawArgs = ctx.match ? ctx.match.toString().trim() : "";
+  try {
+    const { agentProfilesService } = await import("./services/agentProfiles.js");
+    if (rawArgs) {
+      const qMsg = agentProfilesService.startGuidedOnboarding(userId, "coreagent");
+      const stepRes = await agentProfilesService.handleOnboardingStep(userId, rawArgs);
+      if (stepRes.handled && stepRes.replyText) {
+        const kb = stepRes.confirmButtonPrefix
+          ? new InlineKeyboard()
+              .text("✅ Confirmar y Guardar", stepRes.confirmButtonPrefix)
+              .text("❌ Cancelar", "onb_cancel")
+          : undefined;
+        return await ctx.reply(stepRes.replyText, { parse_mode: "Markdown", ...(kb ? { reply_markup: kb } : {}) });
+      }
+      return await ctx.reply(qMsg, { parse_mode: "Markdown" });
+    }
+
+    const prof = await agentProfilesService.ensureCoreAgentStructure(userId, true);
+    const kb = new InlineKeyboard().text("✨ Configurar / Editar Perfil Guiado", "core_onb_start");
+    const statusBody = prof.configured
+      ? `• *Nombre:* ${prof.nombre || "-"}\n` +
+        `• *Empresa:* ${prof.empresa || "-"}\n` +
+        `• *Cargo:* ${prof.cargo || "-"}\n` +
+        `• *Objetivos:* ${prof.objetivos || "-"}\n` +
+        `• *Tono/Idioma:* ${prof.tono || "-"}\n` +
+        `• *Zona horaria:* ${prof.zonaHoraria || "-"}\n` +
+        `• *Firma:* ${prof.firma || "-"}`
+      : `_Tu plantilla en \`silvania/coreagent/perfil_y_objetivos.md\` está en blanco. Puedes configurarla por pasos o dejar que anote tus preferencias cuando me las cuentes._`;
+
+    return await ctx.reply(
+      `👤 *Perfil y Objetivos (CoreAgent)*\n` +
+      `───────────────────────────\n\n` +
+      `${statusBody}\n\n` +
+      `📁 Archivo en Drive: \`silvania/coreagent/perfil_y_objetivos.md\``,
+      { parse_mode: "Markdown", reply_markup: kb }
+    );
+  } catch (err: any) {
+    return await ctx.reply(`❌ Error cargando perfil: ${err.message}`);
+  }
+});
+
 // --- SILVANIA MARKETING STUDIO & LEADSETTER (HUMAN-IN-THE-LOOP) ---
 bot.on("callback_query:data", async (ctx, next) => {
   const data = ctx.callbackQuery?.data || "";
+  if (data.startsWith("onb_confirm_") || data === "onb_cancel" || data === "core_onb_start" || data === "mkt_onb_start" || data === "mkt_onb_preset_silvania") {
+    await ctx.answerCallbackQuery().catch(() => {});
+    const userId = ctx.from!.id;
+    const { agentProfilesService } = await import("./services/agentProfiles.js");
+
+    if (data === "onb_cancel") {
+      agentProfilesService.cancelOnboarding(userId);
+      await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
+      await ctx.reply("👌 Configuración cancelada. Puedes retomarla cuando la necesites.");
+      return;
+    }
+
+    if (data.startsWith("onb_confirm_")) {
+      const res = await agentProfilesService.confirmOnboardingAndSave(userId);
+      await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
+      if (res.saved) {
+        const folderNote =
+          res.agent === "setter"
+            ? "`silvania/setter/` (empresa, ICP y objeciones)"
+            : res.agent === "marketing"
+            ? "`silvania/marketing/marca_y_reglas.md`"
+            : "`silvania/coreagent/perfil_y_objetivos.md`";
+        await ctx.reply(
+          `✅ *Configuración guardada en Google Drive* (${folderNote}).\n\n` +
+          (res.agent === "setter"
+            ? `Tu Setter IA ya adapta su tono, notas de invitación y respuestas a tu negocio.\nPrueba: \`/setter buscar [sector ciudad]\` o \`/setter\`.`
+            : res.agent === "marketing"
+            ? `Marketing Studio ya aplicará la identidad de tu marca.\nPrueba: \`/marketing video [tema]\` o \`/marketing post linkedin [tema]\`.`
+            : `CoreAgent ya conoce tu perfil y objetivos para personalizar cada tarea.`),
+          { parse_mode: "Markdown" }
+        );
+      } else {
+        await ctx.reply("⚠️ No hay una configuración pendiente por confirmar.");
+      }
+      return;
+    }
+
+    if (data === "core_onb_start") {
+      await ctx.reply(agentProfilesService.startGuidedOnboarding(userId, "coreagent"), { parse_mode: "Markdown" });
+      return;
+    }
+
+    if (data === "mkt_onb_start") {
+      await ctx.reply(agentProfilesService.startGuidedOnboarding(userId, "marketing"), { parse_mode: "Markdown" });
+      return;
+    }
+
+    if (data === "mkt_onb_preset_silvania") {
+      if (!agentProfilesService.isAdminUser(userId)) {
+        await ctx.reply("⛔ Preset reservado para administradores de Silvania.");
+        return;
+      }
+      const { brandDriveAssets } = await import("./marketing/services/brandDriveAssets.js");
+      const { driveMemoryService } = await import("./services/driveMemory.js");
+      const folders = await brandDriveAssets.ensureBrandDriveStructure(userId);
+      const fsMod = await import("fs");
+      const pathMod = await import("path");
+      const presetMd =
+        `# Marca y Reglas de Marketing\n\n` +
+        `- Nombre de marca / negocio: Silvania AI\n` +
+        `- Sector y propuesta de valor: Ecosistema de agentes IA ejecutivos en Telegram sobre Google Workspace (CoreAgent, Marketing Studio y Eva)\n` +
+        `- Slogan o lema principal: Tu oficina ejecutiva inteligente en Telegram\n` +
+        `- Tono de comunicación (ej: ejecutivo, cercano, inspirador): Ejecutivo, sobrio, directo y humano\n` +
+        `- Web oficial / enlace principal: https://silvania.ai\n` +
+        `- Bot o WhatsApp de contacto: https://t.me/Silvania_Core_Agent_Bot\n` +
+        `- Redes sociales: @silvania_ai en Telegram/YouTube/Instagram/X\n` +
+        `- Reglas explícitas de vídeo e imágenes: Usar 01_inicio y 03_cierre cuando aplique\n`;
+      const localPath = pathMod.default.join(process.cwd(), "data", `user_${userId}`, "agents", "marketing", "marca_y_reglas.md");
+      fsMod.default.mkdirSync(pathMod.default.dirname(localPath), { recursive: true });
+      fsMod.default.writeFileSync(localPath, presetMd, "utf8");
+      if (folders) {
+        await driveMemoryService.uploadOrReplace(userId, localPath, "marca_y_reglas.md", folders.rootFolderId);
+      }
+      await ctx.reply("✅ *Preset Silvania AI cargado en `silvania/marketing/marca_y_reglas.md`.*", { parse_mode: "Markdown" });
+      return;
+    }
+  }
+
   if (data.startsWith("mkt_")) {
     try {
       const { telegramReview } = await import("./marketing/telegramReview.js");
@@ -2672,6 +2794,56 @@ bot.command(["setter", "prospecting", "leads"], async (ctx) => {
 
   const { leadSetter } = await import("./services/leadSetter.js");
 
+  // 0. Configuración del negocio / personalidad de silvania/setter/
+  if (subCmd === "config" || subCmd === "setup" || subCmd === "perfil") {
+    const { agentProfilesService } = await import("./services/agentProfiles.js");
+    const arg = parts[1]?.toLowerCase() || "";
+    const restText = parts.slice(1).join(" ").trim();
+
+    if (arg === "reset" || arg === "blanco" || arg === "limpiar") {
+      await agentProfilesService.resetSetterToBlank(userId);
+      return ctx.reply("🧹 Carpetas `silvania/setter/` reiniciadas a plantilla en blanco. Usa `/setter config` cuando quieras rellenarlo.", { parse_mode: "Markdown" });
+    }
+    if (arg === "silvania" || arg === "default") {
+      if (!agentProfilesService.isAdminUser(userId)) {
+        return ctx.reply("⛔ El preset Silvania es solo para administradores. Usa `/setter config` para configurar tu propio negocio.");
+      }
+      await agentProfilesService.loadSilvaniaSetterPreset(userId);
+      return ctx.reply("🚀 *Preset Silvania AI activado* en `silvania/setter/`.", { parse_mode: "Markdown" });
+    }
+    if (restText && restText.length > 6) {
+      agentProfilesService.startGuidedOnboarding(userId, "setter");
+      const res = await agentProfilesService.handleOnboardingStep(userId, restText);
+      if (res.handled && res.replyText) {
+        const kb = res.confirmButtonPrefix
+          ? new InlineKeyboard().text("✅ Confirmar y Guardar", res.confirmButtonPrefix).text("❌ Cancelar", "onb_cancel")
+          : undefined;
+        return ctx.reply(res.replyText, { parse_mode: "Markdown", ...(kb ? { reply_markup: kb } : {}) });
+      }
+    }
+
+    const prof = await agentProfilesService.ensureSetterStructure(userId, true);
+    const kb = new InlineKeyboard().text("✨ Configurar / Editar Negocio (3 pasos)", "setter_onb_start");
+    if (agentProfilesService.isAdminUser(userId)) {
+      kb.row().text("🚀 Cargar Preset Silvania AI", "setter_onb_preset_silvania");
+    }
+    const summary = prof.configured
+      ? `• *Empresa:* ${prof.companyName || "-"}\n` +
+        `• *Remitente:* ${prof.senderName || "-"} (${prof.roleTitle || "-"})\n` +
+        `• *Oferta:* ${prof.valuePropShort || prof.offerSummary || "-"}\n` +
+        `• *Objetivo CTA:* ${prof.goalCta || "-"}\n` +
+        `• *ICP:* ${prof.targetRoles.join(", ") || "-"}`
+      : `_Las plantillas de \`silvania/setter/\` están en blanco. Pulsa abajo para configurarlas en 3 pasos o dicta una nota de voz con tu empresa y clientes._`;
+
+    return ctx.reply(
+      `🎯 *Configuración Actual del Setter IA*\n` +
+      `───────────────────────────\n\n` +
+      `${summary}\n\n` +
+      `📁 Drive: \`silvania/setter/{empresa_y_oferta,icp_y_exclusiones,objeciones_y_tono}.md\``,
+      { parse_mode: "Markdown", reply_markup: kb }
+    );
+  }
+
   // 1. Simulación o Test Nivel 2 (Asistente con Aprobación en 1 Clic)
   if (subCmd === "test" || subCmd === "simular") {
     const rest = rawArgs.substring(subCmd.length).trim();
@@ -2757,6 +2929,9 @@ bot.command(["setter", "prospecting", "leads"], async (ctx) => {
 
   // 3. Responder a un mensaje específico: /setter responder [leadName | mensaje]
   if (subCmd === "responder" || subCmd === "reply") {
+    const checkCfg = await leadSetter.ensureConfiguredOrPromptOnboarding(bot, userId);
+    if (!checkCfg.ok) return;
+
     const rest = rawArgs.substring(subCmd.length).trim();
     if (!rest) {
       return ctx.reply("⚠️ Uso: `/setter responder [Nombre | Mensaje del prospecto]`\nEjemplo: `/setter responder María Gómez | ¿Cuánto cuesta la suscripción?`", { parse_mode: "Markdown" });
@@ -2783,7 +2958,10 @@ bot.command(["setter", "prospecting", "leads"], async (ctx) => {
     return;
   }
 
-  // 4. Verificación de límite diario seguro (Máx 10 por defecto anti-baneo)
+  // 4. Verificación de perfil configurado + límite diario seguro (Máx 10 por defecto anti-baneo)
+  const checkCfg = await leadSetter.ensureConfiguredOrPromptOnboarding(bot, userId);
+  if (!checkCfg.ok) return;
+
   const limitCheck = leadSetter.checkDailyLimit(userId);
   if (!limitCheck.allowed) {
     return ctx.reply(
@@ -2796,12 +2974,12 @@ bot.command(["setter", "prospecting", "leads"], async (ctx) => {
     );
   }
 
-  // 5. Playbook de prospección regular
+  // 5. Playbook de prospección adaptado al perfil configurado (o preset Silvania)
   const personaKey = parts[0] || "autonomos";
   const city = parts.slice(1).join(" ") || "España";
 
   try {
-    const pack = leadSetter.getPack(personaKey, city);
+    const pack = leadSetter.getPack(personaKey, city, checkCfg.profile);
     if (!pack) {
       return ctx.reply("⚠️ Nicho no encontrado. Opciones: `inmobiliaria`, `autonomos`, `comerciales`, `emprendedores`.", { parse_mode: "Markdown" });
     }
@@ -2809,7 +2987,7 @@ bot.command(["setter", "prospecting", "leads"], async (ctx) => {
     // Contabilizar las 10 prospecciones seguras del día
     leadSetter.incrementDailyCount(userId, 10);
 
-    const report = leadSetter.formatTelegramReport(pack, city);
+    const report = leadSetter.formatTelegramReport(pack, city, checkCfg.profile);
     await ctx.reply(report, { parse_mode: "Markdown" });
   } catch (err: any) {
     console.error("❌ Error en LeadSetter:", err);
@@ -2830,20 +3008,16 @@ bot.command("marketing", async (ctx) => {
     return ctx.reply(
       "🚀 *Silvania Marketing Studio (Omnicanal & Low-Cost)*\n\n" +
       "Uso del comando:\n" +
-      "• `/setter [inmobiliaria|autonomos|comerciales|emprendedores] [ciudad]` - Playbook de prospección B2B y agendamiento en Google Calendar.\n" +
-      "• `/campaña [tema]` o `/marketing campaña [tema]` - Genera el pack omnicanal completo (YouTube + TikTok + LinkedIn + X + Telegram).\n" +
-      "• `/marketing video [youtube] [tema]` - Vídeo 16:9 extendido (admite hasta 30 escenas y duración > 2-3 min).\n" +
-      "• `/marketing short [tiktok] [tema]` - Vídeo vertical 9:16 ágil (3-4 escenas condensadas, ~40s).\n" +
-      "• `/marketing whatsapp [tema]` - Vídeo vertical 9:16 de 30s optimizado para Estados y chats de WhatsApp con CTA final.\n" +
-      "• `/marketing post [linkedin|x|telegram] [tema]` - Post adaptado a la red con imagen y audio.\n" +
-      "• `/marketing setup` - Revisa y crea en tu Google Drive las carpetas de marca (`imagenes_intrinsecas`, `banco_visual`, `marca_y_reglas.md`).\n" +
-      "• `/marketing draft [coreagent|eva|marketing]` - Borrador diario rotativo de producto para revisión HITL.\n" +
-      "• `/marketing status` - Consulta el estado del último borrador generado.\n\n" +
-      "_Ejemplos:_\n" +
-      "• `/setter inmobiliaria Madrid`\n" +
-      "• `/setter autonomos Barcelona`\n" +
-      "• `/campaña Relatos de fe y esperanza 30 escenas`\n" +
-      "• `/marketing post linkedin Caso de exito con Google Calendar`",
+      "• `/marketing config` - Configura tu marca/negocio paso a paso (o usa tu plantilla en `silvania/marketing/marca_y_reglas.md`).\n" +
+      "• `/marketing proyecto [nuevo|usar|listar|salir] [nombre]` - Crea carpetas separadas por vídeo/campaña para no mezclar clips e imágenes.\n" +
+      "• `/marketing montar [proyecto] [tema]` - Monta un vídeo combinando tus clips `.mp4` + fotos subidas + memoria vectorial 256D.\n" +
+      "• `/marketing video [youtube] [tema]` - Vídeo 16:9 extendido (hasta 30 escenas y duración > 2-3 min).\n" +
+      "• `/marketing short [tiktok] [tema]` - Vídeo vertical 9:16 ágil (3-4 escenas, ~40s).\n" +
+      "• `/marketing whatsapp [tema]` - Vídeo vertical 9:16 de 30s para WhatsApp.\n" +
+      "• `/marketing post [linkedin|x|telegram] [tema]` - Post adaptado con imagen y audio.\n" +
+      "• `/marketing setup` - Revisa/crea en Google Drive tus carpetas (`proyectos`, `clips_cortos`, `banco_visual`, `imagenes_intrinsecas`, `videos`).\n" +
+      "• `/marketing draft [coreagent|eva|marketing]` | `/marketing status`\n\n" +
+      "_Tip:_ Envía fotos o vídeos cortos `.mp4` con caption `/marketing` (o `/marketing proyecto:nombre`) para guardarlos directo en tu Drive.",
       { parse_mode: "Markdown" }
     );
   }
@@ -2851,17 +3025,138 @@ bot.command("marketing", async (ctx) => {
   const parts = rawArgs.split(/\s+/);
   const subCmd = parts[0].toLowerCase();
 
+  // Subcomando de configuración guiada de negocio/marca en silvania/marketing/
+  if (subCmd === "config" || subCmd === "perfil") {
+    const { agentProfilesService } = await import("./services/agentProfiles.js");
+    const { brandDriveAssets } = await import("./marketing/services/brandDriveAssets.js");
+    const restText = parts.slice(1).join(" ").trim();
+    if (restText && restText.length > 6 && !/^(ver|estado|info)$/i.test(restText)) {
+      agentProfilesService.startGuidedOnboarding(userId, "marketing");
+      const res = await agentProfilesService.handleOnboardingStep(userId, restText);
+      if (res.handled && res.replyText) {
+        const kb = res.confirmButtonPrefix
+          ? new InlineKeyboard().text("✅ Confirmar y Guardar", res.confirmButtonPrefix).text("❌ Cancelar", "onb_cancel")
+          : undefined;
+        return ctx.reply(res.replyText, { parse_mode: "Markdown", ...(kb ? { reply_markup: kb } : {}) });
+      }
+    }
+    await brandDriveAssets.ensureBrandDriveStructure(userId);
+    const configured = brandDriveAssets.isMarketingConfigured(userId);
+    const kb = new InlineKeyboard().text("✨ Configurar / Editar Marca (3 pasos)", "mkt_onb_start");
+    if (agentProfilesService.isAdminUser(userId)) {
+      kb.row().text("🚀 Cargar Preset Silvania AI", "mkt_onb_preset_silvania");
+    }
+    return ctx.reply(
+      `🎨 *Configuración de Marca (Marketing Studio)*\n` +
+      `───────────────────────────\n\n` +
+      (configured
+        ? `✅ Ficha \`silvania/marketing/marca_y_reglas.md\` configurada.\nPulsa abajo para actualizarla por pasos o dicta una nota de voz tras pulsar Configurar.`
+        : `_Tu plantilla \`silvania/marketing/marca_y_reglas.md\` está en blanco. Pulsa abajo para configurarla en 3 preguntas (sin bloquear vídeos de storytelling puro)._`),
+      { parse_mode: "Markdown", reply_markup: kb }
+    );
+  }
+
+  // Subcomando de gestión de proyectos aislados (silvania/marketing/proyectos/<nombre>/)
+  if (subCmd === "proyecto" || subCmd === "proyectos" || subCmd === "project") {
+    const { brandDriveAssets } = await import("./marketing/services/brandDriveAssets.js");
+    const action = (parts[1] || "listar").toLowerCase();
+    const projectNameArg = parts.slice(2).join(" ").trim();
+
+    if (action === "listar" || action === "list") {
+      const projs = await brandDriveAssets.listProjects(userId);
+      const active = brandDriveAssets.getActiveProject(userId);
+      const listStr = projs.length > 0
+        ? projs.map((p) => `• \`${p.name}\`${p.name === active ? " *(activo ✅)*" : ""} — [Abrir](https://drive.google.com/drive/folders/${p.id})`).join("\n")
+        : "_Aún no has creado subcarpetas de proyectos._";
+      return ctx.reply(
+        `📁 *Proyectos en \`silvania/marketing/proyectos/\`*\n\n${listStr}\n\n` +
+        `📌 *Proyecto activo:* \`${active || "ninguno (modo global)"}\`\n` +
+        `• Crear/activar: \`/marketing proyecto nuevo mi_video\`\n` +
+        `• Volver a global: \`/marketing proyecto salir\``,
+        { parse_mode: "Markdown", link_preview_options: { is_disabled: true } }
+      );
+    }
+
+    if (action === "salir" || action === "global" || action === "ninguno" || action === "clear") {
+      brandDriveAssets.setActiveProject(userId, "");
+      return ctx.reply("👌 Proyecto desactivado. Ahora se usarán las carpetas globales `banco_visual/` y `clips_cortos/`.");
+    }
+
+    const rawName = (action === "nuevo" || action === "usar" || action === "crear" || action === "use")
+      ? projectNameArg
+      : parts.slice(1).join(" ").trim();
+    if (!rawName) {
+      return ctx.reply("⚠️ Indica el nombre del proyecto. Ejemplo: `/marketing proyecto nuevo lanzamiento_mayo`", { parse_mode: "Markdown" });
+    }
+
+    const proj = await brandDriveAssets.ensureProjectFolderStructure(userId, rawName, true);
+    if (!proj) {
+      return ctx.reply("⚠️ No pude crear la carpeta del proyecto en Drive. Verifica `/auth`.");
+    }
+    return ctx.reply(
+      `✅ *Proyecto activo:* \`${proj.slug}\`\n\n` +
+      `• 📁 [Carpeta Proyecto](https://drive.google.com/drive/folders/${proj.projectFolderId})\n` +
+      `• 🖼️ [imagenes](https://drive.google.com/drive/folders/${proj.imagesFolderId})\n` +
+      `• 🎞️ [clips](https://drive.google.com/drive/folders/${proj.clipsFolderId})\n\n` +
+      `📤 Ahora envía fotos o vídeos cortos `.concat("`.mp4`") + ` con caption \`/marketing\` y se guardarán dentro de este proyecto.\n` +
+      `🎬 Para montarlo: \`/marketing montar ${proj.slug} [tema o instrucciones]\``,
+      { parse_mode: "Markdown" }
+    );
+  }
+
+  // Subcomando de montaje híbrido: clips .mp4 + imágenes + voz + subtítulos
+  if (subCmd === "montar" || subCmd === "assemble") {
+    const { brandDriveAssets } = await import("./marketing/services/brandDriveAssets.js");
+    const active = brandDriveAssets.getActiveProject(userId);
+    const maybeProj = parts[1] || "";
+    let targetProj = active;
+    let topicIdx = 1;
+    if (maybeProj && /^[a-z0-9_-]{2,40}$/i.test(maybeProj)) {
+      const existing = await brandDriveAssets.listProjects(userId);
+      if (existing.some((p) => p.name.toLowerCase() === maybeProj.toLowerCase()) || !active) {
+        targetProj = maybeProj;
+        topicIdx = 2;
+      }
+    }
+    const assembleTopic = parts.slice(topicIdx).join(" ").trim() || (targetProj ? `Montaje audiovisual de ${targetProj}` : "");
+    if (!assembleTopic) {
+      return ctx.reply("⚠️ Uso: `/marketing montar <nombre_proyecto> [tema o guion]`", { parse_mode: "Markdown" });
+    }
+    await ctx.reply(`🎬 *Montaje Híbrido (Clips MP4 + Imágenes + Voz + Subtítulos) en marcha...*\nProyecto: \`${targetProj || "global"}\`\nTema: _${assembleTopic}_...`, { parse_mode: "Markdown" });
+    void (async () => {
+      try {
+        const { marketingManager } = await import("./marketing/manager.js");
+        const draft = await marketingManager.createAndReviewDraft(assembleTopic, "youtube_long", userId, bot, { projectName: targetProj || undefined });
+        if (draft && draft.videoPath) {
+          const realDurStr = draft.realDurationSeconds
+            ? `${Math.floor(draft.realDurationSeconds / 60)}:${Math.round(draft.realDurationSeconds % 60) < 10 ? "0" : ""}${Math.round(draft.realDurationSeconds % 60)}`
+            : `${Math.round(draft.videoScript?.totalEstimatedDurationSeconds || 60)}s`;
+          await ctx.api.sendMessage(
+            userId,
+            `🎬 *Vídeo Montado:* MP4 ${realDurStr}${draft.brandDriveSummary ? ` (${draft.brandDriveSummary})` : ""}.\nRevisa el borrador arriba para aprobar y publicar.`,
+            { parse_mode: "Markdown" }
+          );
+        }
+      } catch (err: any) {
+        await ctx.api.sendMessage(userId, `❌ Error montando el vídeo: ${String(err?.message || err).slice(0, 400)}`).catch(() => {});
+      }
+    })();
+    return;
+  }
+
   // Subcomando de LeadSetter
   if (subCmd === "setter" || subCmd === "prospecting" || subCmd === "leads") {
     const personaKey = parts[1] || "autonomos";
     const city = parts.slice(2).join(" ") || "España";
     try {
       const { leadSetter } = await import("./services/leadSetter.js");
-      const pack = leadSetter.getPack(personaKey, city);
+      const checkCfg = await leadSetter.ensureConfiguredOrPromptOnboarding(bot, userId);
+      if (!checkCfg.ok) return;
+      const pack = leadSetter.getPack(personaKey, city, checkCfg.profile);
       if (!pack) {
         return ctx.reply("⚠️ Nicho no encontrado. Opciones: `inmobiliaria`, `autonomos`, `comerciales`, `emprendedores`.", { parse_mode: "Markdown" });
       }
-      const report = leadSetter.formatTelegramReport(pack, city);
+      const report = leadSetter.formatTelegramReport(pack, city, checkCfg.profile);
       return ctx.reply(report, { parse_mode: "Markdown" });
     } catch (err: any) {
       return ctx.reply(`❌ Error en LeadSetter: ${err.message}`);
@@ -2914,14 +3209,14 @@ bot.command("marketing", async (ctx) => {
         return ctx.reply("⚠️ No pude acceder a tu Google Drive. Verifica que tu cuenta esté vinculada con `/auth`.");
       }
       return ctx.reply(
-        `✅ *Estructura de Marca en Google Drive lista:*\n\n` +
+        `✅ *Estructura de Marca y Proyectos en Google Drive lista:*\n\n` +
         `• 📁 [silvania/marketing](https://drive.google.com/drive/folders/${folders.rootFolderId})\n` +
-        `• 🏷️ [01_inicio](https://drive.google.com/drive/folders/${folders.inicioFolderId}) _(logo / intro fija)_\n` +
-        `• 🎯 [02_medio](https://drive.google.com/drive/folders/${folders.medioFolderId}) _(slogan / producto fijo)_\n` +
-        `• 🚀 [03_cierre](https://drive.google.com/drive/folders/${folders.cierreFolderId}) _(placa CTA final fija)_\n` +
+        `• 📂 [proyectos](https://drive.google.com/drive/folders/${folders.proyectosFolderId}) _(subcarpetas aisladas por vídeo)_\n` +
+        `• 🎞️ [clips_cortos](https://drive.google.com/drive/folders/${folders.clipsCortosFolderId}) _(tus vídeos cortos MP4)_\n` +
         `• 🖼️ [banco_visual](https://drive.google.com/drive/folders/${folders.bancoVisualFolderId}) _(tus fotos del negocio)_\n` +
+        `• 🏷️ [01_inicio](https://drive.google.com/drive/folders/${folders.inicioFolderId}) | [02_medio](https://drive.google.com/drive/folders/${folders.medioFolderId}) | [03_cierre](https://drive.google.com/drive/folders/${folders.cierreFolderId})\n` +
         `• 🎬 [videos](https://drive.google.com/drive/folders/${folders.videosFolderId})\n\n` +
-        `📝 Edita \`marca_y_reglas.md\` dentro de \`silvania/marketing\` para definir tu tono, slogan y enlaces propios.`,
+        `📝 Configura tu negocio paso a paso con \`/marketing config\` o crea un proyecto con \`/marketing proyecto nuevo mi_video\`.`,
         { parse_mode: "Markdown" }
       );
     } catch (err: any) {
@@ -3006,6 +3301,22 @@ bot.command("marketing", async (ctx) => {
     return ctx.reply("⚠️ Por favor indica el tema después del subcomando. Ejemplo: `/marketing post linkedin mi tema` o `/marketing video 30 escenas de fe`", { parse_mode: "Markdown" });
   }
 
+  if (/^(mi\s+negocio|mi\s+empresa|anuncio|promocion|promoci[oó]n)$/i.test(topic)) {
+    const { brandDriveAssets } = await import("./marketing/services/brandDriveAssets.js");
+    const { agentProfilesService } = await import("./services/agentProfiles.js");
+    await brandDriveAssets.ensureBrandDriveStructure(userId);
+    if (!brandDriveAssets.isMarketingConfigured(userId)) {
+      const kb = new InlineKeyboard().text("✨ Configurar Mi Negocio (3 pasos)", "mkt_onb_start");
+      if (agentProfilesService.isAdminUser(userId)) {
+        kb.row().text("🚀 Cargar Preset Silvania AI", "mkt_onb_preset_silvania");
+      }
+      return ctx.reply(
+        `🎨 *Tu ficha \`silvania/marketing/marca_y_reglas.md\` está en blanco.*\nPara no inventar otra marca, dime qué negocio impulsas o pulsa abajo para redactarlo contigo paso a paso.`,
+        { parse_mode: "Markdown", reply_markup: kb }
+      );
+    }
+  }
+
   const platformBadge = targetPlatform ? ` [${targetPlatform.toUpperCase()}]` : "";
   await ctx.reply(`🧠 *Silvania Marketing Studio en marcha...*\nInvestigando y preparando propuesta${platformBadge} para:\n_${topic}_...`, { parse_mode: "Markdown" });
 
@@ -3072,6 +3383,26 @@ async function handleVoiceChangeIntent(userId: number, rawText: string, ctx: any
   }
 
   return false;
+}
+
+// ─── ONBOARDING ESCALONADO ACTIVO POR VOZ O TEXTO ───
+async function handleActiveOnboardingReply(userId: number, rawText: string, ctx: any): Promise<boolean> {
+  const { agentProfilesService } = await import("./services/agentProfiles.js");
+  const session = agentProfilesService.getActiveOnboarding(userId);
+  if (!session || rawText.trim().startsWith("/")) return false;
+
+  const res = await agentProfilesService.handleOnboardingStep(userId, rawText);
+  if (!res.handled) return false;
+
+  if (res.replyText) {
+    const kb = res.confirmButtonPrefix
+      ? new InlineKeyboard()
+          .text("✅ Confirmar y Guardar en Drive", res.confirmButtonPrefix)
+          .text("❌ Cancelar", "onb_cancel")
+      : undefined;
+    await ctx.reply(res.replyText, { parse_mode: "Markdown", ...(kb ? { reply_markup: kb } : {}) });
+  }
+  return true;
 }
 
 // Manejador de mensajes de texto
@@ -3151,6 +3482,11 @@ bot.on("message:text", async (ctx) => {
       }
       return;
     }
+  }
+
+  // ─── ONBOARDING ESCALONADO ACTIVO (CoreAgent / Marketing / Setter) ───
+  if (await handleActiveOnboardingReply(userId, text, ctx)) {
+    return;
   }
 
   // ─── CAMBIO RÁPIDO DE VOZ EN LENGUAJE NATURAL (Álvaro / Lucía) ───
@@ -3252,6 +3588,9 @@ bot.on("message:photo", async (ctx) => {
       let targetFolderId = folders.bancoVisualFolderId;
       let folderLabel = "banco_visual";
       let fileName = `brand_photo_${Date.now()}.jpg`;
+      const capProjMatch = caption.match(/\bproyecto:([^\s]+)/i);
+      const targetProjName = capProjMatch ? capProjMatch[1].trim() : brandDriveAssets.getActiveProject(userId);
+
       if (/(inicio|logo|intro)/.test(lowerCap)) {
         targetFolderId = folders.inicioFolderId;
         folderLabel = "imagenes_intrinsecas/01_inicio";
@@ -3264,6 +3603,12 @@ bot.on("message:photo", async (ctx) => {
         targetFolderId = folders.cierreFolderId;
         folderLabel = "imagenes_intrinsecas/03_cierre";
         fileName = "placa_cierre.jpg";
+      } else if (targetProjName) {
+        const proj = await brandDriveAssets.ensureProjectFolderStructure(userId, targetProjName, Boolean(capProjMatch));
+        if (proj) {
+          targetFolderId = proj.imagesFolderId;
+          folderLabel = `proyectos/${proj.slug}/imagenes`;
+        }
       }
 
       const uploadedId = await driveMemoryService.uploadOrReplace(userId, tmpPhotoPath, fileName, targetFolderId);
@@ -3400,6 +3745,12 @@ bot.on("message:voice", async (ctx) => {
     }
 
     await ctx.reply(`🎙️ _Escuché:_ "${escapeMarkdown(transcribedText)}"`, { parse_mode: "Markdown" });
+
+    // Onboarding escalonado activo por voz
+    if (await handleActiveOnboardingReply(userId, transcribedText, ctx)) {
+      clearInterval(typingInterval);
+      return;
+    }
 
     // Intención de cambio de voz detectada en nota de voz
     if (await handleVoiceChangeIntent(userId, transcribedText, ctx)) {
@@ -3539,9 +3890,83 @@ bot.on("message:video_note", async (ctx) => {
   }
 });
 
-// Manejador de videos de Telegram
+// Manejador de videos de Telegram (subida de clips MP4 para /marketing o transcripción para CoreAgent)
 bot.on("message:video", async (ctx) => {
   const userId = ctx.from.id;
+  const caption = (ctx.message.caption || "").trim();
+
+  if (/^\/marketing\b/i.test(caption)) {
+    const adminIds = config.marketing?.adminIds || [1572946817];
+    if (!adminIds.includes(userId)) {
+      return ctx.reply("❌ No tienes permisos para subir clips de vídeo a Marketing Studio.");
+    }
+    if ((ctx.message.video.file_size || 0) > 19.5 * 1024 * 1024) {
+      return ctx.reply("⚠️ Este vídeo supera el límite de descarga directa de Telegram Bot API (~20 MB). Comprímelo o recórtalo en clips cortos (<20 MB) para guardarlo en `silvania/marketing/`.", { parse_mode: "Markdown" });
+    }
+    await ctx.reply("🎞️ Subiendo clip corto MP4 a tu carpeta de Marketing en Google Drive...");
+    let tmpClipPath = "";
+    try {
+      const file = await ctx.api.getFile(ctx.message.video.file_id);
+      const fileUrl = `https://api.telegram.org/file/bot${config.telegram.token}/${file.file_path}`;
+      const resp = await fetch(fileUrl);
+      const buf = Buffer.from(await resp.arrayBuffer());
+      const fsMod = await import("fs");
+      const pathMod = await import("path");
+      tmpClipPath = pathMod.default.resolve(process.cwd(), `temp_media/tg_clip_${userId}_${Date.now()}.mp4`);
+      fsMod.default.mkdirSync(pathMod.default.dirname(tmpClipPath), { recursive: true });
+      fsMod.default.writeFileSync(tmpClipPath, buf);
+
+      const { brandDriveAssets } = await import("./marketing/services/brandDriveAssets.js");
+      const { driveMemoryService } = await import("./services/driveMemory.js");
+      const folders = await brandDriveAssets.ensureBrandDriveStructure(userId);
+      if (!folders) {
+        return ctx.reply("⚠️ No pude acceder a tu Google Drive. Verifica `/auth`.");
+      }
+
+      const capProjMatch = caption.match(/\bproyecto:([^\s]+)/i);
+      const targetProjName = capProjMatch ? capProjMatch[1].trim() : brandDriveAssets.getActiveProject(userId);
+      let targetFolderId = folders.clipsCortosFolderId;
+      let folderLabel = "clips_cortos";
+      let projSlug = "";
+      if (targetProjName) {
+        const proj = await brandDriveAssets.ensureProjectFolderStructure(userId, targetProjName, Boolean(capProjMatch));
+        if (proj) {
+          targetFolderId = proj.clipsFolderId;
+          folderLabel = `proyectos/${proj.slug}/clips`;
+          projSlug = proj.slug;
+        }
+      }
+
+      const fileName = `clip_${Date.now()}.mp4`;
+      const uploadedId = await driveMemoryService.uploadOrReplace(userId, tmpClipPath, fileName, targetFolderId);
+      const driveUrl = uploadedId
+        ? `https://drive.google.com/file/d/${uploadedId}/view`
+        : `https://drive.google.com/drive/folders/${targetFolderId}`;
+      const durSec = ctx.message.video.duration || 0;
+      const mountHint = projSlug
+        ? `/marketing montar ${projSlug} [tema o guion]`
+        : `/marketing montar [proyecto] [tema]`;
+
+      return ctx.reply(
+        `✅ *Clip corto MP4 guardado en Drive* (${durSec}s):\n` +
+        `📁 Carpeta: \`silvania/marketing/${folderLabel}\`\n` +
+        `📄 Archivo: \`${fileName}\`\n` +
+        `🔗 [Ver en Drive](${driveUrl})\n\n` +
+        `🎬 Cuando tengas tus clips e imágenes subidos, móntalo todo con:\n\`${mountHint}\``,
+        { parse_mode: "Markdown" }
+      );
+    } catch (err: any) {
+      return ctx.reply(`❌ Error subiendo clip MP4: ${err.message}`);
+    } finally {
+      if (tmpClipPath) {
+        try {
+          const fsMod = await import("fs");
+          if (fsMod.default.existsSync(tmpClipPath)) fsMod.default.unlinkSync(tmpClipPath);
+        } catch {}
+      }
+    }
+  }
+
   await ctx.replyWithChatAction("typing");
   const typingInterval = setInterval(() => {
     ctx.replyWithChatAction("typing").catch(() => {});

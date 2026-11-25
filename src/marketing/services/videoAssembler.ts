@@ -11,7 +11,8 @@ const execAsync = promisify(exec);
 export interface SceneMediaInput {
   sceneNumber: number;
   narrationText: string;
-  imagePath: string;
+  imagePath: string; // Ruta de imagen o clip corto MP4/MOV/WEBM
+  mediaType?: "image" | "video";
   durationSeconds?: number;
 }
 
@@ -348,6 +349,7 @@ export const videoAssembler = {
       try {
         for (let i = 0; i < scenes.length; i++) {
           const imgPath = path.resolve(scenes[i].imagePath).replace(/\\/g, "/");
+          const isVideoClip = scenes[i].mediaType === "video" || /\.(mp4|mov|m4v|webm)$/i.test(imgPath);
           const sceneDur = allocatedDurations[i];
           const frames = Math.max(24, Math.ceil(sceneDur * fps));
           const denom = Math.max(1, frames - 1);
@@ -358,7 +360,11 @@ export const videoAssembler = {
           let filterStr = "";
           let clipInputArg = `-i "${imgPath}"`;
 
-          if (enableZoomPan) {
+          if (isVideoClip) {
+            // Clip de vídeo corto (.mp4/.mov): lo recortamos/bucleamos suavemente a la duración exacta de la escena
+            clipInputArg = `-stream_loop -1 -i "${imgPath}"`;
+            filterStr = `[0:v]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},setsar=1,fps=${fps},fade=t=in:st=0:d=0.35,fade=t=out:st=${fadeOutSt}:d=0.35,${styleExpr},format=yuv420p[vout]`;
+          } else if (enableZoomPan) {
             let zpExpr = "";
             if (isPortraitClip || isBrandAsset) {
               const zoomDelta = isBrandAsset ? "0.03" : "0.06";
@@ -420,14 +426,16 @@ export const videoAssembler = {
       }
     };
 
+    const hasVideoClips = scenes.some(
+      (s) => s.mediaType === "video" || /\.(mp4|mov|m4v|webm)$/i.test(s.imagePath)
+    );
     let usedFallback = false;
     let usedPerScene = false;
     try {
-      if (scenes.length > 6) {
-        // Vídeos largos (>6 escenas): renderizado secuencial por escena + concat -c:v copy
-        // Evita saturar RAM/CPU en Railway con 15-20 filtros zoompan+xfade simultáneos
+      if (scenes.length > 6 || hasVideoClips) {
+        // Vídeos largos (>6 escenas) o montaje híbrido con clips .mp4: renderizado secuencial por escena + concat -c:v copy
         usedPerScene = true;
-        console.log(`🎬 [VideoAssembler] Vídeo largo (${scenes.length} escenas): usando renderizado secuencial por escena (Ken Burns + fades + estilo + música)...`);
+        console.log(`🎬 [VideoAssembler] Renderizado secuencial por escena (${scenes.length} escenas, clips=${hasVideoClips ? "sí" : "no"})...`);
         await renderPerSceneConcat();
       } else {
         try {
