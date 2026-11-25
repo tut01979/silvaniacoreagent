@@ -2918,7 +2918,7 @@ bot.command(["setter", "prospecting", "leads"], async (ctx) => {
   }
 
   // 2B. Búsqueda en vivo de prospectos en LinkedIn vía Unipile + Invitaciones HITL
-  if (subCmd === "buscar" || subCmd === "search" || subCmd === "leads") {
+  if (subCmd === "buscar" || subCmd === "busca" || subCmd === "buscame" || subCmd === "search" || subCmd === "leads") {
     const query = parts.slice(1).join(" ").trim();
     if (!query) {
       return ctx.reply("⚠️ Uso: `/setter buscar [sector y ciudad]`\nEjemplo: `/setter buscar agente inmobiliario Madrid`", { parse_mode: "Markdown" });

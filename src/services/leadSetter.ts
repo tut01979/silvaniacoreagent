@@ -228,6 +228,12 @@ export const leadSetter = {
       return { ok: true, profile };
     }
 
+    // Si es administrador existente y no pidió reset explícito, conservar 100% su configuración previa de Silvania sin pedir setup inicial
+    if (agentProfilesService.isAdminUser(userId) && !agentProfilesService.wasExplicitlyResetToBlank(userId)) {
+      const preset = await agentProfilesService.loadSilvaniaSetterPreset(userId);
+      return { ok: true, profile: preset };
+    }
+
     const kb = new InlineKeyboard().text("✨ Configurar Mi Negocio (3 pasos)", "setter_onb_start");
     if (agentProfilesService.isAdminUser(userId)) {
       kb.row().text("🚀 Cargar Preset Silvania AI", "setter_onb_preset_silvania");

@@ -57,6 +57,10 @@ export interface GuidedOnboardingSession {
 }
 
 const onboardingSessions = new Map<number, GuidedOnboardingSession>();
+const setterSyncTimestamp = new Map<number, number>();
+const coreSyncTimestamp = new Map<number, number>();
+const explicitBlankResetUsers = new Set<number>();
+const DRIVE_SYNC_TTL_MS = 10 * 60 * 1000; // 10 min cache para respuesta instantánea en /setter y /perfil
 
 export const BLANK_COREAGENT_TEMPLATE = `# Perfil y Objetivos del Usuario (CoreAgent)
 
@@ -251,6 +255,10 @@ export const agentProfilesService = {
     return admins.includes(userId);
   },
 
+  wasExplicitlyResetToBlank(userId: number): boolean {
+    return explicitBlankResetUsers.has(userId);
+  },
+
   async ensureAgentFolderOnDrive(userId: number, agent: AgentNamespace): Promise<string | null> {
     if (!userId) return null;
     try {
@@ -295,7 +303,10 @@ export const agentProfilesService = {
     const localPath = path.join(getLocalAgentDir(userId, "coreagent"), fileName);
     let content = readLocalFileSafe(localPath);
 
-    if (syncFromDrive) {
+    const lastSync = coreSyncTimestamp.get(userId) || 0;
+    const isCacheHot = Boolean(content && Date.now() - lastSync < DRIVE_SYNC_TTL_MS);
+
+    if (syncFromDrive && !isCacheHot) {
       const folderId = await this.ensureAgentFolderOnDrive(userId, "coreagent");
       const files = folderId ? await listDriveFiles(userId, folderId) : [];
       content = await ensureAndSyncMarkdownFile(
@@ -306,6 +317,7 @@ export const agentProfilesService = {
         folderId,
         files
       );
+      coreSyncTimestamp.set(userId, Date.now());
     } else if (!content) {
       content = BLANK_COREAGENT_TEMPLATE;
       writeLocalFileSafe(localPath, content);
@@ -395,13 +407,18 @@ export const agentProfilesService = {
     let icp = readLocalFileSafe(path.join(dir, "icp_y_exclusiones.md"));
     let obj = readLocalFileSafe(path.join(dir, "objeciones_y_tono.md"));
 
-    if (syncFromDrive) {
+    const now = Date.now();
+    const lastSync = setterSyncTimestamp.get(userId) || 0;
+    const isCacheHot = Boolean(emp && icp && obj && now - lastSync < DRIVE_SYNC_TTL_MS);
+
+    if (syncFromDrive && !isCacheHot) {
       const folderId = await this.ensureAgentFolderOnDrive(userId, "setter");
       const files = folderId ? await listDriveFiles(userId, folderId) : [];
       emp = await ensureAndSyncMarkdownFile(userId, "setter", "empresa_y_oferta.md", BLANK_SETTER_EMPRESA_TEMPLATE, folderId, files);
       icp = await ensureAndSyncMarkdownFile(userId, "setter", "icp_y_exclusiones.md", BLANK_SETTER_ICP_TEMPLATE, folderId, files);
       obj = await ensureAndSyncMarkdownFile(userId, "setter", "objeciones_y_tono.md", BLANK_SETTER_OBJECIONES_TEMPLATE, folderId, files);
-    } else {
+      setterSyncTimestamp.set(userId, Date.now());
+    } else if (!emp || !icp || !obj) {
       if (!emp) {
         emp = BLANK_SETTER_EMPRESA_TEMPLATE;
         writeLocalFileSafe(path.join(dir, "empresa_y_oferta.md"), emp);
@@ -416,7 +433,14 @@ export const agentProfilesService = {
       }
     }
 
-    return this.parseSetterProfile(emp, icp, obj);
+    const parsed = this.parseSetterProfile(emp, icp, obj);
+    // Para administradores existentes: si la carpeta está en blanco y no pidieron explícitamente resetear,
+    // restaurar automáticamente su configuración previa de Silvania AI sin pedir configuración inicial.
+    if (!parsed.configured && this.isAdminUser(userId) && !explicitBlankResetUsers.has(userId)) {
+      return await this.loadSilvaniaSetterPreset(userId);
+    }
+
+    return parsed;
   },
 
   getCachedSetterProfile(userId: number): SetterBusinessProfile {
@@ -487,20 +511,20 @@ export const agentProfilesService = {
       `- Respuesta si dice "Ya trabajamos con otro / ya tengo herramienta": No sustituye a tu Google Workspace actual; lo controla directamente desde Telegram con lenguaje natural.\n` +
       `- Reglas extra / qué NO decir nunca: Si otro fundador cuenta su proyecto en tono networking, responder a su contenido y NO soltar huecos de Meet ni pitch.\n`;
 
-    await Promise.all([
-      this.saveAgentMarkdownFile(userId, "setter", "empresa_y_oferta.md", emp),
-      this.saveAgentMarkdownFile(userId, "setter", "icp_y_exclusiones.md", icp),
-      this.saveAgentMarkdownFile(userId, "setter", "objeciones_y_tono.md", obj),
-    ]);
+    explicitBlankResetUsers.delete(userId);
+    await this.saveAgentMarkdownFile(userId, "setter", "empresa_y_oferta.md", emp);
+    await this.saveAgentMarkdownFile(userId, "setter", "icp_y_exclusiones.md", icp);
+    await this.saveAgentMarkdownFile(userId, "setter", "objeciones_y_tono.md", obj);
+    setterSyncTimestamp.set(userId, Date.now());
     return this.parseSetterProfile(emp, icp, obj);
   },
 
   async resetSetterToBlank(userId: number): Promise<void> {
-    await Promise.all([
-      this.saveAgentMarkdownFile(userId, "setter", "empresa_y_oferta.md", BLANK_SETTER_EMPRESA_TEMPLATE),
-      this.saveAgentMarkdownFile(userId, "setter", "icp_y_exclusiones.md", BLANK_SETTER_ICP_TEMPLATE),
-      this.saveAgentMarkdownFile(userId, "setter", "objeciones_y_tono.md", BLANK_SETTER_OBJECIONES_TEMPLATE),
-    ]);
+    explicitBlankResetUsers.add(userId);
+    await this.saveAgentMarkdownFile(userId, "setter", "empresa_y_oferta.md", BLANK_SETTER_EMPRESA_TEMPLATE);
+    await this.saveAgentMarkdownFile(userId, "setter", "icp_y_exclusiones.md", BLANK_SETTER_ICP_TEMPLATE);
+    await this.saveAgentMarkdownFile(userId, "setter", "objeciones_y_tono.md", BLANK_SETTER_OBJECIONES_TEMPLATE);
+    setterSyncTimestamp.set(userId, Date.now());
   },
 
   // =========================================================================
@@ -865,6 +889,12 @@ export const agentProfilesService = {
     } else {
       for (const [fileName, fileContent] of Object.entries(session.generatedFiles)) {
         await this.saveAgentMarkdownFile(userId, session.agent, fileName, fileContent);
+      }
+      if (session.agent === "setter") {
+        explicitBlankResetUsers.delete(userId);
+        setterSyncTimestamp.set(userId, Date.now());
+      } else if (session.agent === "coreagent") {
+        coreSyncTimestamp.set(userId, Date.now());
       }
     }
 

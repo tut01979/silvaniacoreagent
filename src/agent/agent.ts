@@ -1313,7 +1313,9 @@ export function extractUserNameIntroduction(text: string): string | null {
       "y", "o", "pero", "quiero", "necesito", "puedes", "crea", "crear", "haz",
       "hacer", "envia", "envía", "busca", "lista", "tengo", "estoy", "vengo",
       "para", "por", "con", "sin", "de", "del", "en", "que", "como", "cómo",
-      "encantado", "encantada", "gracias", "buenas", "hola", "mañana", "manana", "hoy"
+      "encantado", "encantada", "gracias", "buenas", "hola", "mañana", "manana", "hoy",
+      "hasta", "adios", "adiós", "chao", "luego", "pronto", "dime", "ayuda", "ayudame",
+      "mira", "oye", "porfa", "entonces", "pues", "tambien", "también"
     ]);
     if (!nonNames.has(secondNorm) && !stopSecondWords.has(secondNorm)) {
       fullName += " " + formatWord(secondWord);
@@ -1352,15 +1354,23 @@ export async function saveUserPreferredName(userId: number, userName: string): P
 }
 
 export async function getUserPreferredName(userId: number): Promise<string | null> {
+  const sanitizeStoredName = (raw: string): string => {
+    const parts = raw.trim().split(/\s+/);
+    if (parts.length > 1 && /^(hasta|luego|adios|adiós|chao|mañana|manana|hoy|hola|gracias)$/i.test(parts[parts.length - 1])) {
+      parts.pop();
+    }
+    return parts.join(" ");
+  };
+
   try {
     const currentPrompt = (await dbService.getCustomPrompt(userId)) || "";
     const match = currentPrompt.match(/Nombre del usuario:\s*([^\n.]+)/i);
-    if (match && match[1]) return match[1].trim();
+    if (match && match[1]) return sanitizeStoredName(match[1]);
 
     const localConfigPath = path.join(process.cwd(), "data", `user_${userId}`, "config.json");
     if (fs.existsSync(localConfigPath)) {
       const conf = JSON.parse(fs.readFileSync(localConfigPath, "utf8"));
-      if (conf.userName) return String(conf.userName).trim();
+      if (conf.userName) return sanitizeStoredName(String(conf.userName));
     }
   } catch {}
   return null;
