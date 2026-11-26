@@ -3496,10 +3496,16 @@ bot.on("message:text", async (ctx) => {
 
   // ─── PROSPECCIÓN ACTIVA EN LINKEDIN VÍA UNIPILE (ADMIN HITL) ───
   const adminIds = config.marketing?.adminIds || [1572946817];
-  if (adminIds.includes(userId) && /linkedin/i.test(text) && /(busca|b[uú]scame|encuentra|prospectos|leads|invita)/i.test(text)) {
+  const isGmailOrOtherTask = /\b(gmail|correo|correos|email|emails|hilo|hilos|bandeja|no\s+uses\s+setter|no\s+utilices\s+(?:el\s+)?setter|sin\s+setter)\b/i.test(text);
+  const wantsLinkedInProspecting =
+    text.length <= 180 &&
+    !isGmailOrOtherTask &&
+    /\ben\s+linkedin\b/i.test(text) &&
+    /\b(busca|b[uú]scame|encuentra|prospectos|leads)\b/i.test(text);
+  if (adminIds.includes(userId) && wantsLinkedInProspecting) {
     const cleanedQuery = text
       .replace(/^(por favor|oye|silvania|coreagent)[,\s]*/i, "")
-      .replace(/(b[uú]scame|busca|encuentra|invita)\s*(leads|prospectos|contactos|personas|perfiles|a)?\s*(en\s*linkedin|linkedin)?\s*(de|sobre|para)?\s*/gi, "")
+      .replace(/\b(b[uú]scame|busca|encuentra|invita)\b\s*(leads|prospectos|contactos|personas|perfiles|a)?\s*(en\s*linkedin|linkedin)?\s*(de|sobre|para)?\s*/gi, "")
       .replace(/\s*(en\s*linkedin|con\s*invitaci[oó]n|para\s*invitarlos|y\s*m[aá]ndales.*|y\s*inv[ií]talos.*)$/gi, "")
       .trim();
     if (cleanedQuery.length >= 3) {
