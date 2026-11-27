@@ -12,6 +12,29 @@ import { agentProfilesService } from "../services/agentProfiles.js";
 
 const MAX_ITERATIONS = 12;
 
+/** Verifica si en el turno actual ya se escribieron filas de datos reales (no solo cabeceras) en Sheets. */
+function hasPopulatedSheetRows(msgs: any[]): boolean {
+  for (const m of msgs) {
+    if (!Array.isArray(m?.tool_calls)) continue;
+    for (const tc of m.tool_calls) {
+      const name = tc?.function?.name;
+      if (name === "sheets_create_invoice" || name === "sheets_create_budget" || name === "sheets_append") {
+        return true;
+      }
+      if (name === "sheets_write") {
+        try {
+          const args = JSON.parse(tc.function.arguments || "{}");
+          const vals = typeof args.values === "string" && args.values.trim().startsWith("[")
+            ? JSON.parse(args.values)
+            : args.values;
+          if (Array.isArray(vals) && vals.length >= 2) return true;
+        } catch {}
+      }
+    }
+  }
+  return false;
+}
+
 /**
  * Calcula con precisión matemática el calendario de referencia de los próximos 7 días
  * y el offset horario real en Europe/Madrid (evita desfases de cambio de hora y errores de fechas relativas).
@@ -629,15 +652,22 @@ Columnas:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 1. **Confirmación anti-ASR:** Si el usuario dicta por voz una ciudad o nicho ambiguo o mal transcrito (ej. "Patrais"/"Patras" frente a "Patraix"/"Valencia"), pregunta en UNA sola línea para confirmar antes de lanzar herramientas. País por defecto: **España** si menciona ciudades españolas (Valencia, Madrid, etc.) sin país.
 2. **Límites estrictos:** **10 fichas por defecto, máximo 15**. Prohibido volcar listados de 30–40 nombres sin datos de contacto verificados. Si te acercas al límite de iteraciones, guarda en Sheet + resumen lo ya recopilado; nunca entres en bucle vacío.
-3. **Flujo obligatorio:** \`web_search\` (pocas queries orientadas a webs oficiales de negocios, no solo directorios/Maps) → elegir N URLs de dominio propio → \`read_url\` de la home y, si existe, \`/contacto\` o \`/contact\`. Si una URL falla (\`ENOTFOUND\`, \`ECONNREFUSED\`, \`timeout\`), anota \`NO ENCONTRADO\` en una línea y pasa a la siguiente sin reintentar el mismo host.
-4. **Schema por ficha (chat compacto y filas de Sheet):**
+3. **Flujo obligatorio en orden estricto:**
+   - Paso 1: \`web_search\` (\`search_type="web"\`, pocas queries orientadas a webs oficiales reales). **PROHIBIDO inventar o adivinar dominios** ni crear una Sheet vacía antes de tener los datos.
+   - Paso 2: Llama en **PARALELO** a \`read_url\` solo sobre las URLs reales devueltas por \`web_search\` (home y si existe \`/contacto\`). Si una URL falla (\`ENOTFOUND\`, \`ECONNREFUSED\`, \`timeout\`), anota \`NO ENCONTRADO\` y pasa a la siguiente sin reintentar ese host.
+   - Paso 3: Con todas las fichas recopiladas, ejecuta \`1× sheets_create\` (título claro) + \`1× sheets_write\` BATCH en \`"A1"\` con la matriz 2D completa \`[cabeceras, ...todas_las_filas]\` de una sola vez (**PROHIBIDO** escribir solo cabeceras al principio ni llamar varias veces a \`sheets_write\`/\`sheets_append\`).
+4. **Schema por ficha (Sheet):**
    \`Nombre | Web | Teléfono | Email | WhatsApp | Dirección | Instagram | Facebook | LinkedIn | Notas | Fuente\`
    - WhatsApp solo si hay \`wa.me\`, \`api.whatsapp.com\` o número explícito de WhatsApp.
    - Redes solo con URL \`https://\` completa real; si no, \`NO ENCONTRADO\`.
    - PROHIBIDO inventar emails, teléfonos, IDs de Maps ni perfiles sociales.
-5. **Salida obligatoria en prospección y tablas:**
-   - Preferente: \`1× sheets_create\` (título claro) + \`1× sheets_write\` BATCH en \`"A1"\` con la matriz 2D \`any[][]\` completa (fila 1 = cabeceras, resto = datos). Prohibido dar por hecha una tabla que solo existe en el chat sin haber llamado a \`sheets_write\`.
-   - En el chat de Telegram: entrega el enlace Markdown clicable real de la Sheet (\`[Título](https://docs.google.com/spreadsheets/d/ID/edit)\`) + resumen compacto con enlaces Markdown clicables legibles (\`[Clínica Dental Manzanera](https://...)\`, \`[Instagram](https://...)\`, \`[WhatsApp](https://wa.me/...)\`), nunca URLs crudas sueltas ni informes de 40 nombres.
+5. **Presentación obligatoria en el chat de Telegram:**
+   - **PROHIBIDO usar tablas Markdown con barras \`| ... | ... |\` y guiones \`|---|---|\` en el chat de Telegram** (se desconfiguran en móvil/escritorio). La tabla completa vive en Google Sheets.
+   - Responde con tono ejecutivo directo (sin rodeos, disculpas genéricas ni preguntas robóticas si ya completaste el encargo): abre con el enlace Markdown clicable real de la Sheet (\`📊 **[Título](https://docs.google.com/spreadsheets/d/ID/edit)** · N registros guardados en silvania/\`) seguido de fichas numeradas limpias con enlaces Markdown clicables legibles:
+     \`1. **[Clínica Dental](https://...)**\`
+     \`   📞 Teléfono · ✉️ Email · 📍 Dirección\`
+     \`   💬 [WhatsApp](https://wa.me/...) · 🔗 [Instagram](https://...) · [Facebook](https://...)\`
+   - En cada ficha del chat incluye los datos encontrados y marca \`NO ENCONTRADO\` en lo no disponible si el usuario lo pidió; nunca pongas URLs crudas sin \`[Texto](url)\`.
 
 
 ${gmailHandlingStr}
@@ -986,31 +1016,39 @@ No afirmes que el correo se ha enviado sin haber ejecutado gmail_send en este tu
           }
 
 
-          // Guard post-sheets_create: si se creó una hoja genérica/CRM con sheets_create en este turno
-          // pero aún no se ha llamado a sheets_write / sheets_append (ni era Taller_Partes / invoice / budget),
-          // forzar UNA sola escritura batch antes de entregar la respuesta al usuario.
+          // Guard post-prospección / post-sheets_create: garantizar que nunca quede una Sheet vacía ni sin guardar los datos recopilados en este turno
           const createdSheetMsg = [...turnMsgs].reverse().find(m =>
             m.role === "tool" &&
             String(m.content).includes("STATUS=HOJA_CREADA") &&
             String(m.content).includes("SPREADSHEET_ID=")
           );
-          const hasBatchWriteInTurn = turnMsgs.some(m =>
+          const hasPopulatedInTurn = hasPopulatedSheetRows(turnMsgs);
+          const hasWebReadInTurn = turnMsgs.some(m =>
             Array.isArray((m as any).tool_calls) &&
-            (m as any).tool_calls.some((tc: any) =>
-              tc?.function?.name === "sheets_write" ||
-              tc?.function?.name === "sheets_append" ||
-              tc?.function?.name === "sheets_create_invoice" ||
-              tc?.function?.name === "sheets_create_budget"
-            )
+            (m as any).tool_calls.some((tc: any) => tc?.function?.name === "read_url" || tc?.function?.name === "web_search")
           );
-          if (createdSheetMsg && !hasBatchWriteInTurn && iterations < MAX_ITERATIONS - 1) {
-            const sidMatch = String(createdSheetMsg.content).match(/SPREADSHEET_ID=([A-Za-z0-9_-]{20,80})/);
-            if (sidMatch && !/Taller_Partes/i.test(String(createdSheetMsg.content))) {
-              console.warn(`⚠️ [Agent Guard] sheets_create (${sidMatch[1]}) ejecutado sin sheets_write en el turno. Forzando escritura batch.`);
+          const recentSheetIntent = /\b(sheet|sheets|hoja|guarda\w*|tabla|prospect\w*)\b/i.test(userMessage) ||
+            (/\b(contin[uú]a|sigue|ok)\b/i.test(userMessage) && history.slice(Math.max(0, turnStartIdx - 4), turnStartIdx).some(m =>
+              m.role === "user" && /\b(sheet|sheets|hoja|prospect\w*)\b/i.test(String(m.content || ""))
+            ));
+
+          if (!hasPopulatedInTurn && iterations < MAX_ITERATIONS - 1) {
+            const sidMatch = createdSheetMsg ? String(createdSheetMsg.content).match(/SPREADSHEET_ID=([A-Za-z0-9_-]{20,80})/) : null;
+            if (sidMatch && !/Taller_Partes/i.test(String(createdSheetMsg?.content || ""))) {
+              console.warn(`⚠️ [Agent Guard] sheets_create (${sidMatch[1]}) sin filas escritas en el turno. Forzando escritura batch.`);
               history.push(response);
               history.push({
                 role: "user" as const,
-                content: `⚠️ ACCIÓN OBLIGATORIA DE SHEETS: Acabas de crear la hoja ${sidMatch[1]} pero TODAVÍA NO has escrito los datos dentro de ella. Ejecuta AHORA UNA sola llamada a \`sheets_write\` con spreadsheet_id="${sidMatch[1]}", range="A1" y values=[[cabeceras...], ...filas] con todos los datos reales recopilados.`
+                content: `⚠️ ACCIÓN OBLIGATORIA DE SHEETS: La hoja ${sidMatch[1]} todavía no tiene filas de datos reales escritas en este turno. Ejecuta AHORA UNA sola llamada a \`sheets_write\` con spreadsheet_id="${sidMatch[1]}", range="A1" y values=[[cabeceras...], ...filas] con todos los datos reales recopilados (y entrega después fichas limpias en Telegram sin tabla Markdown |---|).`
+              });
+              iterations++;
+              continue;
+            } else if (hasWebReadInTurn && recentSheetIntent && !createdSheetMsg) {
+              console.warn(`⚠️ [Agent Guard] Prospección web terminada sin guardar en Google Sheet en este turno. Forzando sheets_create + sheets_write.`);
+              history.push(response);
+              history.push({
+                role: "user" as const,
+                content: `⚠️ ACCIÓN OBLIGATORIA DE SHEETS: Has recopilado datos web reales en este turno pero aún NO creaste ni rellenaste una nueva Google Sheet en ESTE turno (NO reutilices URLs viejas del historial). Ejecuta ahora \`sheets_create\` y \`1× sheets_write\` batch en "A1" con \`[cabeceras, ...filas]\`, y responde en Telegram con fichas numeradas limpias (sin tabla Markdown \`|---|\`).`
               });
               iterations++;
               continue;
@@ -1092,23 +1130,52 @@ No afirmes que el correo se ha enviado sin haber ejecutado gmail_send en este tu
           }
         }
 
-        // Si quiere usar herramientas, las ejecutamos
+        // Si quiere usar herramientas, ejecutamos read_url / web_search en paralelo y el resto en secuencia
         history.push(response);
-        
-        for (const toolCall of response.tool_calls) {
-          let result;
-          try {
-            result = await executeTool(toolCall.function.name, JSON.parse(toolCall.function.arguments), userId);
-          } catch (err: any) {
-            console.error(`❌ Error ejecutando herramienta ${toolCall.function.name}:`, err.message);
-            result = `❌ Error en herramienta ${toolCall.function.name}: ${err.message}`;
+
+        const parallelWebIndices = new Set<number>();
+        const webResults = new Map<number, string>();
+        const parallelTasks: Promise<void>[] = [];
+
+        response.tool_calls.forEach((tc, idx) => {
+          if (tc.function.name === "read_url" || tc.function.name === "web_search") {
+            parallelWebIndices.add(idx);
+            parallelTasks.push((async () => {
+              let result;
+              try {
+                result = await executeTool(tc.function.name, JSON.parse(tc.function.arguments), userId);
+              } catch (err: any) {
+                console.error(`❌ Error ejecutando herramienta ${tc.function.name}:`, err.message);
+                result = `❌ Error en herramienta ${tc.function.name}: ${err.message}`;
+              }
+              webResults.set(idx, String(result));
+            })());
           }
-          
-          // Añadimos el resultado de la herramienta al historial
+        });
+
+        if (parallelTasks.length > 0) {
+          await Promise.all(parallelTasks);
+        }
+
+        for (let idx = 0; idx < response.tool_calls.length; idx++) {
+          const toolCall = response.tool_calls[idx];
+          let resultStr: string;
+          if (parallelWebIndices.has(idx)) {
+            resultStr = webResults.get(idx) ?? "";
+          } else {
+            try {
+              resultStr = String(await executeTool(toolCall.function.name, JSON.parse(toolCall.function.arguments), userId));
+            } catch (err: any) {
+              console.error(`❌ Error ejecutando herramienta ${toolCall.function.name}:`, err.message);
+              resultStr = `❌ Error en herramienta ${toolCall.function.name}: ${err.message}`;
+            }
+          }
+
+          // Añadimos el resultado de la herramienta al historial manteniendo el orden exacto
           history.push({
             role: "tool" as const,
             tool_call_id: toolCall.id,
-            content: String(result)
+            content: resultStr
           });
         }
 
@@ -1122,15 +1189,11 @@ No afirmes que el correo se ha enviado sin haber ejecutado gmail_send en este tu
             Array.isArray((m as any).tool_calls) &&
             (m as any).tool_calls.some((tc: any) => tc?.function?.name === "web_search" || tc?.function?.name === "read_url")
           );
-          const hasWrite = turnSlice.some(m =>
-            Array.isArray((m as any).tool_calls) &&
-            (m as any).tool_calls.some((tc: any) => tc?.function?.name === "sheets_write" || tc?.function?.name === "sheets_append")
-          );
-          if (hasSearchOrRead && !hasWrite) {
+          if (hasSearchOrRead && !hasPopulatedSheetRows(turnSlice)) {
             console.log(`⏱️ [Agent] Cerca de MAX_ITERATIONS (${iterations}/${MAX_ITERATIONS}). Solicitando consolidación inmediata en Sheet + resumen.`);
             history.push({
               role: "user" as const,
-              content: `⏱️ AVISO DE LÍMITE DE ITERACIONES: No hagas más búsquedas ni read_url. Consolida inmediatamente los datos válidos obtenidos hasta ahora llamando a \`sheets_create\` (si aún no existe) y \`1× sheets_write\` batch en "A1", y responde con el enlace Markdown clicable y resumen compacto.`
+              content: `⏱️ AVISO DE LÍMITE DE ITERACIONES: No hagas más búsquedas ni read_url. Consolida inmediatamente los datos válidos obtenidos hasta ahora llamando a \`sheets_create\` (si aún no existe en este turno) y \`1× sheets_write\` batch en "A1" con [cabeceras, ...filas], y responde con el enlace Markdown clicable y fichas numeradas limpias (sin tabla \`|---|\`).`
             });
           }
         }

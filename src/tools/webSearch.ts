@@ -573,7 +573,8 @@ export async function readUrl(rawUrl: string): Promise<string> {
       } else if (/tiktok\.com\/@[^/?#\s]+/i.test(fullUrl) && !socialLinks.TikTok) {
         socialLinks.TikTok = fullUrl;
       } else if (/(?:wa\.me|api\.whatsapp\.com\/send)/i.test(fullUrl) && !socialLinks.WhatsApp) {
-        socialLinks.WhatsApp = fullUrl;
+        const waDigits = fullUrl.match(/(?:wa\.me\/|phone=)(\+?\d{8,15})/);
+        socialLinks.WhatsApp = waDigits ? `https://wa.me/${waDigits[1].replace(/^\+/, "")}` : fullUrl.split("?")[0];
       }
 
       // Enlace a página dedicada de contacto
@@ -613,7 +614,8 @@ export async function readUrl(rawUrl: string): Promise<string> {
     if (!socialLinks.WhatsApp) {
       const waUrlMatch = html.match(/https?:\/\/(?:wa\.me|api\.whatsapp\.com\/send)[^\s"'<>)]+/i);
       if (waUrlMatch) {
-        socialLinks.WhatsApp = waUrlMatch[0];
+        const waDigits = waUrlMatch[0].match(/(?:wa\.me\/|phone=)(\+?\d{8,15})/);
+        socialLinks.WhatsApp = waDigits ? `https://wa.me/${waDigits[1].replace(/^\+/, "")}` : waUrlMatch[0].split("?")[0];
       } else {
         const waNumMatch = bodyText.match(/whatsapp[:\s]+(\+?\d[\d\s.-]{7,16}\d)/i);
         if (waNumMatch) {

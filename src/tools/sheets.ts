@@ -428,6 +428,371 @@ export async function formatTallerPartesSheet(spreadsheetId: string, userId?: nu
   }
 }
 
+const SILVANIA_BORDER = {
+  style: "SOLID",
+  color: { red: 203 / 255, green: 213 / 255, blue: 224 / 255 }
+};
+
+async function getSheetGridAndClient(spreadsheetId: string, userId: number) {
+  const authClient = await getGoogleAuthForUser(userId);
+  if (!authClient) return null;
+  const sheets = google.sheets({ version: "v4", auth: authClient });
+  const meta = await sheets.spreadsheets.get({ spreadsheetId });
+  const sheetId = meta.data.sheets?.[0]?.properties?.sheetId || 0;
+  return { sheets, sheetId };
+}
+
+export async function formatInvoiceSheet(spreadsheetId: string, rowCount: number, userId: number): Promise<void> {
+  try {
+    const ctx = await getSheetGridAndClient(spreadsheetId, userId);
+    if (!ctx) return;
+    const { sheets, sheetId } = ctx;
+    const totalRows = Math.max(rowCount, 18);
+
+    const requests: any[] = [
+      { mergeCells: { range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 4 }, mergeType: "MERGE_ALL" } },
+      { mergeCells: { range: { sheetId, startRowIndex: 3, endRowIndex: 4, startColumnIndex: 0, endColumnIndex: 2 }, mergeType: "MERGE_ALL" } },
+      { mergeCells: { range: { sheetId, startRowIndex: 3, endRowIndex: 4, startColumnIndex: 2, endColumnIndex: 4 }, mergeType: "MERGE_ALL" } },
+      // Banner fila 1 (#1a365d)
+      {
+        repeatCell: {
+          range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 4 },
+          cell: {
+            userEnteredFormat: {
+              backgroundColor: { red: 26 / 255, green: 54 / 255, blue: 93 / 255 },
+              horizontalAlignment: "CENTER",
+              verticalAlignment: "MIDDLE",
+              textFormat: { foregroundColor: { red: 1, green: 1, blue: 1 }, bold: true, fontSize: 14 }
+            }
+          },
+          fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)"
+        }
+      },
+      // Cabeceras Emisor/Cliente fila 4 y Tabla fila 11 (#2d3748)
+      ...[3, 10].map((rIdx) => ({
+        repeatCell: {
+          range: { sheetId, startRowIndex: rIdx, endRowIndex: rIdx + 1, startColumnIndex: 0, endColumnIndex: 4 },
+          cell: {
+            userEnteredFormat: {
+              backgroundColor: { red: 45 / 255, green: 55 / 255, blue: 72 / 255 },
+              horizontalAlignment: rIdx === 10 ? "CENTER" : "LEFT",
+              verticalAlignment: "MIDDLE",
+              wrapStrategy: "WRAP",
+              textFormat: { foregroundColor: { red: 1, green: 1, blue: 1 }, bold: true, fontSize: 10 }
+            }
+          },
+          fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,wrapStrategy)"
+        }
+      })),
+      // Wrap y alineación general filas 2..totalRows
+      {
+        repeatCell: {
+          range: { sheetId, startRowIndex: 1, endRowIndex: totalRows, startColumnIndex: 0, endColumnIndex: 4 },
+          cell: { userEnteredFormat: { verticalAlignment: "MIDDLE", wrapStrategy: "WRAP" } },
+          fields: "userEnteredFormat(verticalAlignment,wrapStrategy)"
+        }
+      },
+      // Etiquetas en negrita (fila 2, A5:A9, C5:C9, C16:C18)
+      {
+        repeatCell: {
+          range: { sheetId, startRowIndex: 4, endRowIndex: 9, startColumnIndex: 0, endColumnIndex: 1 },
+          cell: { userEnteredFormat: { textFormat: { bold: true } } },
+          fields: "userEnteredFormat.textFormat.bold"
+        }
+      },
+      {
+        repeatCell: {
+          range: { sheetId, startRowIndex: 4, endRowIndex: 9, startColumnIndex: 2, endColumnIndex: 3 },
+          cell: { userEnteredFormat: { textFormat: { bold: true } } },
+          fields: "userEnteredFormat.textFormat.bold"
+        }
+      },
+      // Formato moneda € en C12:D18
+      {
+        repeatCell: {
+          range: { sheetId, startRowIndex: 11, endRowIndex: totalRows, startColumnIndex: 2, endColumnIndex: 4 },
+          cell: { userEnteredFormat: { numberFormat: { type: "CURRENCY", pattern: "#,##0.00\" €\"" }, horizontalAlignment: "RIGHT" } },
+          fields: "userEnteredFormat(numberFormat,horizontalAlignment)"
+        }
+      },
+      // Resaltar Subtotal/IVA (filas 16-17) y TOTAL (fila 18)
+      {
+        repeatCell: {
+          range: { sheetId, startRowIndex: 15, endRowIndex: 17, startColumnIndex: 2, endColumnIndex: 4 },
+          cell: { userEnteredFormat: { backgroundColor: { red: 247 / 255, green: 250 / 255, blue: 252 / 255 }, textFormat: { bold: true } } },
+          fields: "userEnteredFormat(backgroundColor,textFormat.bold)"
+        }
+      },
+      {
+        repeatCell: {
+          range: { sheetId, startRowIndex: 17, endRowIndex: 18, startColumnIndex: 2, endColumnIndex: 4 },
+          cell: {
+            userEnteredFormat: {
+              backgroundColor: { red: 219 / 255, green: 234 / 255, blue: 254 / 255 },
+              textFormat: { bold: true, fontSize: 11, foregroundColor: { red: 26 / 255, green: 54 / 255, blue: 93 / 255 } }
+            }
+          },
+          fields: "userEnteredFormat(backgroundColor,textFormat)"
+        }
+      },
+      // Bordes limpios en datos emisor/cliente y partidas
+      {
+        updateBorders: {
+          range: { sheetId, startRowIndex: 3, endRowIndex: 9, startColumnIndex: 0, endColumnIndex: 4 },
+          top: SILVANIA_BORDER, bottom: SILVANIA_BORDER, left: SILVANIA_BORDER, right: SILVANIA_BORDER,
+          innerHorizontal: SILVANIA_BORDER, innerVertical: SILVANIA_BORDER
+        }
+      },
+      {
+        updateBorders: {
+          range: { sheetId, startRowIndex: 10, endRowIndex: 14, startColumnIndex: 0, endColumnIndex: 4 },
+          top: SILVANIA_BORDER, bottom: SILVANIA_BORDER, left: SILVANIA_BORDER, right: SILVANIA_BORDER,
+          innerHorizontal: SILVANIA_BORDER, innerVertical: SILVANIA_BORDER
+        }
+      },
+      // Alturas de fila y anchos generosos (sin recortes)
+      { updateDimensionProperties: { range: { sheetId, dimension: "ROWS", startIndex: 0, endIndex: 1 }, properties: { pixelSize: 42 }, fields: "pixelSize" } },
+      { updateDimensionProperties: { range: { sheetId, dimension: "ROWS", startIndex: 10, endIndex: 11 }, properties: { pixelSize: 32 }, fields: "pixelSize" } },
+      { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 0, endIndex: 1 }, properties: { pixelSize: 230 }, fields: "pixelSize" } },
+      { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 1, endIndex: 2 }, properties: { pixelSize: 190 }, fields: "pixelSize" } },
+      { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 2, endIndex: 3 }, properties: { pixelSize: 170 }, fields: "pixelSize" } },
+      { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 3, endIndex: 4 }, properties: { pixelSize: 185 }, fields: "pixelSize" } }
+    ];
+
+    await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests } });
+    console.log(`✅ [Sheets] Estilo visual pro aplicado a Factura (${spreadsheetId})`);
+  } catch (err: any) {
+    console.warn("⚠️ [Sheets] No se pudo aplicar estilo visual a Factura:", err.message);
+  }
+}
+
+export async function formatBudgetSheet(spreadsheetId: string, matrix: (string | number)[][], hasIva: boolean, userId: number): Promise<void> {
+  try {
+    const ctx = await getSheetGridAndClient(spreadsheetId, userId);
+    if (!ctx) return;
+    const { sheets, sheetId } = ctx;
+    const totalRows = matrix.length;
+    const totalsStart = hasIva ? Math.max(9, totalRows - 3) : Math.max(9, totalRows - 1);
+
+    const requests: any[] = [
+      { mergeCells: { range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 3 }, mergeType: "MERGE_ALL" } },
+      { mergeCells: { range: { sheetId, startRowIndex: 2, endRowIndex: 3, startColumnIndex: 0, endColumnIndex: 3 }, mergeType: "MERGE_ALL" } },
+      // Banner empresa fila 1 (#1a365d)
+      {
+        repeatCell: {
+          range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 3 },
+          cell: {
+            userEnteredFormat: {
+              backgroundColor: { red: 26 / 255, green: 54 / 255, blue: 93 / 255 },
+              horizontalAlignment: "CENTER",
+              verticalAlignment: "MIDDLE",
+              textFormat: { foregroundColor: { red: 1, green: 1, blue: 1 }, bold: true, fontSize: 14 }
+            }
+          },
+          fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)"
+        }
+      },
+      // Proforma nº fila 3 (#edf2f7)
+      {
+        repeatCell: {
+          range: { sheetId, startRowIndex: 2, endRowIndex: 3, startColumnIndex: 0, endColumnIndex: 3 },
+          cell: {
+            userEnteredFormat: {
+              backgroundColor: { red: 237 / 255, green: 242 / 255, blue: 247 / 255 },
+              horizontalAlignment: "LEFT",
+              verticalAlignment: "MIDDLE",
+              textFormat: { foregroundColor: { red: 26 / 255, green: 54 / 255, blue: 93 / 255 }, bold: true, fontSize: 11 }
+            }
+          },
+          fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)"
+        }
+      },
+      // Cabecera partidas fila 9 (#2d3748)
+      {
+        repeatCell: {
+          range: { sheetId, startRowIndex: 8, endRowIndex: 9, startColumnIndex: 0, endColumnIndex: 3 },
+          cell: {
+            userEnteredFormat: {
+              backgroundColor: { red: 45 / 255, green: 55 / 255, blue: 72 / 255 },
+              horizontalAlignment: "CENTER",
+              verticalAlignment: "MIDDLE",
+              wrapStrategy: "WRAP",
+              textFormat: { foregroundColor: { red: 1, green: 1, blue: 1 }, bold: true, fontSize: 10 }
+            }
+          },
+          fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,wrapStrategy)"
+        }
+      },
+      // Wrap general y etiquetas cliente/vehículo en negrita
+      {
+        repeatCell: {
+          range: { sheetId, startRowIndex: 1, endRowIndex: totalRows, startColumnIndex: 0, endColumnIndex: 3 },
+          cell: { userEnteredFormat: { verticalAlignment: "MIDDLE", wrapStrategy: "WRAP" } },
+          fields: "userEnteredFormat(verticalAlignment,wrapStrategy)"
+        }
+      },
+      {
+        repeatCell: {
+          range: { sheetId, startRowIndex: 1, endRowIndex: 7, startColumnIndex: 0, endColumnIndex: 3 },
+          cell: { userEnteredFormat: { horizontalAlignment: "LEFT", numberFormat: { type: "TEXT" } } },
+          fields: "userEnteredFormat(horizontalAlignment,numberFormat)"
+        }
+      },
+      {
+        repeatCell: {
+          range: { sheetId, startRowIndex: 1, endRowIndex: 2, startColumnIndex: 1, endColumnIndex: 2 },
+          cell: { userEnteredFormat: { numberFormat: { type: "DATE", pattern: "dd/mm/yyyy" }, horizontalAlignment: "LEFT" } },
+          fields: "userEnteredFormat(numberFormat,horizontalAlignment)"
+        }
+      },
+      {
+        repeatCell: {
+          range: { sheetId, startRowIndex: 4, endRowIndex: 7, startColumnIndex: 0, endColumnIndex: 1 },
+          cell: { userEnteredFormat: { textFormat: { bold: true } } },
+          fields: "userEnteredFormat.textFormat.bold"
+        }
+      },
+      {
+        repeatCell: {
+          range: { sheetId, startRowIndex: 1, endRowIndex: 2, startColumnIndex: 0, endColumnIndex: 1 },
+          cell: { userEnteredFormat: { textFormat: { bold: true } } },
+          fields: "userEnteredFormat.textFormat.bold"
+        }
+      },
+      // Formato moneda € columna C en partidas y totales
+      {
+        repeatCell: {
+          range: { sheetId, startRowIndex: 9, endRowIndex: totalRows, startColumnIndex: 2, endColumnIndex: 3 },
+          cell: { userEnteredFormat: { numberFormat: { type: "CURRENCY", pattern: "#,##0.00\" €\"" }, horizontalAlignment: "RIGHT" } },
+          fields: "userEnteredFormat(numberFormat,horizontalAlignment)"
+        }
+      },
+      // Bloque de totales resaltado
+      {
+        repeatCell: {
+          range: { sheetId, startRowIndex: totalsStart, endRowIndex: totalRows, startColumnIndex: 0, endColumnIndex: 3 },
+          cell: {
+            userEnteredFormat: {
+              backgroundColor: { red: 219 / 255, green: 234 / 255, blue: 254 / 255 },
+              textFormat: { bold: true, foregroundColor: { red: 26 / 255, green: 54 / 255, blue: 93 / 255 } }
+            }
+          },
+          fields: "userEnteredFormat(backgroundColor,textFormat)"
+        }
+      },
+      // Bordes tabla partidas + ficha
+      {
+        updateBorders: {
+          range: { sheetId, startRowIndex: 8, endRowIndex: totalRows, startColumnIndex: 0, endColumnIndex: 3 },
+          top: SILVANIA_BORDER, bottom: SILVANIA_BORDER, left: SILVANIA_BORDER, right: SILVANIA_BORDER,
+          innerHorizontal: SILVANIA_BORDER, innerVertical: SILVANIA_BORDER
+        }
+      },
+      // Alturas y anchos holgados (sin recortes en A, B ni C)
+      { updateDimensionProperties: { range: { sheetId, dimension: "ROWS", startIndex: 0, endIndex: 1 }, properties: { pixelSize: 42 }, fields: "pixelSize" } },
+      { updateDimensionProperties: { range: { sheetId, dimension: "ROWS", startIndex: 8, endIndex: 9 }, properties: { pixelSize: 32 }, fields: "pixelSize" } },
+      { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 0, endIndex: 1 }, properties: { pixelSize: 150 }, fields: "pixelSize" } },
+      { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 1, endIndex: 2 }, properties: { pixelSize: 340 }, fields: "pixelSize" } },
+      { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 2, endIndex: 3 }, properties: { pixelSize: 190 }, fields: "pixelSize" } }
+    ];
+
+    await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests } });
+    console.log(`✅ [Sheets] Estilo visual pro aplicado a Presupuesto (${spreadsheetId})`);
+  } catch (err: any) {
+    console.warn("⚠️ [Sheets] No se pudo aplicar estilo visual a Presupuesto:", err.message);
+  }
+}
+
+export async function formatStyledTableSheet(spreadsheetId: string, matrix: any[][], userId: number): Promise<void> {
+  try {
+    if (!matrix || matrix.length === 0) return;
+    const colCount = Math.max(...matrix.map(r => (Array.isArray(r) ? r.length : 1)), 1);
+    const rowCount = matrix.length;
+    const ctx = await getSheetGridAndClient(spreadsheetId, userId);
+    if (!ctx) return;
+    const { sheets, sheetId } = ctx;
+
+    const requests: any[] = [
+      // Cabecera fila 1: fondo #1a365d, texto blanco, negrita, centrado
+      {
+        repeatCell: {
+          range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: colCount },
+          cell: {
+            userEnteredFormat: {
+              backgroundColor: { red: 26 / 255, green: 54 / 255, blue: 93 / 255 },
+              horizontalAlignment: "CENTER",
+              verticalAlignment: "MIDDLE",
+              wrapStrategy: "WRAP",
+              textFormat: { foregroundColor: { red: 1, green: 1, blue: 1 }, bold: true, fontSize: 10 }
+            }
+          },
+          fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,wrapStrategy)"
+        }
+      },
+      // Freeze fila 1
+      {
+        updateSheetProperties: {
+          properties: { sheetId, gridProperties: { frozenRowCount: 1 } },
+          fields: "gridProperties.frozenRowCount"
+        }
+      },
+      { updateDimensionProperties: { range: { sheetId, dimension: "ROWS", startIndex: 0, endIndex: 1 }, properties: { pixelSize: 36 }, fields: "pixelSize" } }
+    ];
+
+    if (rowCount > 1) {
+      requests.push({
+        repeatCell: {
+          range: { sheetId, startRowIndex: 1, endRowIndex: rowCount, startColumnIndex: 0, endColumnIndex: colCount },
+          cell: { userEnteredFormat: { verticalAlignment: "MIDDLE", wrapStrategy: "WRAP" } },
+          fields: "userEnteredFormat(verticalAlignment,wrapStrategy)"
+        }
+      });
+
+      for (let r = 1; r < rowCount; r++) {
+        if (r % 2 === 1) {
+          requests.push({
+            repeatCell: {
+              range: { sheetId, startRowIndex: r, endRowIndex: r + 1, startColumnIndex: 0, endColumnIndex: colCount },
+              cell: { userEnteredFormat: { backgroundColor: { red: 247 / 255, green: 250 / 255, blue: 252 / 255 } } },
+              fields: "userEnteredFormat.backgroundColor"
+            }
+          });
+        }
+      }
+    }
+
+    requests.push({
+      updateBorders: {
+        range: { sheetId, startRowIndex: 0, endRowIndex: Math.max(rowCount, 2), startColumnIndex: 0, endColumnIndex: colCount },
+        top: SILVANIA_BORDER, bottom: SILVANIA_BORDER, left: SILVANIA_BORDER, right: SILVANIA_BORDER,
+        innerHorizontal: SILVANIA_BORDER, innerVertical: SILVANIA_BORDER
+      }
+    });
+
+    const headers = Array.isArray(matrix[0]) ? matrix[0].map(h => String(h || "").toLowerCase()) : [];
+    for (let c = 0; c < colCount; c++) {
+      const h = headers[c] || "";
+      let px = 160;
+      if (/web|url|direcci|notas|descrip|fuente|concepto/.test(h)) px = 240;
+      else if (/nombre|empresa|email|correo|instagram|facebook|linkedin|whatsapp/.test(h)) px = 210;
+      else if (/tel[eé]fono|ciudad|estado|fecha|iva|total|importe/.test(h)) px = 135;
+
+      requests.push({
+        updateDimensionProperties: {
+          range: { sheetId, dimension: "COLUMNS", startIndex: c, endIndex: c + 1 },
+          properties: { pixelSize: px },
+          fields: "pixelSize"
+        }
+      });
+    }
+
+    await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests } });
+    console.log(`✅ [Sheets] Estilo visual tabla Silvania aplicado (${rowCount}x${colCount}) a ${spreadsheetId}`);
+  } catch (err: any) {
+    console.warn("⚠️ [Sheets] No se pudo aplicar estilo visual a tabla:", err.message);
+  }
+}
+
 function formatSheetsList(raw: any): string {
   const sheets: any[] = raw?.files || raw?.sheets || raw?.spreadsheets || (Array.isArray(raw) ? raw : []);
   if (!sheets || sheets.length === 0) {
@@ -502,8 +867,9 @@ export const sheetsList = async (userId?: number) => {
 export const sheetsCreate = async (title: string, userId?: number) => {
   try {
     const uId = userId || userContextStore.getStore()?.userId || 0;
-    const isTallerOrPartes = /taller|partes/i.test(title);
-    const isCanonicalPartes = /taller[-_ ]?partes/i.test(title);
+    const isBudgetOrInvoice = /\b(presupuesto|proforma|cotizaci[oó]n|budget|factura|invoice)\b/i.test(title);
+    const isTallerOrPartes = !isBudgetOrInvoice && /\b(taller|partes)\b/i.test(title);
+    const isCanonicalPartes = !isBudgetOrInvoice && /taller[-_ ]?partes/i.test(title);
 
     // Si el usuario pide crear Taller_Partes, verificar si ya existe el libro canónico y está vivo
     if (isCanonicalPartes) {
@@ -654,7 +1020,25 @@ export function extractSpreadsheetIdFromCreateOutput(text: string): string | nul
   return null;
 }
 
-export const sheetsWrite = async (spreadsheetId: string, range: string, values: string | any[][], userId?: number) => {
+function formatWriteSuccessResponse(spreadsheetId: string, range: string, viaNote: string = ""): string {
+  const editLink = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
+  const suffix = viaNote ? ` (${viaNote})` : "";
+  return `✅ **DATOS ACTUALIZADOS CORRECTAMENTE**\n${SEP}\n\n` +
+         `📊 **Documento:** [Abrir en Google Sheets](${editLink})\n` +
+         `🆔 **ID:** \`${spreadsheetId}\`\n` +
+         `🆔 **spreadsheetId:** \`${spreadsheetId}\`\n` +
+         `📍 **Rango:** ${range}\n` +
+         `🔗 **Enlace directo:** ${editLink}\n\n` +
+         `*Los datos han sido volcados en la hoja de cálculo${suffix}.*`;
+}
+
+export const sheetsWrite = async (
+  spreadsheetId: string,
+  range: string,
+  values: string | any[][],
+  userId?: number,
+  skipAutoTableStyle: boolean = false
+) => {
   if (!isValidSpreadsheetId(spreadsheetId)) {
     return `❌ Error: spreadsheet_id inválido o alucinado.`;
   }
@@ -662,17 +1046,20 @@ export const sheetsWrite = async (spreadsheetId: string, range: string, values: 
   let matrix = normalizeValuesMatrix(values);
   let effectiveRange = range;
 
+  const cachedTallerId = await dbService.getDriveFolder(uId, "sheet:Taller_Partes");
+  const isTargetTallerPartes = Boolean(cachedTallerId && cachedTallerId === spreadsheetId);
+
   // REGLAS Taller_Partes:
   // 1) Tras formatTallerPartesSheet, NUNCA reescribir cabeceras en A1.
   // 2) Solo insertar la fila de datos en A3 (o sheets_append al final), matriz 1x15.
-  // 3) Si sheetsCreate ya formateó, sheets_write/append de un parte nuevo = solo datos, sin fila de headers.
+  // 3) Solo aplica cuando el libro es Taller_Partes o trae cabeceras de Taller_Partes.
   if (matrix.length > 0 && isTallerPartesHeaderRow(matrix[0])) {
     console.warn("⚠️ [Sheets Write] Fila de cabeceras de Taller_Partes detectada en values. Descartando fila de cabeceras para proteger el banner en fila 1 y cabeceras en fila 2.");
     matrix = matrix.slice(1);
     if (!effectiveRange || /^(?:.*!)?A1(?::[A-Z0-9]+)?$/i.test(effectiveRange) || /^(?:.*!)?[A-Z]*[12](?::[A-Z0-9]+)?$/i.test(effectiveRange)) {
       effectiveRange = "A3";
     }
-  } else if (matrix.length > 0 && matrix[0].length === 15 && (/^(?:.*!)?A1(?::[A-Z0-9]+)?$/i.test(effectiveRange) || effectiveRange === "A:O")) {
+  } else if (isTargetTallerPartes && matrix.length > 0 && matrix[0].length === 15 && (/^(?:.*!)?A1(?::[A-Z0-9]+)?$/i.test(effectiveRange) || effectiveRange === "A:O")) {
     console.warn("⚠️ [Sheets Write] Intento de escribir fila de parte en A1. Redirigiendo a A3 para no sobrescribir el banner corporativo ni las cabeceras.");
     effectiveRange = "A3";
   }
@@ -681,31 +1068,27 @@ export const sheetsWrite = async (spreadsheetId: string, range: string, values: 
     return `⚠️ No hay datos que escribir (solo se habían proporcionado cabeceras que ya existen en el formato de la hoja).`;
   }
 
+  const shouldStyleGenericTable =
+    !skipAutoTableStyle &&
+    !isTargetTallerPartes &&
+    /^(?:.*!)?A1(?::[A-Z0-9]+)?$/i.test(effectiveRange) &&
+    matrix.length >= 1 &&
+    matrix[0].length >= 2;
+
   const jsonVal = JSON.stringify(matrix);
-  const editLink = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
 
   try {
-    const result = await runGog(`sheets update ${spreadsheetId} "${effectiveRange}" --values-json '${jsonVal}' --input USER_ENTERED`, uId);
-    return `✅ **DATOS ACTUALIZADOS CORRECTAMENTE**\n${SEP}\n\n` +
-           `📊 **Documento:** [Abrir en Google Sheets](${editLink})\n` +
-           `🆔 **ID:** \`${spreadsheetId}\`\n` +
-           `🆔 **spreadsheetId:** \`${spreadsheetId}\`\n` +
-           `📍 **Rango:** ${effectiveRange}\n` +
-           `🔗 **Enlace directo:** ${editLink}\n\n` +
-           `*Los datos han sido volcados en la hoja de cálculo.*`;
+    await runGog(`sheets update ${spreadsheetId} "${effectiveRange}" --values-json '${jsonVal}' --input USER_ENTERED`, uId);
+    if (shouldStyleGenericTable) await formatStyledTableSheet(spreadsheetId, matrix, uId);
+    return formatWriteSuccessResponse(spreadsheetId, effectiveRange);
   } catch (error: any) {
     if (effectiveRange.includes("!")) {
       const fallbackRange = effectiveRange.split("!").pop() || effectiveRange;
       console.log(`⚠️ Falló sheets update con rango ${effectiveRange}. Reintentando con rango simplificado ${fallbackRange}...`);
       try {
-        const result = await runGog(`sheets update ${spreadsheetId} "${fallbackRange}" --values-json '${jsonVal}' --input USER_ENTERED`, uId);
-        return `✅ **DATOS ACTUALIZADOS CORRECTAMENTE**\n${SEP}\n\n` +
-               `📊 **Documento:** [Abrir en Google Sheets](${editLink})\n` +
-               `🆔 **ID:** \`${spreadsheetId}\`\n` +
-               `🆔 **spreadsheetId:** \`${spreadsheetId}\`\n` +
-               `📍 **Rango:** ${fallbackRange}\n` +
-               `🔗 **Enlace directo:** ${editLink}\n\n` +
-               `*Los datos han sido volcados en la hoja de cálculo (fallback de rango aplicado).*`;
+        await runGog(`sheets update ${spreadsheetId} "${fallbackRange}" --values-json '${jsonVal}' --input USER_ENTERED`, uId);
+        if (shouldStyleGenericTable) await formatStyledTableSheet(spreadsheetId, matrix, uId);
+        return formatWriteSuccessResponse(spreadsheetId, fallbackRange, "fallback de rango aplicado");
       } catch (fallbackErr: any) {
         console.warn("⚠️ [Sheets Write] Fallback de rango en gog falló:", fallbackErr.message);
       }
@@ -723,13 +1106,8 @@ export const sheetsWrite = async (spreadsheetId: string, range: string, values: 
           valueInputOption: "USER_ENTERED",
           requestBody: { values: matrix }
         });
-        return `✅ **DATOS ACTUALIZADOS CORRECTAMENTE**\n${SEP}\n\n` +
-               `📊 **Documento:** [Abrir en Google Sheets](${editLink})\n` +
-               `🆔 **ID:** \`${spreadsheetId}\`\n` +
-               `🆔 **spreadsheetId:** \`${spreadsheetId}\`\n` +
-               `📍 **Rango:** ${apiRange}\n` +
-               `🔗 **Enlace directo:** ${editLink}\n\n` +
-               `*Los datos han sido volcados en la hoja de cálculo (vía API).*`;
+        if (shouldStyleGenericTable) await formatStyledTableSheet(spreadsheetId, matrix, uId);
+        return formatWriteSuccessResponse(spreadsheetId, apiRange, "vía API");
       }
     } catch (apiErr: any) {
       console.warn("⚠️ [Sheets Write] Fallback de googleapis falló:", apiErr.message);
@@ -908,7 +1286,7 @@ export const sheetsCreateInvoice = async (opts: { title: string; number?: string
     // 2. Rellenar con la matriz 2D (18x4) en una sola escritura en A1 con USER_ENTERED (español por defecto)
     const baseLocale = opts.locale || "es";
     let matrix = buildInvoiceMatrix({ number: opts.number, date: opts.date, locale: baseLocale });
-    let writeRes = await sheetsWrite(spreadsheetId, "A1", matrix, uId);
+    let writeRes = await sheetsWrite(spreadsheetId, "A1", matrix, uId, true);
 
     if (writeRes.startsWith("❌") || writeRes.startsWith("⚠️") || writeRes.includes("Error al escribir")) {
       return `❌ Error al volcar la estructura y fórmulas de la factura en la hoja (SPREADSHEET_ID=${spreadsheetId}): ${writeRes}`;
@@ -936,11 +1314,13 @@ export const sheetsCreateInvoice = async (opts: { title: string; number?: string
     if (checkLocaleFailed && baseLocale === "es") {
       console.log("⚠️ Fórmulas con error de locale detectadas en español. Reintentando en A1 con locale inglés (SUM y 0.21)...");
       matrix = buildInvoiceMatrix({ number: opts.number, date: opts.date, locale: "en" });
-      const rewriteRes = await sheetsWrite(spreadsheetId, "A1", matrix, uId);
+      const rewriteRes = await sheetsWrite(spreadsheetId, "A1", matrix, uId, true);
       if (rewriteRes.startsWith("❌") || rewriteRes.startsWith("⚠️") || rewriteRes.includes("Error al escribir")) {
         return `❌ Error al reintentar la escritura de fórmulas en inglés (SPREADSHEET_ID=${spreadsheetId}): ${rewriteRes}`;
       }
     }
+
+    await formatInvoiceSheet(spreadsheetId, matrix.length, uId);
 
     // Guardar como última hoja/factura activa de la sesión para consultas inmediatas de enlace
     await dbService.saveDriveFolder(uId, "sheet:LAST_ACTIVE", `${spreadsheetId}|${title}`);
@@ -1081,7 +1461,7 @@ export const sheetsCreateBudget = async (opts: BudgetOptions) => {
     // 2. Rellenar con la matriz de presupuesto y fórmulas vivas en A1 (español por defecto)
     const baseLocale = opts.locale || "es";
     let matrix = buildBudgetMatrix({ ...opts, locale: baseLocale });
-    let writeRes = await sheetsWrite(spreadsheetId, "A1", matrix, uId);
+    let writeRes = await sheetsWrite(spreadsheetId, "A1", matrix, uId, true);
 
     if (writeRes.startsWith("❌") || writeRes.startsWith("⚠️") || writeRes.includes("Error al escribir")) {
       return `❌ Error al volcar la estructura y fórmulas del presupuesto en la hoja (SPREADSHEET_ID=${spreadsheetId}): ${writeRes}`;
@@ -1108,11 +1488,13 @@ export const sheetsCreateBudget = async (opts: BudgetOptions) => {
     if (checkLocaleFailed && baseLocale === "es") {
       console.log("⚠️ Fórmulas con error de locale detectadas en presupuesto. Reintentando con locale inglés (SUM)...");
       matrix = buildBudgetMatrix({ ...opts, locale: "en" });
-      const rewriteRes = await sheetsWrite(spreadsheetId, "A1", matrix, uId);
+      const rewriteRes = await sheetsWrite(spreadsheetId, "A1", matrix, uId, true);
       if (rewriteRes.startsWith("❌") || rewriteRes.startsWith("⚠️") || rewriteRes.includes("Error al escribir")) {
         return `❌ Error al reintentar la escritura de fórmulas en inglés (SPREADSHEET_ID=${spreadsheetId}): ${rewriteRes}`;
       }
     }
+
+    await formatBudgetSheet(spreadsheetId, matrix, Boolean(opts?.includeIva), uId);
 
     // Guardar como última hoja/presupuesto activa de la sesión
     await dbService.saveDriveFolder(uId, "sheet:LAST_ACTIVE", `${spreadsheetId}|${title}`);

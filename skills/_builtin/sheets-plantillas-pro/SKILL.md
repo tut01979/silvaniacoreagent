@@ -18,8 +18,10 @@ Usa esta habilidad siempre que el usuario solicite crear o rellenar en Google Sh
    - Si es **presupuesto / proforma**, llama a `sheets_create_budget`.
    - Para **CRM/leads, inventario o tabla genérica**, llama a `sheets_create` con un título descriptivo (el sistema la guarda automáticamente en la carpeta canónica `silvania/`).
 2. **UNA sola escritura BATCH (`sheets_write`):**
+   - Primero reúne TODAS las filas de datos reales; **PROHIBIDO** hacer un `sheets_write` inicial con solo la fila de cabeceras y luego ir añadiendo fila a fila.
    - Pasa `values` como matriz 2D `any[][]` completa desde `"A1"` (`[cabeceras, ...filas]`) en una **única** llamada a `sheets_write`.
    - **PROHIBIDO** escribir celda a celda o hacer `>= 3` llamadas a `sheets_write` sobre el mismo `spreadsheet_id`.
+   - Todas las facturas, presupuestos y tablas escritas desde `"A1"` reciben automáticamente cabecera azul marino corporativa (`#1a365d`), bordes y anchos de columna ajustados.
 3. **Devolver enlace real en Markdown clicable:**
    - Usa únicamente el `spreadsheetId` y la URL real devueltos por la herramienta:
      `[Título de la hoja](https://docs.google.com/spreadsheets/d/<spreadsheetId>/edit)`
