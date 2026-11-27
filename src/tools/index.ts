@@ -225,13 +225,21 @@ export const tools = {
     plate?: string;
     phone?: string;
     km?: string | number;
-    items?: Array<{ unit?: number | string; description: string; total: number | string }>;
+    items?: Array<{ unit?: number | string; description: string; unit_price?: number | string; total?: number | string }>;
     note?: string;
     include_iva?: boolean;
     locale?: "es" | "en";
     userId?: number;
   }) => {
     const uId = params.userId || userContextStore.getStore()?.userId;
+    const normalizedItems = Array.isArray(params.items)
+      ? params.items.map(it => ({
+          unit: it.unit,
+          description: it.description,
+          unitPrice: it.unit_price,
+          total: it.total ?? it.unit_price ?? 0
+        }))
+      : undefined;
     return await sheetsCreateBudget({
       title: params.title,
       company: params.company,
@@ -242,7 +250,7 @@ export const tools = {
       plate: params.plate,
       phone: params.phone,
       km: params.km,
-      items: params.items,
+      items: normalizedItems,
       note: params.note,
       includeIva: params.include_iva,
       locale: params.locale,

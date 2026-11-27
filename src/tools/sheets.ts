@@ -160,6 +160,10 @@ export function normalizeValuesMatrix(values: any): any[][] {
       if (typeof cell === "boolean") return cell;
 
       const str = String(cell).trim();
+      // Evitar que números telefónicos o textos con '+' inicial sean interpretados como fórmulas inválidas (#ERROR!)
+      if (str.startsWith("+") && !str.startsWith("=")) {
+        return `'${str}`;
+      }
       // Si es un número puro sin ceros a la izquierda, no fecha y no teléfono largo con '+'
       if (str !== "" && !isNaN(Number(str)) && !/^0[0-9]+/.test(str) && !str.includes("-") && !str.includes("/")) {
         return Number(str);
@@ -575,12 +579,12 @@ export async function formatBudgetSheet(spreadsheetId: string, matrix: (string |
     const totalsStart = hasIva ? Math.max(9, totalRows - 3) : Math.max(9, totalRows - 1);
 
     const requests: any[] = [
-      { mergeCells: { range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 3 }, mergeType: "MERGE_ALL" } },
-      { mergeCells: { range: { sheetId, startRowIndex: 2, endRowIndex: 3, startColumnIndex: 0, endColumnIndex: 3 }, mergeType: "MERGE_ALL" } },
+      { mergeCells: { range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 4 }, mergeType: "MERGE_ALL" } },
+      { mergeCells: { range: { sheetId, startRowIndex: 2, endRowIndex: 3, startColumnIndex: 0, endColumnIndex: 4 }, mergeType: "MERGE_ALL" } },
       // Banner empresa fila 1 (#1a365d)
       {
         repeatCell: {
-          range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 3 },
+          range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 4 },
           cell: {
             userEnteredFormat: {
               backgroundColor: { red: 26 / 255, green: 54 / 255, blue: 93 / 255 },
@@ -595,7 +599,7 @@ export async function formatBudgetSheet(spreadsheetId: string, matrix: (string |
       // Proforma nº fila 3 (#edf2f7)
       {
         repeatCell: {
-          range: { sheetId, startRowIndex: 2, endRowIndex: 3, startColumnIndex: 0, endColumnIndex: 3 },
+          range: { sheetId, startRowIndex: 2, endRowIndex: 3, startColumnIndex: 0, endColumnIndex: 4 },
           cell: {
             userEnteredFormat: {
               backgroundColor: { red: 237 / 255, green: 242 / 255, blue: 247 / 255 },
@@ -610,7 +614,7 @@ export async function formatBudgetSheet(spreadsheetId: string, matrix: (string |
       // Cabecera partidas fila 9 (#2d3748)
       {
         repeatCell: {
-          range: { sheetId, startRowIndex: 8, endRowIndex: 9, startColumnIndex: 0, endColumnIndex: 3 },
+          range: { sheetId, startRowIndex: 8, endRowIndex: 9, startColumnIndex: 0, endColumnIndex: 4 },
           cell: {
             userEnteredFormat: {
               backgroundColor: { red: 45 / 255, green: 55 / 255, blue: 72 / 255 },
@@ -626,14 +630,14 @@ export async function formatBudgetSheet(spreadsheetId: string, matrix: (string |
       // Wrap general y etiquetas cliente/vehículo en negrita
       {
         repeatCell: {
-          range: { sheetId, startRowIndex: 1, endRowIndex: totalRows, startColumnIndex: 0, endColumnIndex: 3 },
+          range: { sheetId, startRowIndex: 1, endRowIndex: totalRows, startColumnIndex: 0, endColumnIndex: 4 },
           cell: { userEnteredFormat: { verticalAlignment: "MIDDLE", wrapStrategy: "WRAP" } },
           fields: "userEnteredFormat(verticalAlignment,wrapStrategy)"
         }
       },
       {
         repeatCell: {
-          range: { sheetId, startRowIndex: 1, endRowIndex: 7, startColumnIndex: 0, endColumnIndex: 3 },
+          range: { sheetId, startRowIndex: 1, endRowIndex: 7, startColumnIndex: 0, endColumnIndex: 4 },
           cell: { userEnteredFormat: { horizontalAlignment: "LEFT", numberFormat: { type: "TEXT" } } },
           fields: "userEnteredFormat(horizontalAlignment,numberFormat)"
         }
@@ -654,23 +658,46 @@ export async function formatBudgetSheet(spreadsheetId: string, matrix: (string |
       },
       {
         repeatCell: {
+          range: { sheetId, startRowIndex: 5, endRowIndex: 7, startColumnIndex: 2, endColumnIndex: 3 },
+          cell: { userEnteredFormat: { textFormat: { bold: true } } },
+          fields: "userEnteredFormat.textFormat.bold"
+        }
+      },
+      {
+        repeatCell: {
           range: { sheetId, startRowIndex: 1, endRowIndex: 2, startColumnIndex: 0, endColumnIndex: 1 },
           cell: { userEnteredFormat: { textFormat: { bold: true } } },
           fields: "userEnteredFormat.textFormat.bold"
         }
       },
-      // Formato moneda € columna C en partidas y totales
+      // Cantidad centrada en columna A
       {
         repeatCell: {
-          range: { sheetId, startRowIndex: 9, endRowIndex: totalRows, startColumnIndex: 2, endColumnIndex: 3 },
+          range: { sheetId, startRowIndex: 9, endRowIndex: hasIva ? Math.max(9, totalRows - 4) : Math.max(9, totalRows - 2), startColumnIndex: 0, endColumnIndex: 1 },
+          cell: { userEnteredFormat: { horizontalAlignment: "CENTER", numberFormat: { type: "NUMBER", pattern: "0.##" } } },
+          fields: "userEnteredFormat(horizontalAlignment,numberFormat)"
+        }
+      },
+      // Formato moneda € columnas C y D en partidas y totales
+      {
+        repeatCell: {
+          range: { sheetId, startRowIndex: 9, endRowIndex: totalRows, startColumnIndex: 2, endColumnIndex: 4 },
           cell: { userEnteredFormat: { numberFormat: { type: "CURRENCY", pattern: "#,##0.00\" €\"" }, horizontalAlignment: "RIGHT" } },
           fields: "userEnteredFormat(numberFormat,horizontalAlignment)"
+        }
+      },
+      // Etiquetas de totales en negrita (col C)
+      {
+        repeatCell: {
+          range: { sheetId, startRowIndex: totalsStart, endRowIndex: totalRows, startColumnIndex: 2, endColumnIndex: 3 },
+          cell: { userEnteredFormat: { horizontalAlignment: "RIGHT" } },
+          fields: "userEnteredFormat.horizontalAlignment"
         }
       },
       // Bloque de totales resaltado
       {
         repeatCell: {
-          range: { sheetId, startRowIndex: totalsStart, endRowIndex: totalRows, startColumnIndex: 0, endColumnIndex: 3 },
+          range: { sheetId, startRowIndex: totalsStart, endRowIndex: totalRows, startColumnIndex: 0, endColumnIndex: 4 },
           cell: {
             userEnteredFormat: {
               backgroundColor: { red: 219 / 255, green: 234 / 255, blue: 254 / 255 },
@@ -683,17 +710,18 @@ export async function formatBudgetSheet(spreadsheetId: string, matrix: (string |
       // Bordes tabla partidas + ficha
       {
         updateBorders: {
-          range: { sheetId, startRowIndex: 8, endRowIndex: totalRows, startColumnIndex: 0, endColumnIndex: 3 },
+          range: { sheetId, startRowIndex: 8, endRowIndex: totalRows, startColumnIndex: 0, endColumnIndex: 4 },
           top: SILVANIA_BORDER, bottom: SILVANIA_BORDER, left: SILVANIA_BORDER, right: SILVANIA_BORDER,
           innerHorizontal: SILVANIA_BORDER, innerVertical: SILVANIA_BORDER
         }
       },
-      // Alturas y anchos holgados (sin recortes en A, B ni C)
+      // Alturas y anchos holgados (sin recortes en A, B, C ni D)
       { updateDimensionProperties: { range: { sheetId, dimension: "ROWS", startIndex: 0, endIndex: 1 }, properties: { pixelSize: 42 }, fields: "pixelSize" } },
       { updateDimensionProperties: { range: { sheetId, dimension: "ROWS", startIndex: 8, endIndex: 9 }, properties: { pixelSize: 32 }, fields: "pixelSize" } },
-      { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 0, endIndex: 1 }, properties: { pixelSize: 150 }, fields: "pixelSize" } },
-      { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 1, endIndex: 2 }, properties: { pixelSize: 340 }, fields: "pixelSize" } },
-      { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 2, endIndex: 3 }, properties: { pixelSize: 190 }, fields: "pixelSize" } }
+      { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 0, endIndex: 1 }, properties: { pixelSize: 120 }, fields: "pixelSize" } },
+      { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 1, endIndex: 2 }, properties: { pixelSize: 310 }, fields: "pixelSize" } },
+      { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 2, endIndex: 3 }, properties: { pixelSize: 155 }, fields: "pixelSize" } },
+      { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 3, endIndex: 4 }, properties: { pixelSize: 165 }, fields: "pixelSize" } }
     ];
 
     await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests } });
@@ -775,7 +803,17 @@ export async function formatStyledTableSheet(spreadsheetId: string, matrix: any[
       let px = 160;
       if (/web|url|direcci|notas|descrip|fuente|concepto/.test(h)) px = 240;
       else if (/nombre|empresa|email|correo|instagram|facebook|linkedin|whatsapp/.test(h)) px = 210;
-      else if (/tel[eé]fono|ciudad|estado|fecha|iva|total|importe/.test(h)) px = 135;
+      else if (/tel[eé]fono|phone|ciudad|estado|fecha|iva|total|importe/.test(h)) px = 145;
+
+      if (/tel[eé]fono|phone|m[oó]vil|fax/.test(h) && rowCount > 1) {
+        requests.push({
+          repeatCell: {
+            range: { sheetId, startRowIndex: 1, endRowIndex: rowCount, startColumnIndex: c, endColumnIndex: c + 1 },
+            cell: { userEnteredFormat: { numberFormat: { type: "TEXT" }, horizontalAlignment: "LEFT" } },
+            fields: "userEnteredFormat(numberFormat,horizontalAlignment)"
+          }
+        });
+      }
 
       requests.push({
         updateDimensionProperties: {
@@ -1342,6 +1380,7 @@ export const sheetsCreateInvoice = async (opts: { title: string; number?: string
 export interface BudgetItem {
   unit?: number | string;
   description: string;
+  unitPrice?: number | string;
   total: number | string;
 }
 
@@ -1362,6 +1401,31 @@ export interface BudgetOptions {
   userId?: number;
 }
 
+function parseNumericAmount(rawVal: number | string | undefined): number {
+  if (typeof rawVal === "number" && !isNaN(rawVal)) return rawVal;
+  if (typeof rawVal === "string") {
+    const cleaned = rawVal.replace(/[€$\s]/g, "").replace(",", ".");
+    const n = parseFloat(cleaned);
+    if (!isNaN(n)) return n;
+  }
+  return 0;
+}
+
+function normalizeBudgetQuantity(rawUnit: number | string | undefined, description: string): { qty: number; desc: string } {
+  if (typeof rawUnit === "number" && !isNaN(rawUnit) && rawUnit > 0) {
+    return { qty: rawUnit, desc: description };
+  }
+  const str = String(rawUnit ?? "").trim();
+  if (!str) return { qty: 1, desc: description };
+  const numMatch = str.replace(",", ".").match(/\d+(?:\.\d+)?/);
+  if (numMatch) {
+    const n = parseFloat(numMatch[0]);
+    if (!isNaN(n) && n > 0) return { qty: n, desc: description };
+  }
+  const suffix = description && !description.toLowerCase().includes(str.toLowerCase()) ? ` (${str})` : "";
+  return { qty: 1, desc: `${description}${suffix}`.trim() };
+}
+
 export function buildBudgetMatrix(opts?: BudgetOptions): (string | number)[][] {
   const isEn = opts?.locale === "en";
   const company = opts?.company || "TALLER HNOS LEONCIO";
@@ -1379,63 +1443,66 @@ export function buildBudgetMatrix(opts?: BudgetOptions): (string | number)[][] {
     { unit: 1, description: "HORQUILLA DELANTERA", total: 250 },
     { unit: 1, description: "ENCARENADO PEUGEOT SCOOTER 125", total: 280 },
     { unit: 1, description: "GUARDABARRO DELANTERO", total: 80 },
-    { unit: "", description: "CUADRO DE LUCES", total: 120 },
-    { unit: "", description: "MANILLA DELANTERO 40X2", total: 80 },
+    { unit: 1, description: "CUADRO DE LUCES", total: 120 },
+    { unit: 1, description: "MANILLA DELANTERO 40X2", total: 80 },
     { unit: 1, description: "PROTECTOR PANTALLA DELANTERA", total: 60 },
     { unit: 1, description: "RETROVISOR DERECHO", total: 52 },
-    { unit: "", description: "RETROVISOR IZQUIERDO", total: 52 },
-    { unit: "", description: "NEUMATICO DELANTERO", total: 72 },
-    { unit: "", description: "LLANTA DE ALUMINIO DELANTERA", total: 138 },
-    { unit: "", description: "MANO DE OBRA", total: 350 }
+    { unit: 1, description: "RETROVISOR IZQUIERDO", total: 52 },
+    { unit: 1, description: "NEUMATICO DELANTERO", total: 72 },
+    { unit: 1, description: "LLANTA DE ALUMINIO DELANTERA", total: 138 },
+    { unit: 1, description: "MANO DE OBRA", total: 350 }
   ];
 
   const itemsToUse = (opts?.items && opts.items.length > 0) ? opts.items : defaultItems;
 
   const matrix: (string | number)[][] = [
-    [company, "", ""],
-    ["FECHA:", budgetDate, ""],
-    [`PROFORMA ${budgetNum}`, "", ""],
-    ["", "", ""],
-    ["CLIENTE:", client, ""],
-    ["VEHICULO:", vehicle, `MATRICULA: ${plate}`],
-    ["TELEFONO:", phone, `KM: ${km}`],
-    ["", "", ""],
-    ["UNIDAD", "DESCRIPCION", "TOTAL (€)"]
+    [company, "", "", ""],
+    ["FECHA:", budgetDate, "", ""],
+    [`PROFORMA ${budgetNum}`, "", "", ""],
+    ["", "", "", ""],
+    ["CLIENTE:", client, "", ""],
+    ["VEHICULO:", vehicle, "MATRICULA:", plate],
+    ["TELEFONO:", phone, "KM:", km],
+    ["", "", "", ""],
+    ["UNIDAD", "DESCRIPCION", "PRECIO UNIT. (€)", "TOTAL (€)"]
   ];
 
   const firstItemRow = matrix.length + 1; // fila 10 en base 1
 
   for (const item of itemsToUse) {
-    const rawVal = item.total;
-    let parsedVal: number | string = rawVal;
-    if (typeof rawVal === "string") {
-      const cleaned = rawVal.replace(/[€\s]/g, "").replace(",", ".");
-      const n = parseFloat(cleaned);
-      if (!isNaN(n)) parsedVal = n;
-    }
+    const rowNum = matrix.length + 1;
+    const { qty, desc } = normalizeBudgetQuantity(item.unit, item.description || "");
+    const rawUnitPrice = item.unitPrice !== undefined ? parseNumericAmount(item.unitPrice) : NaN;
+    const rawTotal = parseNumericAmount(item.total);
+    const unitPrice = !isNaN(rawUnitPrice) && rawUnitPrice > 0
+      ? rawUnitPrice
+      : (qty > 0 ? Math.round((rawTotal / qty) * 100) / 100 : rawTotal);
+
     matrix.push([
-      item.unit !== undefined ? item.unit : 1,
-      item.description || "",
-      parsedVal
+      qty,
+      desc,
+      unitPrice,
+      `=A${rowNum}*C${rowNum}`
     ]);
   }
 
   const lastItemRow = matrix.length; // última fila de partidas
 
-  matrix.push(["", "", ""]); // fila en blanco
+  matrix.push(["", "", "", ""]); // fila en blanco
 
   if (opts?.includeIva) {
     const subtotalRow = matrix.length + 1;
     const ivaRow = matrix.length + 2;
-    matrix.push(["", "Subtotal", isEn ? `=SUM(C${firstItemRow}:C${lastItemRow})` : `=SUMA(C${firstItemRow}:C${lastItemRow})`]);
-    matrix.push(["", "IVA 21%", isEn ? `=C${subtotalRow}*0.21` : `=C${subtotalRow}*0,21`]);
-    matrix.push(["", "TOTAL CON IVA", `=C${subtotalRow}+C${ivaRow}`]);
+    matrix.push(["", "", "Subtotal", isEn ? `=SUM(D${firstItemRow}:D${lastItemRow})` : `=SUMA(D${firstItemRow}:D${lastItemRow})`]);
+    matrix.push(["", "", "IVA 21%", isEn ? `=D${subtotalRow}*0.21` : `=D${subtotalRow}*0,21`]);
+    matrix.push(["", "", "TOTAL CON IVA", `=D${subtotalRow}+D${ivaRow}`]);
   } else {
     const note = opts?.note || "Nota: Esta proforma no incluye IVA";
     matrix.push([
       note,
+      "",
       "TOTAL",
-      isEn ? `=SUM(C${firstItemRow}:C${lastItemRow})` : `=SUMA(C${firstItemRow}:C${lastItemRow})`
+      isEn ? `=SUM(D${firstItemRow}:D${lastItemRow})` : `=SUMA(D${firstItemRow}:D${lastItemRow})`
     ]);
   }
 
@@ -1470,7 +1537,7 @@ export const sheetsCreateBudget = async (opts: BudgetOptions) => {
     // 3. Verificar si falló por locale EN (p. ej. #NAME?, #VALUE!, #¿NOMBRE?)
     let checkLocaleFailed = false;
     try {
-      const readRes = await sheetsRead(spreadsheetId, `C${matrix.length - 2}:C${matrix.length}`, uId);
+      const readRes = await sheetsRead(spreadsheetId, `D${matrix.length - 2}:D${matrix.length}`, uId);
       if (
         readRes.includes("#NAME?") ||
         readRes.includes("#VALUE!") ||

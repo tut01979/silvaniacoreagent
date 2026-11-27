@@ -507,7 +507,7 @@ export const llmService = {
         type: "function",
         function: {
           name: "sheets_create_budget",
-          description: "HERRAMIENTA OBLIGATORIA Y ATÓMICA para crear presupuestos o proformas en Google Sheets con cálculo automático de totales (=SUMA(...) / =SUM(...)). Modela la estructura completa: Empresa/Taller, Fecha, Proforma Nº, Ficha de Cliente (Cliente, Vehículo, Matrícula, Teléfono, KM), tabla de partidas (Unidad | Descripción | Total) y cálculo de totales vivo con fórmulas reales. Al responder entrega el enlace Markdown [Nombre](https://docs.google.com/spreadsheets/d/ID/edit).",
+          description: "HERRAMIENTA OBLIGATORIA Y ATÓMICA para crear presupuestos o proformas en Google Sheets con cálculo automático de totales (=Ax*Cx y =SUMA(...) / =SUM(...)). Modela la estructura completa en 4 columnas (A:D): Empresa/Taller, Fecha, Proforma Nº, Ficha de Cliente (Cliente, Vehículo, Matrícula, Teléfono, KM), tabla de partidas (Unidad | Descripción | Precio Unit. (€) | Total (€) con fórmula =Ax*Cx) y cálculo de totales vivo con fórmulas reales. Al responder entrega el enlace Markdown [Nombre](https://docs.google.com/spreadsheets/d/ID/edit).",
           parameters: {
             type: "object",
             properties: {
@@ -526,11 +526,12 @@ export const llmService = {
                 items: {
                   type: "object",
                   properties: {
-                    unit: { type: "string", description: "Unidades o cantidad" },
+                    unit: { type: "number", description: "Unidades o cantidad numérica (por defecto 1)" },
                     description: { type: "string", description: "Descripción de la pieza o trabajo" },
-                    total: { type: "number", description: "Importe total de la partida en euros" }
+                    unit_price: { type: "number", description: "Precio unitario en euros (opcional; si se omite se deriva de total/unit)" },
+                    total: { type: "number", description: "Importe total de la partida en euros si no se pasa unit_price" }
                   },
-                  required: ["description", "total"]
+                  required: ["description"]
                 }
               },
               note: { type: "string", description: "Nota explicativa de pie (ej: 'Nota: Esta proforma no incluye IVA')" },

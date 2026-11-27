@@ -642,7 +642,7 @@ Columnas:
 - Estructura profesional (como en proformas físicas de taller):
   1. Cabecera: Empresa / Taller, Fecha (=HOY() o fecha explícita), Proforma / Presupuesto Nº.
   2. Ficha de cliente/vehículo: Cliente, Vehículo, Matrícula, Teléfono, KM.
-  3. Tabla de partidas: Unidad | Descripción | Total (€).
+  3. Tabla de partidas: Unidad | Descripción | Precio Unit. (€) | Total (€) (=Ax*Cx, recalculado automáticamente al cambiar la cantidad).
   4. Cálculo automático con fórmula viva =SUMA(...) en español (o =SUM(...) en inglés).
   5. Nota de IVA al pie ('Nota: Esta proforma no incluye IVA' o desglose de Subtotal + IVA + Total si aplica).
 - Al responder, proporciona siempre el enlace Markdown: [Nombre](https://docs.google.com/spreadsheets/d/ID/edit).
