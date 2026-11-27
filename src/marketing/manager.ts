@@ -175,6 +175,9 @@ export const marketingManager = {
           sceneIndex: 1,
           sceneTitle: scriptRes.data.title,
           product: targetProduct,
+          videoTopic: topic,
+          scriptTitle: scriptRes.data.title,
+          scriptHook: scriptRes.data.hook,
         });
         coverImagePath = imgRes.filePath;
         draft.imageUrls.push(imgRes.filePath);
@@ -333,12 +336,14 @@ export const marketingManager = {
             .toLowerCase()
             .normalize("NFD")
             .replace(/[\u0300-\u036f]/g, "");
-          let sceneProduct = explicitTopicProduct || undefined;
-          if (/\bcoreagent\b|\bcore agent\b|gmail|calendar|google drive|ordenes por voz|asistente ejecutivo|productividad profesional/.test(normSceneCtx)) {
+          let sceneProduct = explicitTopicProduct || (targetProduct === "coreagent" ? "coreagent" : undefined);
+          if (explicitTopicProduct === "coreagent" || explicitTopicProduct === "marketing") {
+            sceneProduct = explicitTopicProduct;
+          } else if (/\bcoreagent\b|\bcore agent\b|\bgmail\b|\bcalendar\b|\bgoogle drive\b|\bsheets\b|\bprospecci|\btablas\b|\bCRM\b|\bfactura|\bpresupuesto|ordenes por voz|asistente ejecutivo|productividad profesional/i.test(normSceneCtx)) {
             sceneProduct = "coreagent";
-          } else if (/\beva\b|ninos|jugando|escuela|escolar|profesora|fonema|logopedia|infantil/.test(normSceneCtx)) {
+          } else if (/\beva\b|\bninos\b|\bjugando\b|\bescuela\b|\bescolar\b|\bprofesora\b|\bfonema|\blogopedia\b|\binfantil\b/.test(normSceneCtx)) {
             sceneProduct = "eva";
-          } else if (/marketing studio|marketing agent|campana publicitaria|hitl/.test(normSceneCtx)) {
+          } else if (/marketing studio|marketing agent|campana publicitaria|\bhitl\b/.test(normSceneCtx)) {
             sceneProduct = "marketing";
           }
 
@@ -362,6 +367,9 @@ export const marketingManager = {
               visualConcepts: Array.isArray(scene.visualConcepts) ? scene.visualConcepts : [],
               lastCategory: lastSelectedCategory,
               pureStorytelling: isPureStory,
+              videoTopic: topic,
+              scriptTitle: scriptRes.data.title,
+              scriptHook: scriptRes.data.hook,
             });
             lastSelectedCategory = imgRes.category || "";
             sceneImgPath = imgRes.filePath;

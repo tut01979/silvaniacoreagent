@@ -83,21 +83,21 @@ const SEMANTIC_AXES: string[][] = [
   // 2: Descubrimiento / Innovación / Curiosidad / Idea
   ["descubrimiento", "descubrir", "curiosidad", "innovacion", "revelacion", "chispa", "idea", "explorar", "asombro", "creatividad", "ingenio", "discovery", "innovation", "wonder", "creative"],
   // 3: Suspense / Tensión / Problema / Urgencia
-  ["suspense", "tension", "problema", "caos", "urgencia", "riesgo", "misterio", "saturacion", "papeleo", "burocracia", "presion", "retraso", "conflict", "tension", "chaos", "urgent", "problem"],
+  ["suspense", "tension", "problema", "caos", "urgencia", "riesgo", "misterio", "saturacion", "papeleo", "burocracia", "presion", "retraso", "lenta", "lento", "tediosa", "tedioso", "manual", "repetitivo", "repetitiva", "desorden", "copiar", "pegar", "conflict", "tension", "chaos", "urgent", "problem", "slow", "tedious", "manual", "repetitive"],
   // 4: Calma / Serenidad / Paz interior / Meditación / Alivio
   ["calma", "alivio", "paz", "serenidad", "tranquilidad", "descanso", "equilibrio", "libertad", "bienestar", "meditacion", "meditar", "respirar", "mindfulness", "relajacion", "armonia", "calm", "relief", "peace", "serenity", "meditation", "breath", "harmony"],
-  // 5: Automatización / Flujo / Orquestación / Sistemas
-  ["automatizacion", "automatizar", "flujo", "workflow", "orquestacion", "autonomo", "24/7", "sincronizacion", "pipeline", "nodos", "trigger", "automation", "autonomous"],
-  // 6: Documentos apilados / Archivos / Digitalización
-  ["documento", "documentos", "apilados", "papeles", "carpetas", "archivo", "pdf", "contrato", "factura", "resumen", "digitalizacion", "stacked", "papers", "files", "documents"],
+  // 5: Automatización / Flujo / Orquestación / Sistemas / Prospección
+  ["automatizacion", "automatizar", "flujo", "workflow", "orquestacion", "autonomo", "24/7", "sincronizacion", "pipeline", "nodos", "trigger", "prospeccion", "prospectar", "leads", "scraping", "extractor", "captacion", "batch", "automatico", "automation", "autonomous", "prospecting", "extraction"],
+  // 6: Documentos apilados / Archivos / Digitalización / Plantillas
+  ["documento", "documentos", "apilados", "papeles", "carpetas", "archivo", "pdf", "contrato", "factura", "presupuesto", "proforma", "plantilla", "registro", "ficha", "fichas", "informe", "resumen", "digitalizacion", "stacked", "papers", "files", "documents", "template", "invoice", "quote"],
   // 7: Robots / Androides / Agentes IA
   ["robot", "robots", "androide", "humanoide", "asistente", "agente", "ia", "inteligencia", "artificial", "coreagent", "nucleo", "bot", "ai"],
   // 8: Oficinas modernas / Despacho / Ejecutivo / CEO
-  ["oficina", "despacho", "ejecutivo", "ceo", "junta", "directiva", "cristal", "marmol", "corporativo", "empresa", "b2b", "office", "executive", "corporate", "desk"],
-  // 9: Productividad / Rendimiento / Agenda / Eficiencia
-  ["productividad", "ahorro", "eficiencia", "velocidad", "rapidez", "rendimiento", "agenda", "prioridad", "productivity", "efficiency", "performance"],
-  // 10: Google Workspace (Drive, Gmail, Calendar, Sheets, Docs)
-  ["google", "workspace", "gmail", "correo", "email", "calendar", "calendario", "citas", "drive", "sheets", "hojas", "docs", "nube", "cloud"],
+  ["oficina", "despacho", "ejecutivo", "ceo", "junta", "directiva", "cristal", "marmol", "corporativo", "empresa", "b2b", "negocio", "pyme", "office", "executive", "corporate", "desk", "business"],
+  // 9: Productividad / Rendimiento / Agenda / Eficiencia / Estructura
+  ["productividad", "ahorro", "eficiencia", "velocidad", "rapidez", "agil", "instantaneo", "directo", "estructurado", "estructurada", "funcional", "organizado", "organizacion", "rendimiento", "agenda", "prioridad", "productivity", "efficiency", "performance", "structured", "organized"],
+  // 10: Google Workspace (Drive, Gmail, Calendar, Sheets, Tablas, CRM)
+  ["google", "workspace", "gmail", "correo", "email", "calendar", "calendario", "citas", "drive", "sheets", "hojas", "tabla", "tablas", "fila", "filas", "columna", "columnas", "celda", "celdas", "formula", "formulas", "crm", "spreadsheet", "spreadsheets", "table", "tables", "docs", "nube", "cloud"],
   // 11: Voz / Telegram / Mensajería instantánea / Smartphone
   ["voz", "telegram", "audio", "comando", "mensaje", "chat", "manos libres", "movil", "smartphone", "telefono", "voice", "mobile", "phone"],
   // 12: Publicidad / Anuncios / Estudio de grabación
@@ -108,8 +108,8 @@ const SEMANTIC_AXES: string[][] = [
   ["aceptacion", "aprobacion", "aprobado", "satisfecho", "estrellas", "testimonio", "aplauso", "acuerdo", "cierre", "venta", "apreton", "handshake", "agreement", "approval", "deal"],
   // 15: Redes Sociales / Viralidad / Creadores
   ["redes", "sociales", "social", "reels", "shorts", "tiktok", "instagram", "linkedin", "youtube", "viral", "creador", "comunidad", "engagement"],
-  // 16: Analítica / ROI / Métricas / Gráficos / Crecimiento
-  ["analitica", "roi", "metricas", "grafico", "crecimiento", "ventas", "datos", "optimizacion", "dashboard", "radar", "escalar", "analytics", "growth", "chart"],
+  // 16: Analítica / ROI / Métricas / Gráficos / Datos reales / Investigación
+  ["analitica", "roi", "metricas", "grafico", "crecimiento", "ventas", "datos", "optimizacion", "dashboard", "radar", "escalar", "investigacion", "investigar", "busqueda", "web", "directorio", "contacto", "contactos", "verificado", "fuente", "analytics", "growth", "chart", "research", "database", "verified"],
   // 17: Eva / Clases escolares / Colegio / Aula / Niños
   ["eva", "clase", "clases", "escolar", "escolares", "colegio", "escuela", "aula", "alumnos", "estudiantes", "ninos", "nino", "nina", "infantil", "school", "kids", "children"],
   // 18: Profesora humana / Logopeda / Terapia del habla
@@ -245,10 +245,34 @@ const CONCEPT_EXPANSIONS: Record<string, string[]> = {
   riqueza: ["millonario", "exito", "rascacielos", "inversor", "fortuna", "libertad"],
   tiempo: ["reloj", "amanecer", "atardecer", "engranajes", "paciencia"],
   futuro: ["horizonte", "amanecer", "cielo", "holograma", "tecnologia", "esperanza"],
+  prospeccion: ["automatizacion", "datos", "clientes", "ordenador", "sheets", "crm", "web", "leads", "oficina", "ejecutivo"],
+  prospectar: ["automatizacion", "datos", "clientes", "ordenador", "sheets", "web", "leads"],
+  leads: ["clientes", "prospeccion", "crm", "sheets", "tablas", "ventas", "datos"],
+  sheets: ["tablas", "hojas", "datos", "workspace", "formulas", "ordenador", "oficina", "productividad"],
+  tabla: ["sheets", "datos", "filas", "columnas", "formulas", "estructurada", "ordenador"],
+  tablas: ["sheets", "datos", "filas", "columnas", "formulas", "estructuradas", "ordenador"],
+  manual: ["papeleo", "estres", "saturacion", "reloj", "lento", "documentos"],
+  tediosa: ["papeleo", "estres", "saturacion", "reloj", "lento", "documentos"],
+  lenta: ["reloj", "retraso", "papeleo", "estres", "saturacion"],
+  automatizacion: ["flujo", "robot", "holograma", "nodos", "eficiencia", "workspace", "coreagent"],
+  automatizar: ["flujo", "robot", "holograma", "nodos", "eficiencia", "workspace", "coreagent"],
+  factura: ["plantilla", "sheets", "documento", "calculo", "oficina", "finanzas"],
+  presupuesto: ["proforma", "plantilla", "sheets", "calculo", "cliente", "taller"],
+  crm: ["leads", "clientes", "sheets", "datos", "tablas", "prospeccion"],
+  investigacion: ["web", "busqueda", "datos", "analitica", "ordenador", "verificado"],
 };
 
 const AXIS_WORD_MAP = new Map<string, number[]>();
 const AXIS_STEM_MAP = new Map<string, number[]>();
+
+export function normalizeText(raw: string): string {
+  return (raw || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9_]+/g, " ")
+    .trim();
+}
 
 export function normalizeToken(raw: string): string {
   return raw

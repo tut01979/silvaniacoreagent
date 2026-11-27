@@ -11,6 +11,20 @@ if (!fs.existsSync(dbDir)) {
 
 const db = new Database(config.db.path);
 
+// Cachear statements preparados para rendimiento SQLite y evitar destrucción GC en Node 24
+const stmtCache = new Map<string, Database.Statement>();
+const rawPrepare = db.prepare.bind(db);
+(db as any).prepare = (sql: string): Database.Statement => {
+  let stmt = stmtCache.get(sql);
+  if (!stmt) {
+    stmt = rawPrepare(sql);
+    if (stmtCache.size < 256) {
+      stmtCache.set(sql, stmt);
+    }
+  }
+  return stmt;
+};
+
 
 // Sistema de Migración de Esquemas de Base de Datos
 let currentVersion = 0;
@@ -637,6 +651,7 @@ export const dbService = {
   },
 
   close: (): void => {
+    stmtCache.clear();
     try {
       db.close();
     } catch {}

@@ -35,6 +35,148 @@ function hasPopulatedSheetRows(msgs: any[]): boolean {
   return false;
 }
 
+/** Detecta si el mensaje del usuario pide modificar/rectificar/añadir sobre una hoja o plantilla existente en lugar de crear una nueva. */
+export function isEditExistingSheetIntent(text: string): boolean {
+  if (!text) return false;
+  const norm = text.toLowerCase();
+  const explicitNew = /\b(crea\w*\s+un[oa]?\s+nuev[oa]|haz\w*\s+un[oa]?\s+nuev[oa]|genera\w*\s+un[oa]?\s+nuev[oa]|nuev[oa]\s+(?:plantilla|presupuesto|proforma|factura|hoja|tabla)|otr[oa]\s+(?:plantilla|presupuesto|proforma|factura|hoja|tabla)|desde\s+cero|duplica\w*|hacer\s+una\s+copia)\b/i.test(norm);
+  if (explicitNew) return false;
+
+  const hasEditVerb = /\b(modifica\w*|rectifica\w*|corrige|corregir|cambia\w*|actualiza\w*|edita\w*|reemplaza\w*|sustituye\w*|a[ñn]ad[ea]\w*|a[ñn]adir|a[ñn][aá]dele|agreg[ae]\w*|agr[eé]gale|quita\w*|elimina\s+(?:fila|columna|campo|partida)|completa\w*|ponle|incluy[ae]\w*|incluir|ajusta\w*|arregla\w*|rehace\w*|rehaz\w*)\b/i.test(norm);
+  if (!hasEditVerb) return false;
+
+  const mentionsSheetTarget = /\b(plantilla|presupuesto|proforma|cotizaci[oó]n|factura|hoja|tabla|sheets?|partidas?|campos?|filas?|columnas?|iva|cliente|veh[ií]culo|matr[ií]cula|conceptos?)\b/i.test(norm);
+  const mentionsNonSheetDomain = /\b(calendario|evento|cita|reuni[oó]n|alarma|recordatorio|voz|luz|tema|correo|email|gmail|contrase[ñn]a)\b/i.test(norm);
+  return mentionsSheetTarget || !mentionsNonSheetDomain;
+}
+
+/** Resuelve el ID de la hoja activa más apropiada en DB/historial para editar in-place sin duplicar. */
+export async function resolveActiveSpreadsheetForEdit(
+  userId: number,
+  contextHint: string = "",
+  history?: any[]
+): Promise<{ id: string; title: string; kind: "budget" | "invoice" | "active" } | null> {
+  const urlOrIdMatch =
+    contextHint.match(/https:\/\/docs\.google\.com\/spreadsheets\/d\/([A-Za-z0-9_-]{20,80})/i) ||
+    contextHint.match(/SPREADSHEET_ID=([A-Za-z0-9_-]{20,80})/i);
+  if (urlOrIdMatch?.[1]) {
+    return { id: urlOrIdMatch[1], title: "Hoja indicada", kind: "active" };
+  }
+
+  const parseEntry = (raw: string | null | undefined, kind: "budget" | "invoice" | "active", defaultTitle: string) => {
+    if (!raw) return null;
+    const [id, title] = raw.split("|");
+    if (!id || id.length < 20) return null;
+    return { id, title: title || defaultTitle, kind };
+  };
+
+  try {
+    const [rawBudget, rawInvoice, rawActive] = await Promise.all([
+      dbService.getDriveFolder(userId, "sheet:LAST_BUDGET"),
+      dbService.getDriveFolder(userId, "sheet:LAST_INVOICE"),
+      dbService.getDriveFolder(userId, "sheet:LAST_ACTIVE")
+    ]);
+    const budget = parseEntry(rawBudget, "budget", "Presupuesto");
+    const invoice = parseEntry(rawInvoice, "invoice", "Factura");
+    const active = parseEntry(rawActive, "active", "Hoja de cálculo");
+
+    const hint = contextHint.toLowerCase();
+    if (/\b(factura|facturas|invoice)\b/i.test(hint)) {
+      return invoice || active || budget;
+    }
+    if (/\b(presupuesto|presupuestos|proforma|proformas|cotizaci[oó]n|budget)\b/i.test(hint)) {
+      return budget || active || invoice;
+    }
+    return active || budget || invoice;
+  } catch {}
+
+  const fallback = await getLastSessionSpreadsheet(userId, history);
+  if (fallback) {
+    return { id: fallback.id, title: fallback.title, kind: "active" };
+  }
+  return null;
+}
+
+/** Construye bloque informativo con las hojas activas del usuario para evitar creaciones duplicadas. */
+async function buildActiveSheetsContextBlock(userId: number): Promise<string> {
+  try {
+    const [rawActive, rawBudget, rawInvoice, rawTaller] = await Promise.all([
+      dbService.getDriveFolder(userId, "sheet:LAST_ACTIVE"),
+      dbService.getDriveFolder(userId, "sheet:LAST_BUDGET"),
+      dbService.getDriveFolder(userId, "sheet:LAST_INVOICE"),
+      dbService.getDriveFolder(userId, "sheet:Taller_Partes")
+    ]);
+    const lines: string[] = [];
+    const fmt = (label: string, raw?: string | null) => {
+      if (!raw) return;
+      const [id, title] = raw.split("|");
+      if (id && id.length >= 20) {
+        lines.push(`  * ${label}: "${title || label}" (spreadsheet_id: \`${id}\`)`);
+      }
+    };
+    fmt("Último presupuesto/proforma activo", rawBudget);
+    fmt("Última factura activa", rawInvoice);
+    fmt("Última hoja activa", rawActive);
+    fmt("Libro canónico Taller_Partes", rawTaller);
+    if (lines.length === 0) return "";
+    return (
+      `\n- 📌 **HOJAS ACTIVAS DEL USUARIO EN MEMORIA (USAR ESTOS IDs SI PIDE MODIFICAR/AÑADIR, PROHIBIDO CREAR OTRA DUPLICADA):**\n` +
+      `${lines.join("\n")}\n`
+    );
+  } catch {
+    return "";
+  }
+}
+
+/** Intercepta creaciones accidentales cuando el usuario pidió modificar o añadir campos sobre una hoja existente sin dar ID. */
+export async function executeToolWithSheetEditGuard(
+  toolName: string,
+  args: any,
+  userId: number,
+  userMessage: string,
+  history?: any[]
+): Promise<any> {
+  const safeArgs = args && typeof args === "object" ? { ...args } : {};
+  const isCreateTool =
+    toolName === "sheets_create_budget" ||
+    toolName === "sheets_create_invoice" ||
+    toolName === "sheets_create";
+
+  if (isCreateTool && !safeArgs.spreadsheet_id && isEditExistingSheetIntent(userMessage)) {
+    const titleStr = String(safeArgs.title || "");
+    if (toolName === "sheets_create" && /taller_partes/i.test(titleStr)) {
+      return await executeTool(toolName, safeArgs, userId);
+    }
+
+    const active = await resolveActiveSpreadsheetForEdit(userId, `${userMessage} ${titleStr} ${toolName}`, history);
+    if (active) {
+      const explicitRename = /\b(renombra\w*|cambia\s+(?:el\s+)?t[ií]tulo|nuevo\s+nombre|nuevo\s+t[ií]tulo)\b/i.test(userMessage);
+      if (toolName === "sheets_create_budget" || /\b(presupuesto|presupuestos|proforma|proformas|cotizaci[oó]n|budget)\b/i.test(titleStr)) {
+        safeArgs.spreadsheet_id = active.id;
+        if (!explicitRename) delete safeArgs.title;
+        console.log(`🛡️ [SheetEditGuard] Redirigiendo ${toolName} a actualización in-place de presupuesto ${active.id} ("${active.title}")`);
+        return await executeTool("sheets_create_budget", safeArgs, userId);
+      }
+      if (toolName === "sheets_create_invoice" || /\b(factura|facturas|invoice)\b/i.test(titleStr)) {
+        safeArgs.spreadsheet_id = active.id;
+        if (!explicitRename) delete safeArgs.title;
+        console.log(`🛡️ [SheetEditGuard] Redirigiendo ${toolName} a actualización in-place de factura ${active.id} ("${active.title}")`);
+        return await executeTool("sheets_create_invoice", safeArgs, userId);
+      }
+
+      console.log(`🛡️ [SheetEditGuard] Bloqueando duplicado sheets_create("${titleStr}") -> existe ${active.id} ("${active.title}")`);
+      return (
+        `⚠️ ACCIÓN CORREGIDA: El usuario pidió modificar, rectificar o añadir datos sobre la hoja existente "${active.title}" ` +
+        `(SPREADSHEET_ID=${active.id}). NO crees una hoja nueva duplicada. ` +
+        `Usa \`sheets_read\` con spreadsheet_id="${active.id}" para ver su estructura actual y aplica los cambios con ` +
+        `\`sheets_write\` o \`sheets_append\` (o \`sheets_create_budget\`/\`sheets_create_invoice\` pasando spreadsheet_id="${active.id}") sobre ESE MISMO ID.`
+      );
+    }
+  }
+
+  return await executeTool(toolName, safeArgs, userId);
+}
+
 /**
  * Calcula con precisión matemática el calendario de referencia de los próximos 7 días
  * y el offset horario real en Europe/Madrid (evita desfases de cambio de hora y errores de fechas relativas).
@@ -397,6 +539,8 @@ export async function runAgent(userId: number, userMessage: string) {
       }
     } catch {}
 
+    const activeSheetsBlock = await buildActiveSheetsContextBlock(userId);
+
     // 4. Configurar System Prompt
     const systemPrompt = `Eres Silvania CoreAgent, el asistente ejecutivo modular de Silvania.ai que opera desde Telegram.
 Silvania.ai es una plataforma SaaS multi-usuario de agentes de inteligencia artificial con estricta separación de productos.
@@ -606,6 +750,11 @@ Después de crear la skill, la instalas en el sistema y queda disponible para us
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## 🔷 MANEJO DE GOOGLE SHEETS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${activeSheetsBlock}- **REGLA OBLIGATORIA DE EDICIÓN IN-PLACE (PROHIBIDO CREAR DUPLICADOS):**
+  * Cuando el usuario pida modificar, rectificar, corregir, actualizar, completar o añadir campos/filas/partidas/IVA a una plantilla, presupuesto, factura o tabla existente (p. ej. "rectifica la plantilla", "añade estos campos", "cambia el cliente", incluso SIN haberte dado el ID):
+  * **ESTÁ TERMINANTEMENTE PROHIBIDO** crear una nueva hoja duplicada.
+  * Identifica el \`spreadsheet_id\` desde las **HOJAS ACTIVAS DEL USUARIO EN MEMORIA** (o con \`sheets_read\` / \`sheets_list\` si no está arriba): presupuesto/proforma -> Último presupuesto activo; factura -> Última factura activa; otra tabla -> Última hoja activa.
+  * Para presupuestos/facturas, pasa SIEMPRE \`spreadsheet_id\` a \`sheets_create_budget\` / \`sheets_create_invoice\` (o usa \`sheets_read\` + \`sheets_write\` sobre ESE MISMO \`spreadsheet_id\`). Omitir \`spreadsheet_id\` solo está permitido si pide explícitamente crear un documento nuevo ("nuevo presupuesto", "crea otro desde cero").
 - Para crear hojas (\`sheets_create\` o \`sheets_create_invoice\`): NO busques ni crees carpetas previas en Drive (como 'silvania'). Llama directamente a la herramienta correspondiente con el título pedido. El sistema se encarga de crearla y organizarla automáticamente dentro de la carpeta canónica \`silvania/\`.
 - Recuerda siempre al usuario que las hojas de cálculo creadas viven organizadas dentro de su carpeta \`silvania/\` en Google Drive.
 - Crear hoja → confirmar spreadsheetId y webViewLink reales devueltos por la herramienta.
@@ -809,7 +958,7 @@ Si detectas un error de red o de "Conflict", informa al usuario que estás reini
 
     if (tasks.length <= 1) {
       // Usar chat sin herramientas si la consulta no menciona palabras clave de herramientas, búsqueda, navegación o memoria
-      let requiresTools = /crea|crear|agendar|apunta|apuntar|anota|anotar|lista|listar|busca|buscar|envia|envía|envias|envías|lee|leer|open|genera|generar|sube|subir|mueve|mover|borra|borrar|investiga|investigar|resume|resumir|transcribe|transcribir|factura|presupuesto|presupuestos|proforma|proformas|cotizacion|cotizaciones|evento|correo|email|gmail|mensaje|recibido|bandeja|drive|carpeta|archivo|subir|descargar|mkdir|calendar|calendario|cita|reunion|reunión|agenda|programar|youtube|video|transcripcion|transcripción|sheets|excel|hoja|celda|fila|columna|web_search|read_url|noticia|noticias|memoria|historial|resumen|recordar|recuerdas|ayer|hablamos|primera|conversacion|conversación|dijiste|dije|skill|skills|habilidad|habilidades|entra|entrar|visita|visitar|accede|acceder|mira|mirar|consulta|consultar|url|urls|web|sitio|pagina|página|portal|internet|link|enlace|silvania|sylvania|https?:\/\/|[a-zA-Z0-9-]+\.(ai|com|es|org|net|io|co|dev|app)\b/i.test(userMessage);
+      let requiresTools = /crea|crear|agendar|apunta|apuntar|anota|anotar|lista|listar|busca|buscar|envia|envía|envias|envías|lee|leer|open|genera|generar|sube|subir|mueve|mover|borra|borrar|investiga|investigar|resume|resumir|transcribe|transcribir|factura|presupuesto|presupuestos|proforma|proformas|cotizacion|cotizaciones|plantilla|rectifica|rectificar|modifica|modificar|cambia|cambiar|actualiza|actualizar|edita|editar|corrige|corregir|añade|añadir|anade|anadir|agrega|agregar|quita|quitar|rellena|rellenar|evento|correo|email|gmail|mensaje|recibido|bandeja|drive|carpeta|archivo|subir|descargar|mkdir|calendar|calendario|cita|reunion|reunión|agenda|programar|youtube|video|transcripcion|transcripción|sheets|excel|hoja|celda|fila|columna|campos|web_search|read_url|noticia|noticias|memoria|historial|resumen|recordar|recuerdas|ayer|hablamos|primera|conversacion|conversación|dijiste|dije|skill|skills|habilidad|habilidades|entra|entrar|visita|visitar|accede|acceder|mira|mirar|consulta|consultar|url|urls|web|sitio|pagina|página|portal|internet|link|enlace|silvania|sylvania|https?:\/\/|[a-zA-Z0-9-]+\.(ai|com|es|org|net|io|co|dev|app)\b/i.test(userMessage);
 
       // Anti-fast-path regex para garantizar acceso a herramientas en investigación, enlaces y operaciones de Google
       const antiFastPathRegex = /factura|facturas|invoice|iva|investig|protocolo|empresa|paleplast|maps|correo|gmail|drive|list|enlace|intent|ejecut|autoriz|gmail_list|drive_list|read_url|web_search/i;
@@ -1164,7 +1313,7 @@ No afirmes que el correo se ha enviado sin haber ejecutado gmail_send en este tu
             resultStr = webResults.get(idx) ?? "";
           } else {
             try {
-              resultStr = String(await executeTool(toolCall.function.name, JSON.parse(toolCall.function.arguments), userId));
+              resultStr = String(await executeToolWithSheetEditGuard(toolCall.function.name, JSON.parse(toolCall.function.arguments), userId, userMessage, history));
             } catch (err: any) {
               console.error(`❌ Error ejecutando herramienta ${toolCall.function.name}:`, err.message);
               resultStr = `❌ Error en herramienta ${toolCall.function.name}: ${err.message}`;
@@ -1303,7 +1452,7 @@ No afirmes que el correo se ha enviado sin haber ejecutado gmail_send en este tu
           for (const toolCall of response.tool_calls) {
             let result;
             try {
-              result = await executeTool(toolCall.function.name, JSON.parse(toolCall.function.arguments), userId);
+              result = await executeToolWithSheetEditGuard(toolCall.function.name, JSON.parse(toolCall.function.arguments), userId, `${task} ${userMessage}`, taskHistory);
             } catch (err: any) {
               console.error(`❌ Error ejecutando herramienta ${toolCall.function.name}:`, err.message);
               result = `❌ Error en herramienta ${toolCall.function.name}: ${err.message}`;

@@ -446,12 +446,57 @@ async function getSheetGridAndClient(spreadsheetId: string, userId: number) {
   return { sheets, sheetId };
 }
 
-export async function formatInvoiceSheet(spreadsheetId: string, rowCount: number, userId: number): Promise<void> {
+export async function clearSheetValuesAndFormatting(spreadsheetId: string, userId: number, rowsToReset: number = 80, colsToReset: number = 8): Promise<string | null> {
+  try {
+    const authClient = await getGoogleAuthForUser(userId);
+    if (!authClient) return null;
+    const sheets = google.sheets({ version: "v4", auth: authClient });
+    const meta = await sheets.spreadsheets.get({ spreadsheetId });
+    const firstSheet = meta.data.sheets?.[0];
+    const sheetId = firstSheet?.properties?.sheetId || 0;
+    const existingTitle = meta.data.properties?.title || null;
+    const colLetter = String.fromCharCode(64 + Math.max(4, Math.min(26, colsToReset)));
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId,
+      range: `A1:${colLetter}${rowsToReset}`
+    });
+    const maxCols = Math.max(colsToReset, firstSheet?.properties?.gridProperties?.columnCount ? Math.min(26, firstSheet.properties.gridProperties.columnCount) : 8);
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [
+          { unmergeCells: { range: { sheetId, startRowIndex: 0, endRowIndex: rowsToReset, startColumnIndex: 0, endColumnIndex: maxCols } } },
+          {
+            repeatCell: {
+              range: { sheetId, startRowIndex: 0, endRowIndex: rowsToReset, startColumnIndex: 0, endColumnIndex: maxCols },
+              cell: { userEnteredFormat: {} },
+              fields: "userEnteredFormat"
+            }
+          }
+        ]
+      }
+    });
+    return existingTitle;
+  } catch (err: any) {
+    console.warn("⚠️ [Sheets] No se pudo limpiar rango previo antes de actualizar in-place:", err.message);
+    return null;
+  }
+}
+
+export async function formatInvoiceSheet(spreadsheetId: string, rowCountOrMatrix: number | any[][], userId: number): Promise<void> {
   try {
     const ctx = await getSheetGridAndClient(spreadsheetId, userId);
     if (!ctx) return;
     const { sheets, sheetId } = ctx;
-    const totalRows = Math.max(rowCount, 18);
+    const matrix = Array.isArray(rowCountOrMatrix) ? rowCountOrMatrix : null;
+    const totalRows = Math.max(Array.isArray(rowCountOrMatrix) ? rowCountOrMatrix.length : rowCountOrMatrix, 18);
+    const detectedHeader = matrix ? matrix.findIndex(r => String(r?.[0] || "").trim().toLowerCase() === "concepto") : -1;
+    const itemsHeaderIdx = detectedHeader >= 0 ? detectedHeader : 10;
+    const firstItemIdx = itemsHeaderIdx + 1;
+    const detectedSubtotal = matrix ? matrix.findIndex(r => String(r?.[2] || "").trim().toLowerCase() === "subtotal") : -1;
+    const totalsStart = detectedSubtotal >= 0 ? detectedSubtotal : Math.max(firstItemIdx + 1, totalRows - 3);
+    const itemsEndIdx = Math.max(firstItemIdx, totalsStart - 1);
+    const issuerEndIdx = Math.max(5, itemsHeaderIdx - 1);
 
     const requests: any[] = [
       { mergeCells: { range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 4 }, mergeType: "MERGE_ALL" } },
@@ -472,14 +517,14 @@ export async function formatInvoiceSheet(spreadsheetId: string, rowCount: number
           fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)"
         }
       },
-      // Cabeceras Emisor/Cliente fila 4 y Tabla fila 11 (#2d3748)
-      ...[3, 10].map((rIdx) => ({
+      // Cabeceras Emisor/Cliente fila 4 y Tabla partidas (#2d3748)
+      ...[3, itemsHeaderIdx].map((rIdx) => ({
         repeatCell: {
           range: { sheetId, startRowIndex: rIdx, endRowIndex: rIdx + 1, startColumnIndex: 0, endColumnIndex: 4 },
           cell: {
             userEnteredFormat: {
               backgroundColor: { red: 45 / 255, green: 55 / 255, blue: 72 / 255 },
-              horizontalAlignment: rIdx === 10 ? "CENTER" : "LEFT",
+              horizontalAlignment: rIdx === itemsHeaderIdx ? "CENTER" : "LEFT",
               verticalAlignment: "MIDDLE",
               wrapStrategy: "WRAP",
               textFormat: { foregroundColor: { red: 1, green: 1, blue: 1 }, bold: true, fontSize: 10 }
@@ -496,40 +541,40 @@ export async function formatInvoiceSheet(spreadsheetId: string, rowCount: number
           fields: "userEnteredFormat(verticalAlignment,wrapStrategy)"
         }
       },
-      // Etiquetas en negrita (fila 2, A5:A9, C5:C9, C16:C18)
+      // Etiquetas en negrita (datos emisor/cliente)
       {
         repeatCell: {
-          range: { sheetId, startRowIndex: 4, endRowIndex: 9, startColumnIndex: 0, endColumnIndex: 1 },
+          range: { sheetId, startRowIndex: 4, endRowIndex: issuerEndIdx, startColumnIndex: 0, endColumnIndex: 1 },
           cell: { userEnteredFormat: { textFormat: { bold: true } } },
           fields: "userEnteredFormat.textFormat.bold"
         }
       },
       {
         repeatCell: {
-          range: { sheetId, startRowIndex: 4, endRowIndex: 9, startColumnIndex: 2, endColumnIndex: 3 },
+          range: { sheetId, startRowIndex: 4, endRowIndex: issuerEndIdx, startColumnIndex: 2, endColumnIndex: 3 },
           cell: { userEnteredFormat: { textFormat: { bold: true } } },
           fields: "userEnteredFormat.textFormat.bold"
         }
       },
-      // Formato moneda € en C12:D18
+      // Formato moneda € en partidas y totales
       {
         repeatCell: {
-          range: { sheetId, startRowIndex: 11, endRowIndex: totalRows, startColumnIndex: 2, endColumnIndex: 4 },
+          range: { sheetId, startRowIndex: firstItemIdx, endRowIndex: totalRows, startColumnIndex: 2, endColumnIndex: 4 },
           cell: { userEnteredFormat: { numberFormat: { type: "CURRENCY", pattern: "#,##0.00\" €\"" }, horizontalAlignment: "RIGHT" } },
           fields: "userEnteredFormat(numberFormat,horizontalAlignment)"
         }
       },
-      // Resaltar Subtotal/IVA (filas 16-17) y TOTAL (fila 18)
+      // Resaltar Subtotal/IVA y TOTAL
       {
         repeatCell: {
-          range: { sheetId, startRowIndex: 15, endRowIndex: 17, startColumnIndex: 2, endColumnIndex: 4 },
+          range: { sheetId, startRowIndex: totalsStart, endRowIndex: Math.max(totalsStart + 1, totalRows - 1), startColumnIndex: 2, endColumnIndex: 4 },
           cell: { userEnteredFormat: { backgroundColor: { red: 247 / 255, green: 250 / 255, blue: 252 / 255 }, textFormat: { bold: true } } },
           fields: "userEnteredFormat(backgroundColor,textFormat.bold)"
         }
       },
       {
         repeatCell: {
-          range: { sheetId, startRowIndex: 17, endRowIndex: 18, startColumnIndex: 2, endColumnIndex: 4 },
+          range: { sheetId, startRowIndex: Math.max(totalsStart, totalRows - 1), endRowIndex: totalRows, startColumnIndex: 2, endColumnIndex: 4 },
           cell: {
             userEnteredFormat: {
               backgroundColor: { red: 219 / 255, green: 234 / 255, blue: 254 / 255 },
@@ -542,21 +587,21 @@ export async function formatInvoiceSheet(spreadsheetId: string, rowCount: number
       // Bordes limpios en datos emisor/cliente y partidas
       {
         updateBorders: {
-          range: { sheetId, startRowIndex: 3, endRowIndex: 9, startColumnIndex: 0, endColumnIndex: 4 },
+          range: { sheetId, startRowIndex: 3, endRowIndex: issuerEndIdx, startColumnIndex: 0, endColumnIndex: 4 },
           top: SILVANIA_BORDER, bottom: SILVANIA_BORDER, left: SILVANIA_BORDER, right: SILVANIA_BORDER,
           innerHorizontal: SILVANIA_BORDER, innerVertical: SILVANIA_BORDER
         }
       },
       {
         updateBorders: {
-          range: { sheetId, startRowIndex: 10, endRowIndex: 14, startColumnIndex: 0, endColumnIndex: 4 },
+          range: { sheetId, startRowIndex: itemsHeaderIdx, endRowIndex: itemsEndIdx, startColumnIndex: 0, endColumnIndex: 4 },
           top: SILVANIA_BORDER, bottom: SILVANIA_BORDER, left: SILVANIA_BORDER, right: SILVANIA_BORDER,
           innerHorizontal: SILVANIA_BORDER, innerVertical: SILVANIA_BORDER
         }
       },
       // Alturas de fila y anchos generosos (sin recortes)
       { updateDimensionProperties: { range: { sheetId, dimension: "ROWS", startIndex: 0, endIndex: 1 }, properties: { pixelSize: 42 }, fields: "pixelSize" } },
-      { updateDimensionProperties: { range: { sheetId, dimension: "ROWS", startIndex: 10, endIndex: 11 }, properties: { pixelSize: 32 }, fields: "pixelSize" } },
+      { updateDimensionProperties: { range: { sheetId, dimension: "ROWS", startIndex: itemsHeaderIdx, endIndex: itemsHeaderIdx + 1 }, properties: { pixelSize: 32 }, fields: "pixelSize" } },
       { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 0, endIndex: 1 }, properties: { pixelSize: 230 }, fields: "pixelSize" } },
       { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 1, endIndex: 2 }, properties: { pixelSize: 190 }, fields: "pixelSize" } },
       { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 2, endIndex: 3 }, properties: { pixelSize: 170 }, fields: "pixelSize" } },
@@ -576,7 +621,12 @@ export async function formatBudgetSheet(spreadsheetId: string, matrix: (string |
     if (!ctx) return;
     const { sheets, sheetId } = ctx;
     const totalRows = matrix.length;
-    const totalsStart = hasIva ? Math.max(9, totalRows - 3) : Math.max(9, totalRows - 1);
+    const detectedHeaderIdx = matrix.findIndex(r => String(r?.[0] || "").trim().toUpperCase() === "UNIDAD");
+    const headerRowIdx = detectedHeaderIdx >= 0 ? detectedHeaderIdx : 8;
+    const firstItemIdx = headerRowIdx + 1;
+    const totalsStart = hasIva ? Math.max(firstItemIdx, totalRows - 3) : Math.max(firstItemIdx, totalRows - 1);
+    const itemsEndIdx = hasIva ? Math.max(firstItemIdx, totalRows - 4) : Math.max(firstItemIdx, totalRows - 2);
+    const metaEndIdx = Math.max(5, headerRowIdx - 1);
 
     const requests: any[] = [
       { mergeCells: { range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 4 }, mergeType: "MERGE_ALL" } },
@@ -611,10 +661,10 @@ export async function formatBudgetSheet(spreadsheetId: string, matrix: (string |
           fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)"
         }
       },
-      // Cabecera partidas fila 9 (#2d3748)
+      // Cabecera partidas (#2d3748)
       {
         repeatCell: {
-          range: { sheetId, startRowIndex: 8, endRowIndex: 9, startColumnIndex: 0, endColumnIndex: 4 },
+          range: { sheetId, startRowIndex: headerRowIdx, endRowIndex: headerRowIdx + 1, startColumnIndex: 0, endColumnIndex: 4 },
           cell: {
             userEnteredFormat: {
               backgroundColor: { red: 45 / 255, green: 55 / 255, blue: 72 / 255 },
@@ -627,7 +677,7 @@ export async function formatBudgetSheet(spreadsheetId: string, matrix: (string |
           fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,wrapStrategy)"
         }
       },
-      // Wrap general y etiquetas cliente/vehículo en negrita
+      // Wrap general y etiquetas cliente/vehículo/extra en negrita
       {
         repeatCell: {
           range: { sheetId, startRowIndex: 1, endRowIndex: totalRows, startColumnIndex: 0, endColumnIndex: 4 },
@@ -637,7 +687,7 @@ export async function formatBudgetSheet(spreadsheetId: string, matrix: (string |
       },
       {
         repeatCell: {
-          range: { sheetId, startRowIndex: 1, endRowIndex: 7, startColumnIndex: 0, endColumnIndex: 4 },
+          range: { sheetId, startRowIndex: 1, endRowIndex: metaEndIdx, startColumnIndex: 0, endColumnIndex: 4 },
           cell: { userEnteredFormat: { horizontalAlignment: "LEFT", numberFormat: { type: "TEXT" } } },
           fields: "userEnteredFormat(horizontalAlignment,numberFormat)"
         }
@@ -651,14 +701,14 @@ export async function formatBudgetSheet(spreadsheetId: string, matrix: (string |
       },
       {
         repeatCell: {
-          range: { sheetId, startRowIndex: 4, endRowIndex: 7, startColumnIndex: 0, endColumnIndex: 1 },
+          range: { sheetId, startRowIndex: 4, endRowIndex: metaEndIdx, startColumnIndex: 0, endColumnIndex: 1 },
           cell: { userEnteredFormat: { textFormat: { bold: true } } },
           fields: "userEnteredFormat.textFormat.bold"
         }
       },
       {
         repeatCell: {
-          range: { sheetId, startRowIndex: 5, endRowIndex: 7, startColumnIndex: 2, endColumnIndex: 3 },
+          range: { sheetId, startRowIndex: 4, endRowIndex: metaEndIdx, startColumnIndex: 2, endColumnIndex: 3 },
           cell: { userEnteredFormat: { textFormat: { bold: true } } },
           fields: "userEnteredFormat.textFormat.bold"
         }
@@ -673,7 +723,7 @@ export async function formatBudgetSheet(spreadsheetId: string, matrix: (string |
       // Cantidad centrada en columna A
       {
         repeatCell: {
-          range: { sheetId, startRowIndex: 9, endRowIndex: hasIva ? Math.max(9, totalRows - 4) : Math.max(9, totalRows - 2), startColumnIndex: 0, endColumnIndex: 1 },
+          range: { sheetId, startRowIndex: firstItemIdx, endRowIndex: itemsEndIdx, startColumnIndex: 0, endColumnIndex: 1 },
           cell: { userEnteredFormat: { horizontalAlignment: "CENTER", numberFormat: { type: "NUMBER", pattern: "0.##" } } },
           fields: "userEnteredFormat(horizontalAlignment,numberFormat)"
         }
@@ -681,7 +731,7 @@ export async function formatBudgetSheet(spreadsheetId: string, matrix: (string |
       // Formato moneda € columnas C y D en partidas y totales
       {
         repeatCell: {
-          range: { sheetId, startRowIndex: 9, endRowIndex: totalRows, startColumnIndex: 2, endColumnIndex: 4 },
+          range: { sheetId, startRowIndex: firstItemIdx, endRowIndex: totalRows, startColumnIndex: 2, endColumnIndex: 4 },
           cell: { userEnteredFormat: { numberFormat: { type: "CURRENCY", pattern: "#,##0.00\" €\"" }, horizontalAlignment: "RIGHT" } },
           fields: "userEnteredFormat(numberFormat,horizontalAlignment)"
         }
@@ -710,18 +760,18 @@ export async function formatBudgetSheet(spreadsheetId: string, matrix: (string |
       // Bordes tabla partidas + ficha
       {
         updateBorders: {
-          range: { sheetId, startRowIndex: 8, endRowIndex: totalRows, startColumnIndex: 0, endColumnIndex: 4 },
+          range: { sheetId, startRowIndex: headerRowIdx, endRowIndex: totalRows, startColumnIndex: 0, endColumnIndex: 4 },
           top: SILVANIA_BORDER, bottom: SILVANIA_BORDER, left: SILVANIA_BORDER, right: SILVANIA_BORDER,
           innerHorizontal: SILVANIA_BORDER, innerVertical: SILVANIA_BORDER
         }
       },
       // Alturas y anchos holgados (sin recortes en A, B, C ni D)
       { updateDimensionProperties: { range: { sheetId, dimension: "ROWS", startIndex: 0, endIndex: 1 }, properties: { pixelSize: 42 }, fields: "pixelSize" } },
-      { updateDimensionProperties: { range: { sheetId, dimension: "ROWS", startIndex: 8, endIndex: 9 }, properties: { pixelSize: 32 }, fields: "pixelSize" } },
-      { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 0, endIndex: 1 }, properties: { pixelSize: 120 }, fields: "pixelSize" } },
+      { updateDimensionProperties: { range: { sheetId, dimension: "ROWS", startIndex: headerRowIdx, endIndex: headerRowIdx + 1 }, properties: { pixelSize: 32 }, fields: "pixelSize" } },
+      { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 0, endIndex: 1 }, properties: { pixelSize: 130 }, fields: "pixelSize" } },
       { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 1, endIndex: 2 }, properties: { pixelSize: 310 }, fields: "pixelSize" } },
-      { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 2, endIndex: 3 }, properties: { pixelSize: 155 }, fields: "pixelSize" } },
-      { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 3, endIndex: 4 }, properties: { pixelSize: 165 }, fields: "pixelSize" } }
+      { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 2, endIndex: 3 }, properties: { pixelSize: 165 }, fields: "pixelSize" } },
+      { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 3, endIndex: 4 }, properties: { pixelSize: 170 }, fields: "pixelSize" } }
     ];
 
     await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests } });
@@ -1106,18 +1156,32 @@ export const sheetsWrite = async (
     return `⚠️ No hay datos que escribir (solo se habían proporcionado cabeceras que ya existen en el formato de la hoja).`;
   }
 
-  const shouldStyleGenericTable =
-    !skipAutoTableStyle &&
-    !isTargetTallerPartes &&
-    /^(?:.*!)?A1(?::[A-Z0-9]+)?$/i.test(effectiveRange) &&
-    matrix.length >= 1 &&
-    matrix[0].length >= 2;
+  const nonEmptyHeaderCells = Array.isArray(matrix[0])
+    ? matrix[0].filter((v) => String(v ?? "").trim() !== "").length
+    : 0;
+  const isBudgetLayout = matrix.some((r) => String(r?.[0] || "").trim().toUpperCase() === "UNIDAD")
+    && matrix.some((r) => String(r?.[0] || "").trim().toUpperCase().startsWith("PROFORMA") || String(r?.[0] || "").trim().toUpperCase() === "CLIENTE:");
+  const isInvoiceLayout = String(matrix[0]?.[0] || "").trim().toUpperCase() === "FACTURA"
+    && matrix.some((r) => String(r?.[0] || "").trim().toLowerCase() === "concepto");
+  const shouldAutoStyle = !skipAutoTableStyle && !isTargetTallerPartes && /^(?:.*!)?A1(?::[A-Z0-9]+)?$/i.test(effectiveRange) && matrix.length >= 1;
+
+  const applyPostWriteStyle = async () => {
+    if (!shouldAutoStyle) return;
+    if (isBudgetLayout) {
+      const hasIva = matrix.some((r) => /iva\s*\d*%?/i.test(String(r?.[2] || "")));
+      await formatBudgetSheet(spreadsheetId, matrix, hasIva, uId);
+    } else if (isInvoiceLayout) {
+      await formatInvoiceSheet(spreadsheetId, matrix, uId);
+    } else if (matrix[0].length >= 2 && nonEmptyHeaderCells >= 2) {
+      await formatStyledTableSheet(spreadsheetId, matrix, uId);
+    }
+  };
 
   const jsonVal = JSON.stringify(matrix);
 
   try {
     await runGog(`sheets update ${spreadsheetId} "${effectiveRange}" --values-json '${jsonVal}' --input USER_ENTERED`, uId);
-    if (shouldStyleGenericTable) await formatStyledTableSheet(spreadsheetId, matrix, uId);
+    await applyPostWriteStyle();
     return formatWriteSuccessResponse(spreadsheetId, effectiveRange);
   } catch (error: any) {
     if (effectiveRange.includes("!")) {
@@ -1125,7 +1189,7 @@ export const sheetsWrite = async (
       console.log(`⚠️ Falló sheets update con rango ${effectiveRange}. Reintentando con rango simplificado ${fallbackRange}...`);
       try {
         await runGog(`sheets update ${spreadsheetId} "${fallbackRange}" --values-json '${jsonVal}' --input USER_ENTERED`, uId);
-        if (shouldStyleGenericTable) await formatStyledTableSheet(spreadsheetId, matrix, uId);
+        await applyPostWriteStyle();
         return formatWriteSuccessResponse(spreadsheetId, fallbackRange, "fallback de rango aplicado");
       } catch (fallbackErr: any) {
         console.warn("⚠️ [Sheets Write] Fallback de rango en gog falló:", fallbackErr.message);
@@ -1144,7 +1208,7 @@ export const sheetsWrite = async (
           valueInputOption: "USER_ENTERED",
           requestBody: { values: matrix }
         });
-        if (shouldStyleGenericTable) await formatStyledTableSheet(spreadsheetId, matrix, uId);
+        await applyPostWriteStyle();
         return formatWriteSuccessResponse(spreadsheetId, apiRange, "vía API");
       }
     } catch (apiErr: any) {
@@ -1274,106 +1338,293 @@ export const sheetsAppend = async (spreadsheetId: string, range: string, values:
   }
 };
 
-export function buildInvoiceMatrix(opts?: { number?: string; date?: string; locale?: "es" | "en" }): (string | number)[][] {
+export interface SheetExtraField {
+  label: string;
+  value: string;
+}
+
+export interface InvoiceParty {
+  name?: string;
+  nif?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+}
+
+export interface InvoiceOptions {
+  spreadsheetId?: string;
+  title?: string;
+  number?: string;
+  date?: string;
+  issuer?: InvoiceParty;
+  client?: InvoiceParty;
+  items?: Array<{ unit?: number | string; description: string; unitPrice?: number | string }>;
+  extraFields?: SheetExtraField[];
+  locale?: "es" | "en";
+  userId?: number;
+}
+
+function appendExtraFieldRows(matrix: (string | number)[][], extraFields?: SheetExtraField[]): void {
+  if (!Array.isArray(extraFields) || extraFields.length === 0) return;
+  const normalized = extraFields
+    .map(f => ({
+      label: String(f?.label || "").trim(),
+      value: String(f?.value ?? "").trim()
+    }))
+    .filter(f => f.label.length > 0);
+  for (let i = 0; i < normalized.length; i += 2) {
+    const f1 = normalized[i];
+    const f2 = normalized[i + 1];
+    const l1 = f1.label.endsWith(":") ? f1.label : `${f1.label}:`;
+    const l2 = f2 ? (f2.label.endsWith(":") ? f2.label : `${f2.label}:`) : "";
+    matrix.push([l1, f1.value, l2, f2 ? f2.value : ""]);
+  }
+}
+
+async function readExistingSheetValues(spreadsheetId: string, uId: number): Promise<{ title: string | null; rows: any[][] }> {
+  try {
+    const authClient = await getGoogleAuthForUser(uId);
+    if (!authClient) return { title: null, rows: [] };
+    const sheets = google.sheets({ version: "v4", auth: authClient });
+    const [meta, vals] = await Promise.all([
+      sheets.spreadsheets.get({ spreadsheetId, fields: "properties.title" }),
+      sheets.spreadsheets.values.get({ spreadsheetId, range: "A1:F80", valueRenderOption: "FORMULA" })
+    ]);
+    return {
+      title: meta.data.properties?.title || null,
+      rows: Array.isArray(vals.data.values) ? vals.data.values : []
+    };
+  } catch (err: any) {
+    console.warn(`⚠️ [Sheets] No se pudo leer estado previo de ${spreadsheetId}:`, err.message);
+    return { title: null, rows: [] };
+  }
+}
+
+async function resolveTargetSpreadsheet(
+  requestedId: string | undefined,
+  title: string,
+  uId: number
+): Promise<{ spreadsheetId?: string; isInPlaceUpdate: boolean; existingTitle: string | null; error?: string }> {
+  if (requestedId && isValidSpreadsheetId(requestedId)) {
+    const isDead = await isSpreadsheetTrashedOrMissing(requestedId, uId);
+    if (!isDead) {
+      const existing = await readExistingSheetValues(requestedId, uId);
+      return { spreadsheetId: requestedId, isInPlaceUpdate: true, existingTitle: existing.title };
+    }
+    console.warn(`⚠️ [Sheets] spreadsheetId=${requestedId} no encontrado o en papelera; creando hoja nueva.`);
+  }
+  const createRes = await sheetsCreate(title, uId);
+  if (createRes.startsWith("❌") || createRes.includes("Error al crear")) {
+    return { isInPlaceUpdate: false, existingTitle: null, error: createRes };
+  }
+  const spreadsheetId = extractSpreadsheetIdFromCreateOutput(createRes);
+  if (!spreadsheetId) {
+    return { isInPlaceUpdate: false, existingTitle: null, error: `❌ Error: No se pudo obtener un spreadsheetId válido al crear la hoja. Detalles: ${createRes}` };
+  }
+  return { spreadsheetId, isInPlaceUpdate: false, existingTitle: null };
+}
+
+async function renameSpreadsheetIfNeeded(spreadsheetId: string, newTitle: string | undefined, existingTitle: string | null, uId: number): Promise<void> {
+  if (!newTitle || !existingTitle || newTitle.trim() === existingTitle.trim()) return;
+  try {
+    const authClient = await getGoogleAuthForUser(uId);
+    if (!authClient) return;
+    const sheets = google.sheets({ version: "v4", auth: authClient });
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [{ updateSpreadsheetProperties: { properties: { title: newTitle.trim() }, fields: "title" } }]
+      }
+    });
+  } catch (err: any) {
+    console.warn("⚠️ [Sheets] No se pudo renombrar la hoja en actualización in-place:", err.message);
+  }
+}
+
+async function writeStructuredMatrixWithLocaleRetry(
+  spreadsheetId: string,
+  baseLocale: "es" | "en",
+  buildFn: (loc: "es" | "en") => (string | number)[][],
+  uId: number,
+  docLabel: string
+): Promise<{ matrix?: (string | number)[][]; error?: string }> {
+  let matrix = buildFn(baseLocale);
+  const writeRes = await sheetsWrite(spreadsheetId, "A1", matrix, uId, true);
+  if (writeRes.startsWith("❌") || writeRes.startsWith("⚠️") || writeRes.includes("Error al escribir")) {
+    return { error: `❌ Error al volcar ${docLabel} en la hoja (SPREADSHEET_ID=${spreadsheetId}): ${writeRes}` };
+  }
+
+  let checkLocaleFailed = false;
+  try {
+    const readRange = `D${Math.max(2, matrix.length - 4)}:D${matrix.length}`;
+    const readRes = await sheetsRead(spreadsheetId, readRange, uId);
+    if (/#NAME\?|#VALUE!|#NAME|#VALOR|#ERROR!|#¿NOMBRE\?/i.test(readRes)) {
+      checkLocaleFailed = true;
+    }
+  } catch (err) {
+    console.warn(`⚠️ No se pudo verificar validez de fórmulas tras escritura de ${docLabel}:`, err);
+  }
+
+  if (checkLocaleFailed && baseLocale === "es") {
+    console.log(`⚠️ Fórmulas con error de locale detectadas en ${docLabel}. Reintentando con locale inglés...`);
+    matrix = buildFn("en");
+    const rewriteRes = await sheetsWrite(spreadsheetId, "A1", matrix, uId, true);
+    if (rewriteRes.startsWith("❌") || rewriteRes.startsWith("⚠️") || rewriteRes.includes("Error al escribir")) {
+      return { error: `❌ Error al reintentar ${docLabel} en inglés (SPREADSHEET_ID=${spreadsheetId}): ${rewriteRes}` };
+    }
+  }
+
+  return { matrix };
+}
+
+export function buildInvoiceMatrix(opts?: InvoiceOptions): (string | number)[][] {
   const isEn = opts?.locale === "en";
   const invoiceNum = opts?.number || "001";
   const invoiceDate = opts?.date || (isEn ? "=TODAY()" : "=HOY()");
+  const issuer = opts?.issuer || {};
+  const client = opts?.client || {};
+  const itemsToUse = (opts?.items && opts.items.length > 0)
+    ? opts.items
+    : [
+        { description: "Producto / Servicio 1", unit: 1, unitPrice: 100 },
+        { description: "Producto / Servicio 2", unit: 1, unitPrice: 50 },
+        { description: "Producto / Servicio 3", unit: 1, unitPrice: 30 }
+      ];
 
-  const sumFormula = isEn ? "=SUM(D12:D14)" : "=SUMA(D12:D14)";
-  const ivaFormula = isEn ? "=D16*0.21" : "=D16*0,21";
-
-  return [
+  const matrix: (string | number)[][] = [
     ["FACTURA", "", "", ""],
     ["Número de Factura:", invoiceNum, "Fecha:", invoiceDate],
     ["", "", "", ""],
     ["DATOS DEL EMISOR", "", "DATOS DEL CLIENTE", ""],
-    ["Nombre:", "[Tu Empresa / Autónomo]", "Nombre:", "[Nombre del Cliente]"],
-    ["NIF/CIF:", "[B00000000]", "NIF/CIF:", "[00000000A]"],
-    ["Dirección:", "[Dirección Emisor]", "Dirección:", "[Dirección Cliente]"],
-    ["Teléfono:", "[+34 600 000 000]", "Teléfono:", "[+34 600 000 000]"],
-    ["Email:", "[emisor@empresa.com]", "Email:", "[cliente@empresa.com]"],
-    ["", "", "", ""],
-    ["Concepto", "Cantidad", "Precio unitario", "Importe"],
-    ["Producto / Servicio 1", 1, 100, "=B12*C12"],
-    ["Producto / Servicio 2", 1, 50, "=B13*C13"],
-    ["Producto / Servicio 3", 1, 30, "=B14*C14"],
-    ["", "", "", ""],
-    ["", "", "Subtotal", sumFormula],
-    ["", "", "IVA 21%", ivaFormula],
-    ["", "", "TOTAL", "=D16+D17"]
+    ["Nombre:", issuer.name || "[Tu Empresa / Autónomo]", "Nombre:", client.name || "[Nombre del Cliente]"],
+    ["NIF/CIF:", issuer.nif || "[B00000000]", "NIF/CIF:", client.nif || "[00000000A]"],
+    ["Dirección:", issuer.address || "[Dirección Emisor]", "Dirección:", client.address || "[Dirección Cliente]"],
+    ["Teléfono:", issuer.phone || "[+34 600 000 000]", "Teléfono:", client.phone || "[+34 600 000 000]"],
+    ["Email:", issuer.email || "[emisor@empresa.com]", "Email:", client.email || "[cliente@empresa.com]"]
   ];
+
+  appendExtraFieldRows(matrix, opts?.extraFields);
+
+  matrix.push(["", "", "", ""]);
+  matrix.push(["Concepto", "Cantidad", "Precio unitario", "Importe"]);
+
+  const firstItemRow = matrix.length + 1;
+  for (const item of itemsToUse) {
+    const rowNum = matrix.length + 1;
+    const qty = parseNumericAmount(item.unit) || 1;
+    const price = parseNumericAmount(item.unitPrice);
+    matrix.push([item.description || "Servicio", qty, price, `=B${rowNum}*C${rowNum}`]);
+  }
+  const lastItemRow = matrix.length;
+  matrix.push(["", "", "", ""]);
+  const subtotalRow = matrix.length + 1;
+  const ivaRow = matrix.length + 2;
+
+  const sumFormula = isEn ? `=SUM(D${firstItemRow}:D${lastItemRow})` : `=SUMA(D${firstItemRow}:D${lastItemRow})`;
+  const ivaFormula = isEn ? `=D${subtotalRow}*0.21` : `=D${subtotalRow}*0,21`;
+  matrix.push(["", "", "Subtotal", sumFormula]);
+  matrix.push(["", "", "IVA 21%", ivaFormula]);
+  matrix.push(["", "", "TOTAL", `=D${subtotalRow}+D${ivaRow}`]);
+  return matrix;
 }
 
-export const sheetsCreateInvoice = async (opts: { title: string; number?: string; date?: string; locale?: "es" | "en"; userId?: number }) => {
-  const title = opts.title || "Factura";
+function mergeInvoiceStateFromRows(rows: any[][], opts: InvoiceOptions): InvoiceOptions {
+  if (!rows || rows.length === 0) return opts;
+  const merged: InvoiceOptions = {
+    ...opts,
+    issuer: { ...(opts.issuer || {}) },
+    client: { ...(opts.client || {}) }
+  };
+  if (!merged.number && rows[1]?.[1] !== undefined) merged.number = String(rows[1][1]);
+  if (!merged.date && rows[1]?.[3] !== undefined && !String(rows[1][3]).startsWith("=")) merged.date = String(rows[1][3]);
+  const headerIdx = rows.findIndex(r => String(r?.[0] || "").trim().toLowerCase() === "concepto");
+  if (headerIdx > 4) {
+    const existingExtra: SheetExtraField[] = [];
+    for (let r = 4; r < headerIdx; r++) {
+      const l1 = String(rows[r]?.[0] || "").trim().toLowerCase();
+      const v1 = String(rows[r]?.[1] || "").trim();
+      const l2 = String(rows[r]?.[2] || "").trim().toLowerCase();
+      const v2 = String(rows[r]?.[3] || "").trim();
+      if (l1.startsWith("nombre")) merged.issuer!.name ||= v1;
+      else if (l1.startsWith("nif")) merged.issuer!.nif ||= v1;
+      else if (l1.startsWith("direc")) merged.issuer!.address ||= v1;
+      else if (l1.startsWith("tel")) merged.issuer!.phone ||= v1;
+      else if (l1.startsWith("email")) merged.issuer!.email ||= v1;
+      else if (l1) existingExtra.push({ label: String(rows[r]?.[0] || "").trim(), value: v1 });
+
+      if (l2.startsWith("nombre")) merged.client!.name ||= v2;
+      else if (l2.startsWith("nif")) merged.client!.nif ||= v2;
+      else if (l2.startsWith("direc")) merged.client!.address ||= v2;
+      else if (l2.startsWith("tel")) merged.client!.phone ||= v2;
+      else if (l2.startsWith("email")) merged.client!.email ||= v2;
+      else if (l2) existingExtra.push({ label: String(rows[r]?.[2] || "").trim(), value: v2 });
+    }
+    if (!opts.extraFields && existingExtra.length > 0) merged.extraFields = existingExtra;
+  }
+  if (!opts.items && headerIdx >= 0) {
+    const parsedItems: Array<{ unit?: number | string; description: string; unitPrice?: number | string }> = [];
+    for (let r = headerIdx + 1; r < rows.length; r++) {
+      const desc = String(rows[r]?.[0] || "").trim();
+      if (!desc) break;
+      parsedItems.push({
+        description: desc,
+        unit: rows[r]?.[1],
+        unitPrice: rows[r]?.[2]
+      });
+    }
+    if (parsedItems.length > 0) merged.items = parsedItems;
+  }
+  return merged;
+}
+
+export const sheetsCreateInvoice = async (opts: InvoiceOptions) => {
   const uId = opts.userId || userContextStore.getStore()?.userId || 0;
+  const fallbackTitle = opts.title || "Factura";
 
   try {
-    // 1. Crear la hoja de cálculo (y moverla automáticamente a la carpeta canónica silvania/)
-    const createRes = await sheetsCreate(title, uId);
-    if (createRes.startsWith("❌") || createRes.includes("Error al crear")) {
-      return createRes;
+    const target = await resolveTargetSpreadsheet(opts.spreadsheetId, fallbackTitle, uId);
+    if (target.error || !target.spreadsheetId) {
+      return target.error || "❌ Error al resolver la hoja de factura.";
+    }
+    const spreadsheetId = target.spreadsheetId;
+    const title = opts.title || target.existingTitle || fallbackTitle;
+
+    let effectiveOpts: InvoiceOptions = opts;
+    if (target.isInPlaceUpdate) {
+      const prev = await readExistingSheetValues(spreadsheetId, uId);
+      effectiveOpts = mergeInvoiceStateFromRows(prev.rows, opts);
+      await clearSheetValuesAndFormatting(spreadsheetId, uId, Math.max(40, prev.rows.length + 10), 8);
+      await renameSpreadsheetIfNeeded(spreadsheetId, opts.title, target.existingTitle, uId);
     }
 
-    // Extraer el spreadsheetId real devuelto por gog/API
-    const spreadsheetId = extractSpreadsheetIdFromCreateOutput(createRes);
-    if (!spreadsheetId) {
-      return `❌ Error: No se pudo obtener un spreadsheetId válido al crear la hoja. Detalles: ${createRes}`;
+    const baseLocale = effectiveOpts.locale || "es";
+    const writeOut = await writeStructuredMatrixWithLocaleRetry(
+      spreadsheetId,
+      baseLocale,
+      (loc) => buildInvoiceMatrix({ ...effectiveOpts, locale: loc }),
+      uId,
+      "la estructura y fórmulas de la factura"
+    );
+    if (writeOut.error || !writeOut.matrix) {
+      return writeOut.error || "❌ Error al escribir factura.";
     }
 
-    // 2. Rellenar con la matriz 2D (18x4) en una sola escritura en A1 con USER_ENTERED (español por defecto)
-    const baseLocale = opts.locale || "es";
-    let matrix = buildInvoiceMatrix({ number: opts.number, date: opts.date, locale: baseLocale });
-    let writeRes = await sheetsWrite(spreadsheetId, "A1", matrix, uId, true);
+    await formatInvoiceSheet(spreadsheetId, writeOut.matrix, uId);
 
-    if (writeRes.startsWith("❌") || writeRes.startsWith("⚠️") || writeRes.includes("Error al escribir")) {
-      return `❌ Error al volcar la estructura y fórmulas de la factura en la hoja (SPREADSHEET_ID=${spreadsheetId}): ${writeRes}`;
-    }
-
-    // 3. Verificar si falló por locale EN (p. ej. #NAME?, #VALUE!, #ERROR! en =HOY(), =SUMA(D12:D14) o =D16*0,21)
-    let checkLocaleFailed = false;
-    try {
-      const readRes = await sheetsRead(spreadsheetId, "D2:D18", uId);
-      if (
-        readRes.includes("#NAME?") ||
-        readRes.includes("#VALUE!") ||
-        readRes.includes("#NAME") ||
-        readRes.includes("#VALOR") ||
-        readRes.includes("#ERROR!") ||
-        readRes.includes("#¿NOMBRE?")
-      ) {
-        checkLocaleFailed = true;
-      }
-    } catch (err) {
-      console.warn("⚠️ No se pudo verificar la validez de las fórmulas tras la escritura:", err);
-    }
-
-    // Si falló el locale ES, reintentar una vez con locale inglés (=TODAY(), =SUM(D12:D14), =D16*0.21)
-    if (checkLocaleFailed && baseLocale === "es") {
-      console.log("⚠️ Fórmulas con error de locale detectadas en español. Reintentando en A1 con locale inglés (SUM y 0.21)...");
-      matrix = buildInvoiceMatrix({ number: opts.number, date: opts.date, locale: "en" });
-      const rewriteRes = await sheetsWrite(spreadsheetId, "A1", matrix, uId, true);
-      if (rewriteRes.startsWith("❌") || rewriteRes.startsWith("⚠️") || rewriteRes.includes("Error al escribir")) {
-        return `❌ Error al reintentar la escritura de fórmulas en inglés (SPREADSHEET_ID=${spreadsheetId}): ${rewriteRes}`;
-      }
-    }
-
-    await formatInvoiceSheet(spreadsheetId, matrix.length, uId);
-
-    // Guardar como última hoja/factura activa de la sesión para consultas inmediatas de enlace
     await dbService.saveDriveFolder(uId, "sheet:LAST_ACTIVE", `${spreadsheetId}|${title}`);
     await dbService.saveDriveFolder(uId, "sheet:LAST_INVOICE", `${spreadsheetId}|${title}`);
 
     const editLink = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
+    const actionLabel = target.isInPlaceUpdate ? "Factura actualizada in-place" : "Factura creada";
     return (
       `SPREADSHEET_ID=${spreadsheetId}\n` +
       `LINK=${editLink}\n` +
       `MARKDOWN=[${title}](${editLink})\n` +
-      `STATUS=OK (Factura creada en silvania/ con matriz 18x4 y fórmulas vivas en A1)\n` +
-      `RESPUESTA_OBLIGATORIA=[${title}](${editLink})`
+      (target.isInPlaceUpdate ? `UPDATED_IN_PLACE=true\n` : `RESPUESTA_OBLIGATORIA=[${title}](${editLink})\n`) +
+      `STATUS=OK (${actionLabel} en silvania/ con fórmulas vivas en A1)`
     );
   } catch (error: any) {
-    return `❌ Error al crear la factura estructurada: ${error.message}`;
+    return `❌ Error al crear o actualizar la factura estructurada: ${error.message}`;
   }
 };
 
@@ -1385,6 +1636,7 @@ export interface BudgetItem {
 }
 
 export interface BudgetOptions {
+  spreadsheetId?: string;
   title?: string;
   company?: string;
   number?: string;
@@ -1395,6 +1647,7 @@ export interface BudgetOptions {
   phone?: string;
   km?: string | number;
   items?: BudgetItem[];
+  extraFields?: SheetExtraField[];
   note?: string;
   includeIva?: boolean;
   locale?: "es" | "en";
@@ -1462,12 +1715,15 @@ export function buildBudgetMatrix(opts?: BudgetOptions): (string | number)[][] {
     ["", "", "", ""],
     ["CLIENTE:", client, "", ""],
     ["VEHICULO:", vehicle, "MATRICULA:", plate],
-    ["TELEFONO:", phone, "KM:", km],
-    ["", "", "", ""],
-    ["UNIDAD", "DESCRIPCION", "PRECIO UNIT. (€)", "TOTAL (€)"]
+    ["TELEFONO:", phone, "KM:", km]
   ];
 
-  const firstItemRow = matrix.length + 1; // fila 10 en base 1
+  appendExtraFieldRows(matrix, opts?.extraFields);
+
+  matrix.push(["", "", "", ""]);
+  matrix.push(["UNIDAD", "DESCRIPCION", "PRECIO UNIT. (€)", "TOTAL (€)"]);
+
+  const firstItemRow = matrix.length + 1;
 
   for (const item of itemsToUse) {
     const rowNum = matrix.length + 1;
@@ -1486,7 +1742,7 @@ export function buildBudgetMatrix(opts?: BudgetOptions): (string | number)[][] {
     ]);
   }
 
-  const lastItemRow = matrix.length; // última fila de partidas
+  const lastItemRow = matrix.length;
 
   matrix.push(["", "", "", ""]); // fila en blanco
 
@@ -1509,73 +1765,122 @@ export function buildBudgetMatrix(opts?: BudgetOptions): (string | number)[][] {
   return matrix;
 }
 
+function mergeBudgetStateFromRows(rows: any[][], opts: BudgetOptions): BudgetOptions {
+  if (!rows || rows.length === 0) return opts;
+  const merged: BudgetOptions = { ...opts };
+  if (!merged.company && rows[0]?.[0]) merged.company = String(rows[0][0]).trim();
+  if (!merged.date && rows[1]?.[1] && !String(rows[1][1]).startsWith("=")) merged.date = String(rows[1][1]).trim();
+  if (!merged.number && rows[2]?.[0]) {
+    const m = String(rows[2][0]).match(/PROFORMA\s+(.+)/i);
+    if (m?.[1]) merged.number = m[1].trim();
+  }
+
+  const headerIdx = rows.findIndex(r => String(r?.[0] || "").trim().toUpperCase() === "UNIDAD");
+  const metaStop = headerIdx > 4 ? headerIdx : Math.min(rows.length, 9);
+  const existingExtra: SheetExtraField[] = [];
+  for (let r = 4; r < metaStop; r++) {
+    const l1 = String(rows[r]?.[0] || "").trim();
+    const v1 = String(rows[r]?.[1] || "").trim();
+    const l2 = String(rows[r]?.[2] || "").trim();
+    const v2 = String(rows[r]?.[3] || "").trim();
+    if (/^cliente/i.test(l1)) merged.client ||= v1;
+    else if (/^veh[ií]culo/i.test(l1)) merged.vehicle ||= v1;
+    else if (/^tel[eé]fono/i.test(l1)) merged.phone ||= v1;
+    else if (l1) existingExtra.push({ label: l1, value: v1 });
+
+    if (/^matr[ií]cula/i.test(l2)) merged.plate ||= v2;
+    else if (/^km/i.test(l2)) merged.km = merged.km ?? v2;
+    else if (l2) existingExtra.push({ label: l2, value: v2 });
+  }
+  if (opts.extraFields && opts.extraFields.length > 0) {
+    const byKey = new Map<string, SheetExtraField>();
+    for (const f of [...existingExtra, ...opts.extraFields]) {
+      byKey.set(f.label.replace(/:$/, "").trim().toLowerCase(), f);
+    }
+    merged.extraFields = Array.from(byKey.values());
+  } else if (existingExtra.length > 0) {
+    merged.extraFields = existingExtra;
+  }
+
+  if (headerIdx >= 0) {
+    if (!opts.items) {
+      const parsedItems: BudgetItem[] = [];
+      for (let r = headerIdx + 1; r < rows.length; r++) {
+        const u = rows[r]?.[0];
+        const desc = String(rows[r]?.[1] || "").trim();
+        const col2 = rows[r]?.[2];
+        const col3 = rows[r]?.[3];
+        if (!desc && !u) break;
+        if (/^(subtotal|iva|total)/i.test(String(col2 || ""))) break;
+        const unitPrice = parseNumericAmount(col2);
+        const total = parseNumericAmount(col3);
+        parsedItems.push({
+          unit: u ?? 1,
+          description: desc,
+          unitPrice: unitPrice > 0 ? unitPrice : undefined,
+          total: unitPrice > 0 ? unitPrice * (parseNumericAmount(u) || 1) : total
+        });
+      }
+      if (parsedItems.length > 0) merged.items = parsedItems;
+    }
+    if (opts.includeIva === undefined) {
+      merged.includeIva = rows.some(r => /iva\s*\d*%?/i.test(String(r?.[2] || "")));
+    }
+    if (!opts.note) {
+      const noteRow = rows.find(r => /^nota:/i.test(String(r?.[0] || "").trim()));
+      if (noteRow?.[0]) merged.note = String(noteRow[0]).trim();
+    }
+  }
+  return merged;
+}
+
 export const sheetsCreateBudget = async (opts: BudgetOptions) => {
-  const title = opts.title || (opts.number ? `Presupuesto_${opts.number}` : "Presupuesto_Proforma");
   const uId = opts.userId || userContextStore.getStore()?.userId || 0;
+  const fallbackTitle = opts.title || (opts.number ? `Presupuesto_${opts.number}` : "Presupuesto_Proforma");
 
   try {
-    // 1. Crear la hoja de cálculo en silvania/
-    const createRes = await sheetsCreate(title, uId);
-    if (createRes.startsWith("❌") || createRes.includes("Error al crear")) {
-      return createRes;
+    const target = await resolveTargetSpreadsheet(opts.spreadsheetId, fallbackTitle, uId);
+    if (target.error || !target.spreadsheetId) {
+      return target.error || "❌ Error al resolver la hoja de presupuesto.";
+    }
+    const spreadsheetId = target.spreadsheetId;
+    const title = opts.title || target.existingTitle || fallbackTitle;
+
+    let effectiveOpts: BudgetOptions = opts;
+    if (target.isInPlaceUpdate) {
+      const prev = await readExistingSheetValues(spreadsheetId, uId);
+      effectiveOpts = mergeBudgetStateFromRows(prev.rows, opts);
+      await clearSheetValuesAndFormatting(spreadsheetId, uId, Math.max(50, prev.rows.length + 12), 8);
+      await renameSpreadsheetIfNeeded(spreadsheetId, opts.title, target.existingTitle, uId);
     }
 
-    const spreadsheetId = extractSpreadsheetIdFromCreateOutput(createRes);
-    if (!spreadsheetId) {
-      return `❌ Error: No se pudo obtener un spreadsheetId válido al crear la hoja. Detalles: ${createRes}`;
+    const baseLocale = effectiveOpts.locale || "es";
+    const writeOut = await writeStructuredMatrixWithLocaleRetry(
+      spreadsheetId,
+      baseLocale,
+      (loc) => buildBudgetMatrix({ ...effectiveOpts, locale: loc }),
+      uId,
+      "la estructura y fórmulas del presupuesto"
+    );
+    if (writeOut.error || !writeOut.matrix) {
+      return writeOut.error || "❌ Error al escribir presupuesto.";
     }
 
-    // 2. Rellenar con la matriz de presupuesto y fórmulas vivas en A1 (español por defecto)
-    const baseLocale = opts.locale || "es";
-    let matrix = buildBudgetMatrix({ ...opts, locale: baseLocale });
-    let writeRes = await sheetsWrite(spreadsheetId, "A1", matrix, uId, true);
+    await formatBudgetSheet(spreadsheetId, writeOut.matrix, Boolean(effectiveOpts?.includeIva), uId);
 
-    if (writeRes.startsWith("❌") || writeRes.startsWith("⚠️") || writeRes.includes("Error al escribir")) {
-      return `❌ Error al volcar la estructura y fórmulas del presupuesto en la hoja (SPREADSHEET_ID=${spreadsheetId}): ${writeRes}`;
-    }
-
-    // 3. Verificar si falló por locale EN (p. ej. #NAME?, #VALUE!, #¿NOMBRE?)
-    let checkLocaleFailed = false;
-    try {
-      const readRes = await sheetsRead(spreadsheetId, `D${matrix.length - 2}:D${matrix.length}`, uId);
-      if (
-        readRes.includes("#NAME?") ||
-        readRes.includes("#VALUE!") ||
-        readRes.includes("#NAME") ||
-        readRes.includes("#VALOR") ||
-        readRes.includes("#ERROR!") ||
-        readRes.includes("#¿NOMBRE?")
-      ) {
-        checkLocaleFailed = true;
-      }
-    } catch (err) {
-      console.warn("⚠️ No se pudo verificar la validez de las fórmulas tras la escritura del presupuesto:", err);
-    }
-
-    if (checkLocaleFailed && baseLocale === "es") {
-      console.log("⚠️ Fórmulas con error de locale detectadas en presupuesto. Reintentando con locale inglés (SUM)...");
-      matrix = buildBudgetMatrix({ ...opts, locale: "en" });
-      const rewriteRes = await sheetsWrite(spreadsheetId, "A1", matrix, uId, true);
-      if (rewriteRes.startsWith("❌") || rewriteRes.startsWith("⚠️") || rewriteRes.includes("Error al escribir")) {
-        return `❌ Error al reintentar la escritura de fórmulas en inglés (SPREADSHEET_ID=${spreadsheetId}): ${rewriteRes}`;
-      }
-    }
-
-    await formatBudgetSheet(spreadsheetId, matrix, Boolean(opts?.includeIva), uId);
-
-    // Guardar como última hoja/presupuesto activa de la sesión
     await dbService.saveDriveFolder(uId, "sheet:LAST_ACTIVE", `${spreadsheetId}|${title}`);
     await dbService.saveDriveFolder(uId, "sheet:LAST_BUDGET", `${spreadsheetId}|${title}`);
 
     const editLink = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
+    const actionLabel = target.isInPlaceUpdate ? "Presupuesto/Proforma actualizado in-place" : "Presupuesto/Proforma creado";
     return (
       `SPREADSHEET_ID=${spreadsheetId}\n` +
       `LINK=${editLink}\n` +
       `MARKDOWN=[${title}](${editLink})\n` +
-      `STATUS=OK (Presupuesto/Proforma creado en silvania/ con cálculo automático de totales en A1)\n` +
-      `RESPUESTA_OBLIGATORIA=[${title}](${editLink})`
+      (target.isInPlaceUpdate ? `UPDATED_IN_PLACE=true\n` : `RESPUESTA_OBLIGATORIA=[${title}](${editLink})\n`) +
+      `STATUS=OK (${actionLabel} en silvania/ con cálculo automático de totales en A1)`
     );
   } catch (error: any) {
-    return `❌ Error al crear el presupuesto estructurado: ${error.message}`;
+    return `❌ Error al crear o actualizar el presupuesto estructurado: ${error.message}`;
   }
 };

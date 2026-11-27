@@ -490,16 +490,63 @@ export const llmService = {
         type: "function",
         function: {
           name: "sheets_create_invoice",
-          description: "HERRAMIENTA OBLIGATORIA Y ATÓMICA para crear facturas o plantillas de factura en Google Sheets. Crea la hoja, escribe de una sola vez en A1 la matriz 2D completa (18x4) con fórmulas vivas (=HOY(), =B12*C12, =SUMA(D12:D14), =D16*0,21, =D16+D17), la mueve a silvania/ y devuelve SPREADSHEET_ID=<id> y LINK=https://docs.google.com/spreadsheets/d/<id>/edit. Al responder al usuario incluye el enlace en una sola línea Markdown: [Nombre](https://docs.google.com/spreadsheets/d/ID/edit). PROHIBIDO inventar IDs o usar sheets_create vacío.",
+          description: "HERRAMIENTA OBLIGATORIA Y ATÓMICA para crear o modificar facturas/plantillas de factura en Google Sheets. Si se pasa `spreadsheet_id` (recomendado al modificar/rectificar/añadir campos a una factura existente), actualiza ESA MISMA hoja in-place preservando datos previos no sobrescritos. Si se omite `spreadsheet_id`, crea una hoja nueva en silvania/, escribe en A1 con fórmulas vivas y devuelve SPREADSHEET_ID=<id> y LINK=... Al responder incluye [Nombre](https://docs.google.com/spreadsheets/d/ID/edit).",
           parameters: {
             type: "object",
             properties: {
-              title: { type: "string", description: "Título de la hoja de cálculo de la factura (obligatorio)" },
+              spreadsheet_id: { type: "string", description: "ID de la factura existente a modificar in-place (obligatorio si el usuario pide modificar/añadir campos a una factura previa; omitir solo si pide una factura nueva)." },
+              title: { type: "string", description: "Título de la hoja de cálculo de la factura (obligatorio al crear; opcional al actualizar in-place)" },
               number: { type: "string", description: "Número de la factura (ej: '001', opcional)" },
               date: { type: "string", description: "Fecha de la factura (ej: '2026-10-31', opcional; por defecto usa =HOY())" },
+              issuer: {
+                type: "object",
+                description: "Datos del emisor opcionales (name, nif, address, phone, email)",
+                properties: {
+                  name: { type: "string" },
+                  nif: { type: "string" },
+                  address: { type: "string" },
+                  phone: { type: "string" },
+                  email: { type: "string" }
+                }
+              },
+              client: {
+                type: "object",
+                description: "Datos del cliente opcionales (name, nif, address, phone, email)",
+                properties: {
+                  name: { type: "string" },
+                  nif: { type: "string" },
+                  address: { type: "string" },
+                  phone: { type: "string" },
+                  email: { type: "string" }
+                }
+              },
+              items: {
+                type: "array",
+                description: "Conceptos/líneas opcionales de la factura",
+                items: {
+                  type: "object",
+                  properties: {
+                    unit: { type: "number" },
+                    description: { type: "string" },
+                    unit_price: { type: "number" }
+                  },
+                  required: ["description"]
+                }
+              },
+              extra_fields: {
+                type: "array",
+                description: "Campos adicionales opcionales en cabecera (ej: [{ label: 'Forma de pago', value: 'Transferencia' }, { label: 'IBAN', value: 'ES...' }])",
+                items: {
+                  type: "object",
+                  properties: {
+                    label: { type: "string" },
+                    value: { type: "string" }
+                  },
+                  required: ["label", "value"]
+                }
+              },
               locale: { type: "string", enum: ["es", "en"], description: "Locale de fórmulas ('es' por defecto con SUMA/HOY y coma decimal; fallback automático a 'en' si falla)" }
-            },
-            required: ["title"]
+            }
           }
         }
       },
@@ -507,10 +554,11 @@ export const llmService = {
         type: "function",
         function: {
           name: "sheets_create_budget",
-          description: "HERRAMIENTA OBLIGATORIA Y ATÓMICA para crear presupuestos o proformas en Google Sheets con cálculo automático de totales (=Ax*Cx y =SUMA(...) / =SUM(...)). Modela la estructura completa en 4 columnas (A:D): Empresa/Taller, Fecha, Proforma Nº, Ficha de Cliente (Cliente, Vehículo, Matrícula, Teléfono, KM), tabla de partidas (Unidad | Descripción | Precio Unit. (€) | Total (€) con fórmula =Ax*Cx) y cálculo de totales vivo con fórmulas reales. Al responder entrega el enlace Markdown [Nombre](https://docs.google.com/spreadsheets/d/ID/edit).",
+          description: "HERRAMIENTA OBLIGATORIA Y ATÓMICA para crear o modificar presupuestos/proformas en Google Sheets con cálculo automático (=Ax*Cx y =SUMA(...)). Si se pasa `spreadsheet_id` (obligatorio cuando el usuario pide modificar/rectificar/añadir campos a un presupuesto existente), actualiza ESA MISMA hoja in-place conservando sus datos previos no modificados. Al responder entrega [Nombre](https://docs.google.com/spreadsheets/d/ID/edit).",
           parameters: {
             type: "object",
             properties: {
+              spreadsheet_id: { type: "string", description: "ID del presupuesto existente a actualizar in-place (obligatorio si el usuario pide modificar, rectificar o añadir campos a un presupuesto existente)." },
               title: { type: "string", description: "Título de la hoja (ej: 'Presupuesto_0142_Taller')" },
               company: { type: "string", description: "Nombre de la empresa o taller emisor (ej: 'TALLER HNOS LEONCIO')" },
               number: { type: "string", description: "Número de proforma o presupuesto (ej: '0142')" },
@@ -520,6 +568,18 @@ export const llmService = {
               plate: { type: "string", description: "Matrícula del vehículo" },
               phone: { type: "string", description: "Teléfono de contacto" },
               km: { type: "string", description: "Kilometraje del vehículo" },
+              extra_fields: {
+                type: "array",
+                description: "Campos personalizados extra en la ficha (ej: Email, NIF, Dirección, Forma de pago, Observaciones, Validez)",
+                items: {
+                  type: "object",
+                  properties: {
+                    label: { type: "string" },
+                    value: { type: "string" }
+                  },
+                  required: ["label", "value"]
+                }
+              },
               items: {
                 type: "array",
                 description: "Lista de partidas o conceptos del presupuesto",

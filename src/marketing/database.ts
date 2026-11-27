@@ -13,6 +13,16 @@ if (!fs.existsSync(dbDir)) {
 const db = new Database(config.db.path);
 db.pragma("journal_mode = WAL");
 
+const stmtCache = new Map<string, Database.Statement>();
+function prepareCached(sql: string): Database.Statement {
+  let stmt = stmtCache.get(sql);
+  if (!stmt) {
+    stmt = db.prepare(sql);
+    stmtCache.set(sql, stmt);
+  }
+  return stmt;
+}
+
 // Inicialización de tabla aislada para Marketing Studio
 db.exec(`
   CREATE TABLE IF NOT EXISTS marketing_drafts (
@@ -55,7 +65,7 @@ db.exec(`
 
 export const marketingDb = {
   saveDraft(draft: MarketingDraft): void {
-    const stmt = db.prepare(`
+    const stmt = prepareCached(`
       INSERT INTO marketing_drafts (id, userId, topic, format, status, data_json, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
@@ -79,7 +89,7 @@ export const marketingDb = {
   },
 
   getDraft(id: string): MarketingDraft | null {
-    const stmt = db.prepare("SELECT data_json FROM marketing_drafts WHERE id = ?");
+    const stmt = prepareCached("SELECT data_json FROM marketing_drafts WHERE id = ?");
     const row = stmt.get(id) as { data_json: string } | undefined;
     if (!row) return null;
     try {
@@ -90,7 +100,7 @@ export const marketingDb = {
   },
 
   listUserDrafts(userId: number, limit: number = 10): MarketingDraft[] {
-    const stmt = db.prepare(
+    const stmt = prepareCached(
       "SELECT data_json FROM marketing_drafts WHERE userId = ? ORDER BY created_at DESC LIMIT ?"
     );
     const rows = stmt.all(userId, limit) as Array<{ data_json: string }>;
@@ -117,7 +127,7 @@ export const marketingDb = {
   syncVisualAssets(
     assets: Array<{ id: string; product: string; category: string; relPath: string }>
   ): void {
-    const insert = db.prepare(`
+    const insert = prepareCached(`
       INSERT OR IGNORE INTO visual_asset_usage (id, product, category, rel_path, status, use_count)
       VALUES (?, ?, ?, ?, 'sin_usar', 0)
     `);
@@ -134,7 +144,7 @@ export const marketingDb = {
   syncMusicAssets(
     assets: Array<{ id: string; category: string; relPath: string }>
   ): void {
-    const insert = db.prepare(`
+    const insert = prepareCached(`
       INSERT OR IGNORE INTO music_asset_usage (id, category, rel_path, status, use_count)
       VALUES (?, ?, ?, 'sin_usar', 0)
     `);
@@ -152,8 +162,7 @@ export const marketingDb = {
     pool: "visual" | "music"
   ): Map<string, { status: "sin_usar" | "usado"; useCount: number; lastUsedAt: string | null }> {
     const table = pool === "visual" ? "visual_asset_usage" : "music_asset_usage";
-    const rows = db
-      .prepare(`SELECT id, status, use_count, last_used_at FROM ${table}`)
+    const rows = prepareCached(`SELECT id, status, use_count, last_used_at FROM ${table}`)
       .all() as Array<{
         id: string;
         status: string;
@@ -176,14 +185,14 @@ export const marketingDb = {
 
   markAssetUsed(pool: "visual" | "music", id: string): void {
     const table = pool === "visual" ? "visual_asset_usage" : "music_asset_usage";
-    db.prepare(
+    prepareCached(
       `UPDATE ${table} SET status = 'usado', use_count = use_count + 1, last_used_at = ? WHERE id = ?`
     ).run(new Date().toISOString(), id);
   },
 
   resetAssetPoolToUnused(pool: "visual" | "music"): void {
     const table = pool === "visual" ? "visual_asset_usage" : "music_asset_usage";
-    db.prepare(`UPDATE ${table} SET status = 'sin_usar'`).run();
+    prepareCached(`UPDATE ${table} SET status = 'sin_usar'`).run();
   },
 
   getAssetPoolStats(pool: "visual" | "music"): {
@@ -192,17 +201,16 @@ export const marketingDb = {
     used: number;
   } {
     const table = pool === "visual" ? "visual_asset_usage" : "music_asset_usage";
-    const row = db
-      .prepare(
-        `SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'sin_usar' THEN 1 ELSE 0 END) AS unused FROM ${table}`
-      )
-      .get() as { total: number; unused: number | null };
+    const row = prepareCached(
+      `SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'sin_usar' THEN 1 ELSE 0 END) AS unused FROM ${table}`
+    ).get() as { total: number; unused: number | null };
     const total = row?.total || 0;
     const unused = row?.unused || 0;
     return { total, unused, used: Math.max(0, total - unused) };
   },
 
   close(): void {
+    stmtCache.clear();
     try {
       db.close();
     } catch {}

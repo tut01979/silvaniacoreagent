@@ -36,6 +36,9 @@ export interface GenerateImageOptions {
   visualConcepts?: string[];
   lastCategory?: string;
   pureStorytelling?: boolean;
+  videoTopic?: string;
+  scriptTitle?: string;
+  scriptHook?: string;
 }
 
 // Circuit breaker para evitar saturar Pollinations tras recibir errores 402 consecutivos
@@ -143,6 +146,9 @@ export const imageGenerator = {
     const selectedVisual = visualAssetSelector.selectAssetForScene({
       product: options.product,
       topic: prompt,
+      videoTopic: options.videoTopic,
+      scriptTitle: options.scriptTitle,
+      scriptHook: options.scriptHook,
       sceneText: options.subtitle || options.onScreenText || sceneTitle,
       targetEmotion: options.targetEmotion,
       visualConcepts: options.visualConcepts,

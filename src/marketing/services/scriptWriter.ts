@@ -20,11 +20,12 @@ const ECOSISTEMA_KNOWLEDGE = `
 CONOCIMIENTO DEL ECOSISTEMA DE PRODUCTO (SILVANIA.AI):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 1. SILVANIA COREAGENT (Producto Activo en Producción):
-   - Rol: Asistente ejecutivo de productividad dentro de Telegram, conectado a Google Workspace.
+   - Rol: Asistente ejecutivo de productividad dentro de Telegram, conectado a Google Workspace e investigación web.
    - Habilidades reales:
+     * Prospección Web Autónoma: Busca negocios reales en internet, entra en sus webs y extrae teléfonos, emails, WhatsApp, direcciones y redes sociales verificados.
+     * Google Sheets Estructurado: Crea tablas CRM, balances, facturas y presupuestos profesionales en lote (batch) con fórmulas reales dinámicas y diseño corporativo, y los modifica in-place.
      * Google Calendar: Creación de citas, consulta de eventos y gestión de agenda en lenguaje natural.
-     * Google Sheets: Registro directo de datos, presupuestos, gastos y balances sin abrir la app.
-     * Google Drive Acotado: Almacena facturas y documentos de trabajo respetando la privacidad (solo archivos propios de la app).
+     * Google Drive Acotado: Almacena facturas, presupuestos y tablas de trabajo en la carpeta canónica silvania/.
      * Gmail Asistido: Redacta y prepara correos, SIEMPRE solicitando confirmación explícita del usuario antes de enviar.
    - Web Oficial: https://silvania.ai/coreagent | Telegram: https://t.me/{{BOT_USERNAME}}
 
@@ -528,7 +529,7 @@ function ensureClosingCta(script: VideoScript, topic: string): VideoScript {
   const lastScene = script.scenes[script.scenes.length - 1];
   const lowerTopic = topic.toLowerCase();
   const isUpcomingProduct =
-    lowerTopic.includes("eva") ||
+    /\beva\b/i.test(lowerTopic) ||
     lowerTopic.includes("marketing") ||
     lowerTopic.includes("próximamente") ||
     lowerTopic.includes("proximamente") ||

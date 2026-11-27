@@ -1,20 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { computeSemanticVector } from "../src/marketing/services/semanticVectorEngine.js";
-
-interface VisualVectorChunk {
-  id: string;
-  relPath: string;
-  product: "coreagent" | "marketing" | "eva" | "shared";
-  category: string;
-  title: string;
-  description: string;
-  emotions: string[];
-  objective: string;
-  keywords: string[];
-  copyrightStatus: string;
-  vector: number[];
-}
+import { enrichVisualChunk } from "../src/marketing/services/visualMetadataEnricher.js";
+import type { VisualVectorChunk } from "../src/marketing/services/visualAssetSelector.js";
 
 interface MusicVectorChunk {
   id: string;
@@ -150,6 +138,17 @@ function inferProductAndEmotions(relPath: string): {
 
 function buildVisualIndex(): VisualVectorChunk[] {
   const byRelPath = new Map<string, Omit<VisualVectorChunk, "vector">>();
+
+  // 0. Preserve existing enriched structured attributes from current visualVectorIndex.json if present
+  const existingByRelPath = new Map<string, VisualVectorChunk>();
+  if (fs.existsSync(VISUAL_INDEX_OUT)) {
+    try {
+      const existingRaw = JSON.parse(fs.readFileSync(VISUAL_INDEX_OUT, "utf8")) as VisualVectorChunk[];
+      for (const ex of existingRaw) {
+        if (ex?.relPath) existingByRelPath.set(ex.relPath.replace(/\\/g, "/"), ex);
+      }
+    } catch {}
+  }
 
   // 1. Load existing catalog if available (used to enrich matching files)
   const catalogById = new Map<string, any>();
@@ -305,22 +304,24 @@ function buildVisualIndex(): VisualVectorChunk[] {
     }
   }
 
-  // 5. Compute semantic vectors
+  // 5. Enrich structured attributes & compute semantic vectors for 100% of assets
   const chunks: VisualVectorChunk[] = [];
   for (const item of byRelPath.values()) {
-    const richText = [
-      item.product,
-      item.category,
-      item.title,
-      item.description,
-      item.emotions.join(" "),
-      item.objective,
-      item.keywords.join(" "),
-    ].join(" | ");
-    chunks.push({
+    const existing = existingByRelPath.get(item.relPath);
+    const mergedItem: VisualVectorChunk = {
+      ...(existing || {}),
       ...item,
-      vector: computeSemanticVector(richText),
-    });
+      product: (existing?.product || item.product) as any,
+      category: existing?.category || item.category,
+      title: existing?.title || item.title,
+      description: existing?.description || item.description,
+      emotions: existing?.emotions?.length ? existing.emotions : item.emotions,
+      objective: existing?.objective || item.objective,
+      keywords: existing?.keywords?.length ? existing.keywords : item.keywords,
+      attributes: existing?.attributes,
+      structuredAttributes: existing?.structuredAttributes,
+    };
+    chunks.push(enrichVisualChunk(mergedItem));
   }
 
   return chunks;

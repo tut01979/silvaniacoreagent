@@ -211,11 +211,41 @@ export const tools = {
     const uId = userId || userContextStore.getStore()?.userId;
     return await sheetsAppend(spreadsheet_id, range || "A:O", values, uId);
   },
-  sheets_create_invoice: async ({ title, number, date, locale, userId }: { title: string; number?: string; date?: string; locale?: "es" | "en"; userId?: number }) => {
-    const uId = userId || userContextStore.getStore()?.userId;
-    return await sheetsCreateInvoice({ title, number, date, locale, userId: uId });
+  sheets_create_invoice: async (params: {
+    spreadsheet_id?: string;
+    title?: string;
+    number?: string;
+    date?: string;
+    issuer?: { name?: string; nif?: string; address?: string; phone?: string; email?: string };
+    client?: { name?: string; nif?: string; address?: string; phone?: string; email?: string };
+    items?: Array<{ unit?: number | string; description: string; unit_price?: number | string }>;
+    extra_fields?: Array<{ label: string; value: string }>;
+    locale?: "es" | "en";
+    userId?: number;
+  }) => {
+    const uId = params.userId || userContextStore.getStore()?.userId;
+    const normalizedItems = Array.isArray(params.items)
+      ? params.items.map(it => ({
+          unit: it.unit,
+          description: it.description,
+          unitPrice: it.unit_price
+        }))
+      : undefined;
+    return await sheetsCreateInvoice({
+      spreadsheetId: params.spreadsheet_id,
+      title: params.title,
+      number: params.number,
+      date: params.date,
+      issuer: params.issuer,
+      client: params.client,
+      items: normalizedItems,
+      extraFields: params.extra_fields,
+      locale: params.locale,
+      userId: uId
+    });
   },
   sheets_create_budget: async (params: {
+    spreadsheet_id?: string;
     title?: string;
     company?: string;
     number?: string;
@@ -226,6 +256,7 @@ export const tools = {
     phone?: string;
     km?: string | number;
     items?: Array<{ unit?: number | string; description: string; unit_price?: number | string; total?: number | string }>;
+    extra_fields?: Array<{ label: string; value: string }>;
     note?: string;
     include_iva?: boolean;
     locale?: "es" | "en";
@@ -241,6 +272,7 @@ export const tools = {
         }))
       : undefined;
     return await sheetsCreateBudget({
+      spreadsheetId: params.spreadsheet_id,
       title: params.title,
       company: params.company,
       number: params.number,
@@ -251,6 +283,7 @@ export const tools = {
       phone: params.phone,
       km: params.km,
       items: normalizedItems,
+      extraFields: params.extra_fields,
       note: params.note,
       includeIva: params.include_iva,
       locale: params.locale,

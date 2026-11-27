@@ -17,6 +17,13 @@ Cada imagen en `visualVectorIndex.json` incorpora el bloque `structuredAttribute
 | **`situations`** | Array de situaciones concretas (ej. `visita a vivienda`, `atencion a paciente`, `reunion con cliente`) | Coincidencia situacional literal con el texto de la escena (+1.3 pts). |
 | **`painPoints`** | Array de dolores específicos (ej. `sobrecarga de documentos`, `llamadas perdidas`, `agenda caotica`) | Potenciar la fuerza visual del *hook* inicial (+1.5 pts). |
 | **`agentAffinity`** | Array: `coreagent`, `marketing`, `setter_ia`, `eva` | Filtrado y afinidad por producto Silvania. |
+| **`subjects`** | Array de sujetos visibles (ej. `ejecutivo`, `sistema automatizado`, `niños`) | Coincidencia directa con protagonistas del guion. |
+| **`actions`** | Array de acciones (ej. `analizando tablas`, `extrayendo leads`, `aprendiendo`) | Alineación dinámica acción-escena. |
+| **`objects`** | Array de objetos/UI (ej. `google sheets`, `tablas`, `telegram`, `laptop`) | Reconocimiento visual de herramientas y objetos concretos. |
+| **`useCases`** | Array de casos de uso comerciales o narrativos (ej. `prospeccion web automatica`) | Emparejamiento preciso entre tema de vídeo y escena. |
+| **`scriptThemes`** | Array de temas y arcos de guion (ej. `caos manual vs automatizacion ia`) | Coherencia narrativa global del vídeo. |
+| **`audience`** | Público objetivo del recurso (ej. `autonomos, pymes, directivos y equipos b2b`) | Separación entre audiencias B2B y público infantil/escolar. |
+| **`excludedProducts`** | Array de productos bloqueados (ej. `["eva"]` o `["coreagent","marketing"]`) | Aislamiento duro que impide contaminación cruzada entre agentes. |
 | **`setting`** | Entorno físico (ej. `clinica dental moderna`, `piso luminoso`, `despacho juridico`) | Contexto visual limpio y realista. |
 | **`visualStyle`** | `fotografia_real`, `ilustracion_3d`, `holograma_futurista`, `editorial_minimalista` | Consistencia de formato. |
 | **`brandSafety`** | `clean_no_trademarks` | Garantía auditada de cero logos de terceros (Apple, Dell, etc.). |
