@@ -610,6 +610,21 @@ export async function readUrl(rawUrl: string): Promise<string> {
       }
     }
 
+    if (!socialLinks.WhatsApp) {
+      const waUrlMatch = html.match(/https?:\/\/(?:wa\.me|api\.whatsapp\.com\/send)[^\s"'<>)]+/i);
+      if (waUrlMatch) {
+        socialLinks.WhatsApp = waUrlMatch[0];
+      } else {
+        const waNumMatch = bodyText.match(/whatsapp[:\s]+(\+?\d[\d\s.-]{7,16}\d)/i);
+        if (waNumMatch) {
+          const digits = waNumMatch[1].replace(/[^\d]/g, "");
+          if (digits.length >= 9 && digits.length <= 15) {
+            socialLinks.WhatsApp = `https://wa.me/${digits}`;
+          }
+        }
+      }
+    }
+
     const cifsFound = [...jsonLdData.cifs];
     const cifMatches = bodyText.match(/\b(?:CIF|NIF|N\.I\.F\.|C\.I\.F\.)[:\s]+([A-HJ-NP-SUVW][0-9]{7}[0-9A-J]|[0-9]{8}[A-Z])\b/gi) || [];
     for (const m of cifMatches) {

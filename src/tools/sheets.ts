@@ -27,7 +27,7 @@ export const TALLER_PARTES_HEADERS = [
   "Link_fotos"
 ];
 
-function isValidSpreadsheetId(id?: string): boolean {
+export function isValidSpreadsheetId(id?: string): boolean {
   if (!id || typeof id !== "string") return false;
   const clean = id.trim();
   if (clean.length < 20 || clean.length > 80) return false;

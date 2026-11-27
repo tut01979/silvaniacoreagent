@@ -230,18 +230,32 @@ export async function ensureAccountParam(command: string, userId?: number): Prom
   }
 
   // 2. Si no hay email en el token, consultar user_accounts en DB
-  if (!email) {
-    try {
-      const dbEmail = await dbService.getUserEmail(uId);
-      if (dbEmail && typeof dbEmail === "string" && dbEmail.trim().length > 0) {
-        email = dbEmail.trim();
-      }
-    } catch (err: any) {
-      console.warn(`⚠️ [ensureAccountParam] Error consultando email en DB para userId ${uId}:`, err.message);
+  let dbEmail: string | null = null;
+  try {
+    const foundDbEmail = await dbService.getUserEmail(uId);
+    if (foundDbEmail && typeof foundDbEmail === "string" && foundDbEmail.trim().length > 0) {
+      dbEmail = foundDbEmail.trim();
     }
+  } catch (err: any) {
+    console.warn(`⚠️ [ensureAccountParam] Error consultando email en DB para userId ${uId}:`, err.message);
   }
 
-  // 3. Fallback de último recurso solo si el usuario no tiene ninguna cuenta vinculada registrada
+  if (email && dbEmail && email.toLowerCase() !== dbEmail.toLowerCase()) {
+    throw new Error(
+      `⚠️ Detectada incoherencia de cuenta Google (${email} vs ${dbEmail}). Usa /auth de nuevo con la cuenta deseada.`
+    );
+  }
+
+  if (!email && dbEmail) {
+    email = dbEmail;
+  }
+
+  // 3. Si hubo userId explícito sin token ni cuenta vinculada, no mezclar credenciales con otra cuenta (ej. fallback admin)
+  if (!email && userId && userId > 0) {
+    throw new Error("Tu cuenta de Google no está vinculada o expiró. Usa /auth una vez con la cuenta deseada.");
+  }
+
+  // 4. Fallback de último recurso solo para procesos internos sin userId explícito
   if (!email) {
     email = process.env.PRIMARY_GOG_ACCOUNT || "eduardoqm573@gmail.com";
   }

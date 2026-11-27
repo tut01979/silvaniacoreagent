@@ -11,7 +11,7 @@ export interface BuiltinSkillDef {
 
 const BUILTIN_DIR = path.resolve("skills", "_builtin");
 
-export const BUILTIN_SKILL_NAMES = new Set(["factura-pro", "investigacion-empresarial", "coreagent-guia"]);
+export const BUILTIN_SKILL_NAMES = new Set(["factura-pro", "investigacion-empresarial", "coreagent-guia", "sheets-plantillas-pro"]);
 
 export function isBuiltinSkill(nameOrFolder: string): boolean {
   if (!nameOrFolder) return false;
@@ -29,7 +29,8 @@ Estas capacidades operativas están SIEMPRE activas e integradas en el agente (d
 
 • **factura-pro**: Si el usuario pide crear, emitir o preparar una factura o plantilla con IVA (ej. 21%): es ESTRICTAMENTE OBLIGATORIO usar \`sheets_create_invoice\` (o la tool de factura existente). Está terminantemente prohibido usar \`sheets_write\` celda a celda o \`sheets_create\` como sustituto.
 • **investigacion-empresarial**: Si el usuario pide investigar una empresa, profesional, negocio o sitio web: usar \`web_search\` y \`read_url\`. Separar estrictamente en el informe: **✅ DATOS VERIFICADOS (con fuente real)** vs **⚠️ NO ENCONTRADO / PENDIENTE DE CONFIRMAR**. Obligatorio nombrar y listar las Redes Sociales oficiales con su enlace directo (si no hay, declarar 'Redes sociales no encontradas'). Si no se encuentran fichas o enlaces directos de localización en Maps, Páginas Amarillas o informes de solvencia mercantil, indicar explícitamente 'Enlaces adicionales no encontrados' (o detallar los no encontrados). CERO URLs inventadas.
-• **coreagent-guia**: Scopes reales y acotados de Google Workspace (\`drive.file\`, \`gmail.send\`, \`calendar.events\`, \`spreadsheets\`). NUNCA prometer leer la bandeja de entrada de Gmail (sin scope de lectura de inbox) ni archivos ajenos a la carpeta \`silvania/\` en Google Drive.`;
+• **coreagent-guia**: Scopes reales y acotados de Google Workspace (\`drive.file\`, \`gmail.send\`, \`calendar.events\`, \`spreadsheets\`). NUNCA prometer leer la bandeja de entrada de Gmail (sin scope de lectura de inbox) ni archivos ajenos a la carpeta \`silvania/\` en Google Drive.
+• **sheets-plantillas-pro**: Para cualquier factura, presupuesto, CRM/leads de prospección, inventario o tabla en Google Sheets: usar \`sheets_create_invoice\` / \`sheets_create_budget\` o \`1× sheets_create\` + \`1× sheets_write\` BATCH desde \`A1\` con la matriz \`any[][]\` completa (nunca celda a celda). CRM/prospección: \`Nombre | Empresa | Web | Teléfono | Email | WhatsApp | Dirección | Ciudad | Instagram | Facebook | LinkedIn | Estado | Notas | Fuente | Fecha\` (Estado por defecto: \`Pendiente\`). Devolver enlace Markdown clicable real \`[Título](https://docs.google.com/spreadsheets/d/ID/edit)\`.`;
 
   if (extraUserSkillsSummary && extraUserSkillsSummary.trim().length > 0) {
     section += `\n\n**Skills extra del usuario en Drive:**\n${extraUserSkillsSummary.trim()}`;
@@ -173,6 +174,33 @@ Esta habilidad proporciona las directrices oficiales sobre lo que Silvania CoreA
 - Explicar siempre con total transparencia los alcances y límites de privacidad.
 - Nunca prometer acciones fuera de los scopes acotados (ej. no prometer buscar en emails recibidos de la bandeja personal).
 - Proponer alternativas viables con las herramientas reales activas.
+`
+  },
+  {
+    name: "sheets-plantillas-pro",
+    folderName: "sheets-plantillas-pro",
+    description: "Plantillas profesionales y escritura batch atómica en Google Sheets para facturas con IVA, presupuestos, CRM/leads de prospección, inventarios y tablas genéricas.",
+    content: `---
+name: sheets-plantillas-pro
+description: Plantillas profesionales y escritura batch atómica en Google Sheets para facturas con IVA, presupuestos, CRM/leads de prospección, inventarios y tablas genéricas.
+---
+
+# Sheets Plantillas Pro (Silvania CoreAgent)
+
+## Cuándo Usarla
+Usa esta habilidad siempre que el usuario solicite crear o rellenar en Google Sheets:
+- Factura o plantilla de factura con IVA.
+- Presupuesto / Proforma / Cotización.
+- CRM / Prospección / Leads / Contactos.
+- Inventario simple o tabla genérica.
+
+## Flujo Atómico Obligatorio
+1. \`sheets_create_invoice\` (facturas), \`sheets_create_budget\` (presupuestos), o \`sheets_create\` (CRM/tablas).
+2. UNA sola \`sheets_write\` desde \`"A1"\` con la matriz 2D \`any[][]\` completa \`[cabeceras, ...filas]\`. Prohibido celda a celda.
+3. Devolver solo \`spreadsheetId\` y enlace real Markdown \`[Título](https://docs.google.com/spreadsheets/d/ID/edit)\`.
+
+## Plantilla CRM / Prospección
+\`Nombre | Empresa | Web | Teléfono | Email | WhatsApp | Dirección | Ciudad | Instagram | Facebook | LinkedIn | Estado | Notas | Fuente | Fecha\` (Estado por defecto: \`Pendiente\`).
 `
   }
 ];

@@ -10,7 +10,7 @@ import { isBetaUser, getGoogleCredentials } from "../services/authHelper.js";
 import { config } from "../config/config.js";
 import { agentProfilesService } from "../services/agentProfiles.js";
 
-const MAX_ITERATIONS = 10;
+const MAX_ITERATIONS = 12;
 
 /**
  * Calcula con precisión matemática el calendario de referencia de los próximos 7 días
@@ -624,6 +624,21 @@ Columnas:
   5. Nota de IVA al pie ('Nota: Esta proforma no incluye IVA' o desglose de Subtotal + IVA + Total si aplica).
 - Al responder, proporciona siempre el enlace Markdown: [Nombre](https://docs.google.com/spreadsheets/d/ID/edit).
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 🔎 PROSPECCIÓN WEB FIABLE Y FORMATO DE ENLACES EN TELEGRAM
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. **Confirmación anti-ASR:** Si el usuario dicta por voz una ciudad o nicho ambiguo o mal transcrito (ej. "Patrais"/"Patras" frente a "Patraix"/"Valencia"), pregunta en UNA sola línea para confirmar antes de lanzar herramientas. País por defecto: **España** si menciona ciudades españolas (Valencia, Madrid, etc.) sin país.
+2. **Límites estrictos:** **10 fichas por defecto, máximo 15**. Prohibido volcar listados de 30–40 nombres sin datos de contacto verificados. Si te acercas al límite de iteraciones, guarda en Sheet + resumen lo ya recopilado; nunca entres en bucle vacío.
+3. **Flujo obligatorio:** \`web_search\` (pocas queries orientadas a webs oficiales de negocios, no solo directorios/Maps) → elegir N URLs de dominio propio → \`read_url\` de la home y, si existe, \`/contacto\` o \`/contact\`. Si una URL falla (\`ENOTFOUND\`, \`ECONNREFUSED\`, \`timeout\`), anota \`NO ENCONTRADO\` en una línea y pasa a la siguiente sin reintentar el mismo host.
+4. **Schema por ficha (chat compacto y filas de Sheet):**
+   \`Nombre | Web | Teléfono | Email | WhatsApp | Dirección | Instagram | Facebook | LinkedIn | Notas | Fuente\`
+   - WhatsApp solo si hay \`wa.me\`, \`api.whatsapp.com\` o número explícito de WhatsApp.
+   - Redes solo con URL \`https://\` completa real; si no, \`NO ENCONTRADO\`.
+   - PROHIBIDO inventar emails, teléfonos, IDs de Maps ni perfiles sociales.
+5. **Salida obligatoria en prospección y tablas:**
+   - Preferente: \`1× sheets_create\` (título claro) + \`1× sheets_write\` BATCH en \`"A1"\` con la matriz 2D \`any[][]\` completa (fila 1 = cabeceras, resto = datos). Prohibido dar por hecha una tabla que solo existe en el chat sin haber llamado a \`sheets_write\`.
+   - En el chat de Telegram: entrega el enlace Markdown clicable real de la Sheet (\`[Título](https://docs.google.com/spreadsheets/d/ID/edit)\`) + resumen compacto con enlaces Markdown clicables legibles (\`[Clínica Dental Manzanera](https://...)\`, \`[Instagram](https://...)\`, \`[WhatsApp](https://wa.me/...)\`), nunca URLs crudas sueltas ni informes de 40 nombres.
+
 
 ${gmailHandlingStr}
 
@@ -783,16 +798,19 @@ Si detectas un error de red o de "Conflict", informa al usuario que estás reini
       // (ej: "ok", "si", "inténtalo de nuevo", "otra vez", "hazlo", "procede", "ejecútalo", "como que no?")
       // y el historial muestra que hubo actividad de herramientas o acción pendiente, forzar requiresTools = true.
       if (!requiresTools) {
-        const cleanMsg = userMessage.toLowerCase().trim();
-        const isConfirmationOrImperative = 
-          /^(ok|si|sí|vale|procede|adelante|dale|continua|continuar|listo|termina|hazlo|guárdalo|guardalo|créalo|crealo|genera el enlace|int[eé]ntalo|otra vez|vuelve|ejec[uú]talo|como que no\??)$/i.test(cleanMsg) || 
-          cleanMsg.length < 35 && /(ok|procede|adelante|continua|continuar|dale|termina|hazlo|guárdalo|guardalo|créalo|crealo|genera|int[eé]ntalo|otra vez|vuelve|ejec[uú]talo)/i.test(cleanMsg);
-        
+        const cleanMsg = userMessage.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const isConfirmationOrImperative =
+          /^(ok|si|vale|procede|adelante|dale|continua|continuar|sigue|prosigue|listo|termina|completa|hazlo|guardalo|crealo|genera el enlace|intentalo|otra vez|vuelve|ejecutalo|como que no\??)$/i.test(cleanMsg) ||
+          (cleanMsg.length < 35 && /(ok|procede|adelante|continua|continuar|sigue|prosigue|dale|termina|completa|hazlo|guardalo|crealo|genera|intentalo|otra vez|vuelve|ejecutalo)/i.test(cleanMsg));
+
         if (isConfirmationOrImperative) {
           const userHistory = await dbService.getHistory(userId, 6);
-          const hadToolActivity = userHistory.some(msg => /gmail|drive|correo|investig|web_search|read_url|empresa|archivo|carpeta|lista|enlace|búsqueda|busqueda/i.test(msg.content || ""));
+          const hadToolActivity = userHistory.some(msg =>
+            /gmail|drive|correo|investig|prospecci|clinic|sheet|tabla|web_search|read_url|empresa|archivo|carpeta|lista|enlace|busqueda|búsqueda|limite de iteraciones|límite de iteraciones/i.test(msg.content || "")
+          );
           const lastAssistantMsg = [...userHistory].reverse().find(msg => msg.role === "assistant");
-          const indicatesAction = lastAssistantMsg?.content && /voy a|procedo|guardar|crear|buscar|enviar|generar|un momento|espera/i.test(lastAssistantMsg.content);
+          const indicatesAction = lastAssistantMsg?.content &&
+            /voy a|procedo|guardar|crear|buscar|enviar|generar|continu|siguiente|un momento|espera|limite de iteraciones|límite de iteraciones/i.test(lastAssistantMsg.content);
 
           if (hadToolActivity || indicatesAction) {
             console.log(`ℹ️ [Agent] Reintento u orden continuada detectada ("${userMessage}"). Forzando requiresTools = true.`);
@@ -968,6 +986,37 @@ No afirmes que el correo se ha enviado sin haber ejecutado gmail_send en este tu
           }
 
 
+          // Guard post-sheets_create: si se creó una hoja genérica/CRM con sheets_create en este turno
+          // pero aún no se ha llamado a sheets_write / sheets_append (ni era Taller_Partes / invoice / budget),
+          // forzar UNA sola escritura batch antes de entregar la respuesta al usuario.
+          const createdSheetMsg = [...turnMsgs].reverse().find(m =>
+            m.role === "tool" &&
+            String(m.content).includes("STATUS=HOJA_CREADA") &&
+            String(m.content).includes("SPREADSHEET_ID=")
+          );
+          const hasBatchWriteInTurn = turnMsgs.some(m =>
+            Array.isArray((m as any).tool_calls) &&
+            (m as any).tool_calls.some((tc: any) =>
+              tc?.function?.name === "sheets_write" ||
+              tc?.function?.name === "sheets_append" ||
+              tc?.function?.name === "sheets_create_invoice" ||
+              tc?.function?.name === "sheets_create_budget"
+            )
+          );
+          if (createdSheetMsg && !hasBatchWriteInTurn && iterations < MAX_ITERATIONS - 1) {
+            const sidMatch = String(createdSheetMsg.content).match(/SPREADSHEET_ID=([A-Za-z0-9_-]{20,80})/);
+            if (sidMatch && !/Taller_Partes/i.test(String(createdSheetMsg.content))) {
+              console.warn(`⚠️ [Agent Guard] sheets_create (${sidMatch[1]}) ejecutado sin sheets_write en el turno. Forzando escritura batch.`);
+              history.push(response);
+              history.push({
+                role: "user" as const,
+                content: `⚠️ ACCIÓN OBLIGATORIA DE SHEETS: Acabas de crear la hoja ${sidMatch[1]} pero TODAVÍA NO has escrito los datos dentro de ella. Ejecuta AHORA UNA sola llamada a \`sheets_write\` con spreadsheet_id="${sidMatch[1]}", range="A1" y values=[[cabeceras...], ...filas] con todos los datos reales recopilados.`
+              });
+              iterations++;
+              continue;
+            }
+          }
+
           let rawContent = response.content || "No tengo una respuesta en este momento.";
 
           // Anti-alucinación estricta de documentos: si una herramienta de lectura falló en este turno,
@@ -1065,6 +1114,26 @@ No afirmes que el correo se ha enviado sin haber ejecutado gmail_send en este tu
 
         // Volvemos a preguntar al modelo con los resultados de las herramientas
         iterations++;
+
+        // Checkpoint cerca del límite: consolidar prospección/datos ya obtenidos en Sheet + resumen
+        if (iterations === MAX_ITERATIONS - 2) {
+          const turnSlice = history.slice(turnStartIdx);
+          const hasSearchOrRead = turnSlice.some(m =>
+            Array.isArray((m as any).tool_calls) &&
+            (m as any).tool_calls.some((tc: any) => tc?.function?.name === "web_search" || tc?.function?.name === "read_url")
+          );
+          const hasWrite = turnSlice.some(m =>
+            Array.isArray((m as any).tool_calls) &&
+            (m as any).tool_calls.some((tc: any) => tc?.function?.name === "sheets_write" || tc?.function?.name === "sheets_append")
+          );
+          if (hasSearchOrRead && !hasWrite) {
+            console.log(`⏱️ [Agent] Cerca de MAX_ITERATIONS (${iterations}/${MAX_ITERATIONS}). Solicitando consolidación inmediata en Sheet + resumen.`);
+            history.push({
+              role: "user" as const,
+              content: `⏱️ AVISO DE LÍMITE DE ITERACIONES: No hagas más búsquedas ni read_url. Consolida inmediatamente los datos válidos obtenidos hasta ahora llamando a \`sheets_create\` (si aún no existe) y \`1× sheets_write\` batch en "A1", y responde con el enlace Markdown clicable y resumen compacto.`
+            });
+          }
+        }
       }
 
       const limitMsg = "Error interno: se ha superado el límite de iteraciones de herramientas para esta tarea.";

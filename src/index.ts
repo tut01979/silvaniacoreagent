@@ -1566,6 +1566,16 @@ app.post(
   }
 );
 
+// Evitar locuciones TTS largas en respuestas de prospección o tablas con múltiples enlaces
+function isProspectionOrTableResponse(text: string): boolean {
+  if (!text) return false;
+  const mdLinkCount = (text.match(/\[[^\]]+\]\(https?:\/\/[^)]+\)/g) || []).length;
+  const hasTable = /\|[^\n]+\|\s*\n\s*\|[:\s-|]+\|/m.test(text);
+  const hasProspectionMarker = /DATOS CORPORATIVOS Y DE CONTACTO|Google Maps|PROSPECCIÓN/i.test(text);
+  const hasSheetAndLong = /docs\.google\.com\/spreadsheets\/d\//i.test(text) && text.length > 500;
+  return hasTable || hasProspectionMarker || mdLinkCount >= 3 || hasSheetAndLong;
+}
+
 // Función para limpiar texto antes de enviarlo al motor de voz
 function cleanTextForTTS(text: string): string {
   // 0. Reemplazar correos electrónicos e IDs antes de procesar otros caracteres
@@ -3539,7 +3549,7 @@ bot.on("message:text", async (ctx) => {
       ];
       const shouldSendVoice = voiceKeywords.some(keyword => textLower.includes(keyword)) || textLower === "lee" || textLower === "léeme" || textLower === "leeme";
 
-      if (shouldSendVoice) {
+      if (shouldSendVoice && !isProspectionOrTableResponse(response)) {
         const cleanText = cleanTextForTTS(response);
         const audioPaths = await voiceService.textToSpeech(cleanText, userId);
         if (audioPaths && audioPaths.length > 0) {
@@ -3795,9 +3805,9 @@ bot.on("message:voice", async (ctx) => {
     // 3. Responder con texto
     await safeReply(ctx, response);
 
-    // 4. Responder con voz (TTS) - Siempre en respuesta a un audio (si no está silenciado)
+    // 4. Responder con voz (TTS) - Siempre en respuesta a un audio (si no está silenciado ni es prospección/tabla)
     const isMuted = await dbService.getMuteVoice(userId);
-    if (!isMuted) {
+    if (!isMuted && !isProspectionOrTableResponse(response)) {
       const cleanResponse = cleanTextForTTS(response);
       const audioPaths = await voiceService.textToSpeech(cleanResponse, userId);
       if (audioPaths && audioPaths.length > 0) {
@@ -3877,9 +3887,9 @@ bot.on("message:video_note", async (ctx) => {
     // 3. Responder con texto
     await safeReply(ctx, response);
 
-    // 4. Responder con voz si no está silenciado
+    // 4. Responder con voz si no está silenciado ni es prospección/tabla
     const isMuted = await dbService.getMuteVoice(userId);
-    if (!isMuted) {
+    if (!isMuted && !isProspectionOrTableResponse(response)) {
       const cleanResponse = cleanTextForTTS(response);
       const audioPaths = await voiceService.textToSpeech(cleanResponse, userId);
       if (audioPaths && audioPaths.length > 0) {

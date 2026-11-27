@@ -132,7 +132,7 @@ export const skillLoader = {
         }
       }
 
-      // Seed post-bootstrap: si la carpeta canónica en Drive no tiene skills, seedear built-in mínimo (máx 3)
+      // Seed post-bootstrap: si la carpeta canónica en Drive no tiene skills, seedear built-in mínimo
       if (driveSkillsCount === 0 && config.skills?.seedBuiltin !== false) {
         try {
           const { seedBuiltinSkillsToDrive } = await import("./builtinSkills.js");
@@ -143,6 +143,26 @@ export const skillLoader = {
         } catch (seedErr: any) {
           // Si falla seed -> log warning, 0 skills, sin alerta al usuario ni CRITICAL de producto
           console.warn(`⚠️ [Skill Loader] Aviso al seedear skills built-in para usuario ${userId}:`, seedErr.message);
+        }
+      } else if (driveSkillsCount > 0 && !newSkillsMap.has("sheets-plantillas-pro") && config.skills?.seedBuiltin !== false) {
+        // Aditivo seguro: si ya existen skills en Drive pero falta sheets-plantillas-pro, añadirla sin tocar las existentes
+        try {
+          const { getBuiltinSkill } = await import("./builtinSkills.js");
+          const skillDef = getBuiltinSkill("sheets-plantillas-pro");
+          if (skillDef) {
+            const targetDir = path.join(localSkillsDir, "sheets-plantillas-pro");
+            if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+            fs.writeFileSync(path.join(targetDir, "SKILL.md"), skillDef.content, "utf8");
+            const uploaded = await uploadSkillToDrive(userId, "sheets-plantillas-pro", targetDir);
+            if (uploaded) {
+              driveSkillsCount++;
+              downloadCount++;
+              newSkillsMap.set("sheets-plantillas-pro", { fileId: "seeded", modifiedTime: "" });
+              console.log(`✅ [Skill Loader] Skill built-in 'sheets-plantillas-pro' añadida a Drive para usuario ${userId}.`);
+            }
+          }
+        } catch (addSkillErr: any) {
+          console.warn(`⚠️ [Skill Loader] No se pudo añadir 'sheets-plantillas-pro' en Drive:`, addSkillErr.message);
         }
       }
 
