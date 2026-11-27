@@ -1,5 +1,6 @@
 import type { ProductBrand, VisualStructuredAttributes, VisualVectorChunk } from "./visualAssetSelector.js";
 import { computeSemanticVector } from "./semanticVectorEngine.js";
+import { VISUAL_AUDIT_CATALOG } from "./visualAuditCatalog.js";
 
 interface CuratedAssetMeta {
   title: string;
@@ -505,10 +506,117 @@ function cleanEvaContaminationFromPainPoints(painPoints: string[]): string[] {
     .filter(Boolean);
 }
 
+function inferDefaultQualityFields(chunk: VisualVectorChunk, isChildDomain: boolean): {
+  visualVerified: boolean;
+  qualityTier: NonNullable<VisualStructuredAttributes["qualityTier"]>;
+  visualEra: NonNullable<VisualStructuredAttributes["visualEra"]>;
+  domainTopic: string;
+  excludedTopics: string[];
+  actualVisualContent: string;
+  watermarkClean: boolean;
+  colorPalette: string;
+  composition: string;
+} {
+  const titleLower = (chunk.title || "").toLowerCase();
+  const descLower = (chunk.description || "").toLowerCase();
+  const combined = `${titleLower} ${descLower}`;
+
+  if (chunk.category === "inmobiliarias") {
+    const isHomeInterior = /\b(living room|sofa|couch|chandelier|bedroom|kitchen|dining|flat|apartment)\b/i.test(combined);
+    return {
+      visualVerified: false,
+      qualityTier: "clean_standard",
+      visualEra: "modern_2020s",
+      domainTopic: isHomeInterior ? "decoracion_interiores_vivienda" : "oficina_negocio_inmobiliario",
+      excludedTopics: isHomeInterior
+        ? ["coreagent", "software", "sheets", "gmail", "calendar", "telegram", "prospeccion", "henry ford", "automocion", "coche", "solucion"]
+        : ["henry ford", "automocion", "coche"],
+      actualVisualContent: `${chunk.title}. ${chunk.description}`.slice(0, 220),
+      watermarkClean: true,
+      colorPalette: "natural luminosa de interiores",
+      composition: "plano_general",
+    };
+  }
+
+  if (chunk.category === "storytelling_riqueza") {
+    let domainTopic = "storytelling_emprendimiento";
+    let visualEra: NonNullable<VisualStructuredAttributes["visualEra"]> = "modern_2020s";
+    let excludedTopics: string[] = ["coreagent", "software", "sheets", "gmail", "telegram"];
+    if (/pocket watch|wristwatch|watch gears|watch face/i.test(combined)) {
+      domainTopic = "relojes_precision_tiempo";
+      visualEra = "timeless_clean";
+    } else if (/architect|blueprint|blueprints/i.test(combined)) {
+      domainTopic = "planos_arquitectura_ingenieria";
+      visualEra = "modern_2020s";
+    } else if (/private jet|airplane/i.test(combined)) {
+      domainTopic = "lujo_ejecutivo_jet";
+    } else if (/silhouette|sunrise|sunset|mountain/i.test(combined)) {
+      domainTopic = "horizonte_superacion";
+      visualEra = "timeless_clean";
+    } else if (/glass board|collaborat|brainstorm/i.test(combined)) {
+      domainTopic = "equipo_estrategia_moderna";
+    } else if (/overwhelmed|stressed|tired|frustrat/i.test(combined)) {
+      domainTopic = "estres_empresarial_hook";
+      excludedTopics = [];
+    }
+    return {
+      visualVerified: false,
+      qualityTier: "clean_standard",
+      visualEra,
+      domainTopic,
+      excludedTopics,
+      actualVisualContent: `${chunk.title}. ${chunk.description}`.slice(0, 220),
+      watermarkClean: true,
+      colorPalette: "cinematografica equilibrada",
+      composition: "plano_editorial",
+    };
+  }
+
+  if (isChildDomain) {
+    return {
+      visualVerified: false,
+      qualityTier: "clean_standard",
+      visualEra: "modern_2020s",
+      domainTopic: "educacion_infantil_eva",
+      excludedTopics: ["coreagent", "sheets", "prospeccion", "marketing", "henry ford", "automocion"],
+      actualVisualContent: `${chunk.title}. ${chunk.description}`.slice(0, 220),
+      watermarkClean: true,
+      colorPalette: "calida y amigable",
+      composition: "plano_medio",
+    };
+  }
+
+  if (chunk.category === "estados_animo" || chunk.category === "vida_cotidiana" || chunk.product === "emotions" || chunk.product === "nature_climates") {
+    return {
+      visualVerified: false,
+      qualityTier: "clean_standard",
+      visualEra: "timeless_clean",
+      domainTopic: chunk.category === "estados_animo" ? "estados_emocionales_humanos" : "vida_cotidiana_naturaleza",
+      excludedTopics: [],
+      actualVisualContent: `${chunk.title}. ${chunk.description}`.slice(0, 220),
+      watermarkClean: true,
+      colorPalette: "cinematografica natural",
+      composition: "plano_general",
+    };
+  }
+
+  return {
+    visualVerified: false,
+    qualityTier: "clean_standard",
+    visualEra: "modern_2020s",
+    domainTopic: `${chunk.product}_${chunk.category}`.replace(/[^a-z0-9_]/gi, "_"),
+    excludedTopics: [],
+    actualVisualContent: `${chunk.title}. ${chunk.description}`.slice(0, 220),
+    watermarkClean: true,
+    colorPalette: "equilibrada",
+    composition: "plano_general",
+  };
+}
+
 /**
  * Enriquece cualquier chunk visual con todos los atributos estructurados posibles y recalcula
  * su embedding vectorial de 256 dimensiones para maximizar la precisión guión <-> imagen
- * y garantizar el aislamiento estricto entre productos (CoreAgent/Marketing vs Eva).
+ * y garantizar el aislamiento estricto entre productos (CoreAgent/Marketing vs Eva) y dominios.
  */
 export function enrichVisualChunk(raw: VisualVectorChunk): VisualVectorChunk {
   const chunk: VisualVectorChunk = {
@@ -517,6 +625,15 @@ export function enrichVisualChunk(raw: VisualVectorChunk): VisualVectorChunk {
     keywords: [...(raw.keywords || [])],
     attributes: [...(raw.attributes || [])],
   };
+
+  const isChildDomain =
+    chunk.product === "eva" ||
+    chunk.product === "fantasy_tales" ||
+    /kids_|school_classes|human_teacher|robot_teacher|learning_games|child_session|clinical_web|family_progress|phonemes|speech_therapy|parents_family|hero/i.test(chunk.category || "");
+
+  const defaults = inferDefaultQualityFields(chunk, isChildDomain);
+  const normalizedAuditId = chunk.id.replace(/^vis_(?=(?:story_riq_|ca_|mk_|inmob_|animo_|vida_|eva_))/, "");
+  const audit = VISUAL_AUDIT_CATALOG[chunk.id] || VISUAL_AUDIT_CATALOG[normalizedAuditId];
 
   const sa: VisualStructuredAttributes = {
     industryProfile: chunk.structuredAttributes?.industryProfile || "general",
@@ -536,10 +653,19 @@ export function enrichVisualChunk(raw: VisualVectorChunk): VisualVectorChunk {
     scriptThemes: [...(chunk.structuredAttributes?.scriptThemes || [])],
     audience: chunk.structuredAttributes?.audience,
     excludedProducts: [...(chunk.structuredAttributes?.excludedProducts || [])],
+    visualVerified: audit ? true : (chunk.structuredAttributes?.visualVerified ?? defaults.visualVerified),
+    qualityTier: audit ? audit.qualityTier : defaults.qualityTier,
+    visualEra: audit ? audit.visualEra : defaults.visualEra,
+    domainTopic: audit ? audit.domainTopic : defaults.domainTopic,
+    excludedTopics: audit ? [...(audit.excludedTopics || [])] : defaults.excludedTopics,
+    actualVisualContent: audit ? audit.actualVisualContent : defaults.actualVisualContent,
+    watermarkClean: audit ? audit.watermarkClean : defaults.watermarkClean,
+    colorPalette: audit?.colorPalette || defaults.colorPalette,
+    composition: audit?.composition || defaults.composition,
   };
 
   const specific = SPECIFIC_ASSET_OVERRIDES[chunk.id];
-  if (specific) {
+  if (specific && audit?.qualityTier !== "excluded_off_theme") {
     chunk.title = specific.title;
     chunk.description = specific.description;
     chunk.objective = specific.objective;
@@ -558,9 +684,36 @@ export function enrichVisualChunk(raw: VisualVectorChunk): VisualVectorChunk {
     if (specific.setting) sa.setting = specific.setting;
   }
 
+  if (audit?.replaceStaleMetadata) {
+    // La verdad visual pixel-a-pixel manda sobre títulos/descripciones previos
+    const keepKeywords = audit.qualityTier === "excluded_off_theme" || !specific ? [] : specific.keywords;
+    const keepUseCases = audit.qualityTier === "excluded_off_theme" || !specific ? [] : specific.useCases;
+    const keepThemes = audit.qualityTier === "excluded_off_theme" || !specific ? [] : specific.scriptThemes;
+
+    chunk.title = audit.title;
+    chunk.description = audit.description;
+    chunk.objective = audit.objective;
+    chunk.emotions = dedupeStrings(audit.emotions || ["neutro"]);
+    chunk.keywords = dedupeStrings([...(audit.keywords || []), ...keepKeywords]);
+    chunk.attributes = [];
+    sa.emotions = dedupeStrings(audit.emotions || ["neutro"]);
+    sa.situations = dedupeStrings(audit.situations || [audit.actualVisualContent]);
+    sa.painPoints = dedupeStrings(audit.painPoints || []);
+    sa.subjects = dedupeStrings(audit.subjects || [audit.domainTopic]);
+    sa.actions = dedupeStrings(audit.actions || []);
+    sa.objects = dedupeStrings(audit.objects || []);
+    sa.useCases = dedupeStrings([...(audit.useCases || []), ...keepUseCases]);
+    sa.scriptThemes = dedupeStrings([...(audit.scriptThemes || []), ...keepThemes]);
+    if (audit.narrativeRole) sa.narrativeRole = audit.narrativeRole;
+    if (audit.genre) sa.genre = audit.genre;
+    if (audit.visualStyle) sa.visualStyle = audit.visualStyle;
+    if (audit.setting) sa.setting = audit.setting;
+    if (audit.excludedProducts) sa.excludedProducts = dedupeStrings(audit.excludedProducts) as ProductBrand[];
+  }
+
   const bucketKey = `${chunk.product}/${chunk.category}`;
   const catProfile = CATEGORY_PROFILES[bucketKey];
-  if (catProfile) {
+  if (catProfile && !audit?.replaceStaleMetadata) {
     chunk.keywords = dedupeStrings([...chunk.keywords, ...catProfile.keywords]);
     sa.situations = dedupeStrings([...sa.situations, ...catProfile.situations]);
     if (catProfile.painPoints) sa.painPoints = dedupeStrings([...sa.painPoints, ...catProfile.painPoints]);
@@ -573,17 +726,14 @@ export function enrichVisualChunk(raw: VisualVectorChunk): VisualVectorChunk {
     if (catProfile.excludedProducts) {
       sa.excludedProducts = dedupeStrings([...(sa.excludedProducts || []), ...catProfile.excludedProducts]) as ProductBrand[];
     }
+  } else if (catProfile && !sa.audience) {
+    sa.audience = catProfile.audience;
   }
 
   // Limpieza y aislamiento estricto Eva / Cuentos infantiles vs B2B CoreAgent / Marketing
-  const isChildDomain =
-    chunk.product === "eva" ||
-    chunk.product === "fantasy_tales" ||
-    /kids_|school_classes|human_teacher|robot_teacher|learning_games|child_session|clinical_web|family_progress|phonemes|speech_therapy|parents_family|hero/i.test(chunk.category || "");
-
   if (isChildDomain) {
     sa.painPoints = cleanEvaContaminationFromPainPoints(sa.painPoints);
-    sa.agentAffinity = chunk.product === "fantasy_tales" ? ["eva"] : ["eva"];
+    sa.agentAffinity = ["eva"];
     sa.excludedProducts = dedupeStrings([...(sa.excludedProducts || []), "coreagent", "marketing"]) as ProductBrand[];
     sa.audience ||= "familias, docentes, colegios y logopedas infantiles";
     sa.subjects = dedupeStrings([...(sa.subjects || []), "niños", "educacion infantil", "entorno escolar o familiar"]);
@@ -591,6 +741,10 @@ export function enrichVisualChunk(raw: VisualVectorChunk): VisualVectorChunk {
     sa.objects = dedupeStrings([...(sa.objects || []), "aula o tablet infantil", "material educativo ludico"]);
     sa.useCases = dedupeStrings([...(sa.useCases || []), "videos educativos de eva", "terapia del habla infantil"]);
     sa.scriptThemes = dedupeStrings([...(sa.scriptThemes || []), "estimulacion infantil con eva", "aprendizaje ludico seguro"]);
+  } else if (sa.qualityTier === "excluded_off_theme") {
+    sa.agentAffinity = [];
+    sa.excludedProducts = dedupeStrings([...(sa.excludedProducts || []), "coreagent", "marketing", "eva"]) as ProductBrand[];
+    sa.audience = "ninguno_excluido_por_auditoria_visual";
   } else {
     sa.excludedProducts = dedupeStrings([...(sa.excludedProducts || []), "eva"]) as ProductBrand[];
     if (chunk.product === "coreagent") {
@@ -604,7 +758,7 @@ export function enrichVisualChunk(raw: VisualVectorChunk): VisualVectorChunk {
       sa.audience ||= "audiencia general adulta";
     }
 
-    // Asegurar densidad mínima rica para cualquier categoría sin perfil dedicado
+    // Asegurar densidad mínima rica y uniforme de las 24 dimensiones estructuradas en todas las imágenes
     if ((sa.subjects || []).length === 0) sa.subjects = dedupeStrings([chunk.category.replace(/_/g, " "), chunk.product]);
     if ((sa.actions || []).length === 0) sa.actions = dedupeStrings([chunk.objective.slice(0, 64)]);
     if ((sa.objects || []).length === 0) sa.objects = dedupeStrings(chunk.keywords.slice(0, 4));
@@ -615,43 +769,58 @@ export function enrichVisualChunk(raw: VisualVectorChunk): VisualVectorChunk {
   chunk.structuredAttributes = sa;
   chunk.emotions = dedupeStrings([...chunk.emotions, ...sa.emotions]);
   chunk.keywords = dedupeStrings(chunk.keywords);
-  chunk.attributes = dedupeStrings([
-    ...(chunk.attributes || []),
-    sa.industryProfile,
-    sa.narrativeRole,
-    sa.genre,
-    sa.visualStyle,
-    sa.setting,
-    ...sa.emotions,
-    ...sa.situations,
-    ...sa.painPoints,
-    ...(sa.subjects || []),
-    ...(sa.actions || []),
-    ...(sa.objects || []),
-    ...(sa.useCases || []),
-    ...(sa.scriptThemes || []),
-    ...chunk.keywords,
-  ]).sort();
+  chunk.attributes = dedupeStrings(
+    sa.qualityTier === "excluded_off_theme"
+      ? ["excluded_off_theme", sa.domainTopic || "excluido", ...chunk.keywords]
+      : [
+          ...(chunk.attributes || []),
+          sa.industryProfile,
+          sa.narrativeRole,
+          sa.genre,
+          sa.visualStyle,
+          sa.qualityTier || "clean_standard",
+          sa.visualEra || "modern_2020s",
+          sa.domainTopic || "",
+          sa.setting,
+          sa.colorPalette || "",
+          sa.composition || "",
+          sa.visualVerified ? "visual_verified" : "catalog_verified",
+          ...sa.emotions,
+          ...sa.situations,
+          ...sa.painPoints,
+          ...(sa.subjects || []),
+          ...(sa.actions || []),
+          ...(sa.objects || []),
+          ...(sa.useCases || []),
+          ...(sa.scriptThemes || []),
+          ...chunk.keywords,
+        ]
+  ).sort();
 
-  const richVectorText = [
-    chunk.product,
-    chunk.category,
-    chunk.title,
-    chunk.description,
-    chunk.objective,
-    chunk.emotions.join(" "),
-    chunk.keywords.join(" "),
-    chunk.attributes.join(" "),
-    sa.situations.join(" "),
-    sa.painPoints.join(" "),
-    (sa.subjects || []).join(" "),
-    (sa.actions || []).join(" "),
-    (sa.objects || []).join(" "),
-    (sa.useCases || []).join(" "),
-    (sa.scriptThemes || []).join(" "),
-  ]
-    .filter(Boolean)
-    .join(" | ");
+  const richVectorText =
+    sa.qualityTier === "excluded_off_theme"
+      ? `excluded_off_theme ${sa.domainTopic}`
+      : [
+          chunk.product,
+          chunk.category,
+          sa.domainTopic,
+          chunk.title,
+          chunk.description,
+          sa.actualVisualContent,
+          chunk.objective,
+          chunk.emotions.join(" "),
+          chunk.keywords.join(" "),
+          chunk.attributes.join(" "),
+          sa.situations.join(" "),
+          sa.painPoints.join(" "),
+          (sa.subjects || []).join(" "),
+          (sa.actions || []).join(" "),
+          (sa.objects || []).join(" "),
+          (sa.useCases || []).join(" "),
+          (sa.scriptThemes || []).join(" "),
+        ]
+          .filter(Boolean)
+          .join(" | ");
 
   chunk.vector = computeSemanticVector(richVectorText, false);
   return chunk;

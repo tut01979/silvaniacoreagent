@@ -162,10 +162,10 @@ const SEMANTIC_AXES: string[][] = [
   ["amor", "abrazo", "carino", "ternura", "empatia", "conexion", "pareja", "familia", "amistad", "compasion", "corazon", "love", "hug", "warmth", "empathy", "connection", "couple", "family", "heart"],
   // 41: Deporte / Salud / Correr / Vitalidad / Energía física
   ["deporte", "correr", "atleta", "ejercicio", "salud", "vitalidad", "energia", "entrenamiento", "gimnasio", "running", "jogging", "fitness", "health", "energy", "vitality", "workout"],
-  // 42: Coches clásicos / Automóvil / Época / Vintage / Modelo T
-  ["coche", "coches", "auto", "autos", "automovil", "automocion", "carro", "vehiculo", "modelo", "ford", "clasico", "vintage", "epoca", "retro", "car", "cars", "automobile", "classic", "mercedes"],
-  // 43: Fábrica / Línea de ensamblaje / Industria / Maquinaria / Engranajes
-  ["fabrica", "industria", "industrial", "ensamblaje", "produccion", "maquinaria", "maquina", "engranajes", "manufactura", "escala", "planta", "obreros", "trabajadores", "factory", "assembly", "machinery", "gears", "manufacturing", "workers", "loom"],
+  // 42: Coches clásicos / Automóvil / Época / Vintage / Modelo T (automoción pura)
+  ["coche", "coches", "auto", "autos", "automovil", "automocion", "carro", "vehiculo", "modelo", "modelo t", "modelo a", "ford", "henry ford", "clasico", "vintage", "epoca", "retro", "car", "cars", "automobile", "classic", "mercedes", "chasis", "motor", "carroceria", "transmision"],
+  // 43: Fábrica industrial / Línea de ensamblaje / Maquinaria pesada / Engranajes (sin telares textiles)
+  ["fabrica", "industria", "industrial", "ensamblaje", "linea de ensamblaje", "cadena de montaje", "produccion", "maquinaria", "maquina", "engranajes", "pinones", "acero", "metal", "torno", "prensa", "manufactura", "escala", "planta", "obreros", "trabajadores", "factory", "assembly", "machinery", "gears", "steel", "manufacturing", "workers"],
   // 44: Reloj / Tiempo / Horas / Paciencia / Edad
   ["reloj", "tiempo", "hora", "horas", "minutos", "segundos", "paciencia", "arena", "mecanismo", "edad", "clock", "watch", "pocket watch", "hourglass", "time", "patience"],
   // 45: Planos / Estrategia / Arquitectura / Diseño / Sistema
@@ -206,6 +206,10 @@ const SEMANTIC_AXES: string[][] = [
   ["cambio", "transformacion", "evolucion", "salto", "revolucion", "progreso", "change", "transformation", "evolution", "progress"],
   // 63: Silencio interior / Contemplación / Calma profunda
   ["contemplar", "respiracion", "silencioso", "apacible", "sereno", "contemplate", "quiet", "stillness"],
+  // 64: Industria Textil / Telares / Hilares / Costura (aislado de automoción y software)
+  ["textil", "textiles", "telar", "telares", "hilar", "hilares", "hilo", "hilos", "hilatura", "tejido", "tejidos", "tejer", "bobina", "bobinas", "carrete", "algodon", "lana", "costura", "textile", "loom", "looms", "weaving", "yarn", "thread", "spinning", "spindle", "fabric", "sewing"],
+  // 65: Solución / Organización / Orden / Estructuración / Eficiencia moderna
+  ["solucion", "resuelve", "resolver", "organiza", "organizar", "organizacion", "estructurado", "estructura", "orden", "ordenado", "limpio", "productivo", "eficiente", "ecosistema", "solution", "solve", "organize", "organized", "structured", "order", "clean", "workflow"],
 ];
 
 // Expansiones asociativas para consultas (queries): cuando el guion nombra una acción/concepto,
@@ -240,7 +244,14 @@ const CONCEPT_EXPANSIONS: Record<string, string[]> = {
   superacion: ["correr", "cumbre", "montana", "determinacion", "exito", "esfuerzo"],
   fracaso: ["crisis", "derrota", "taller oscuro", "despacho oscuro", "cansancio", "lluvia"],
   esfuerzo: ["taller", "herramientas", "correr", "trabajo duro", "disciplina", "determinacion"],
-  ford: ["coche clasico", "vintage", "fabrica", "ensamblaje", "engranajes", "taller", "reloj"],
+  ford: ["coche clasico", "ford", "modelo t", "automovil", "automocion", "fabrica", "ensamblaje", "engranajes", "metal", "taller mecanico", "reloj", "planos"],
+  automovil: ["coche", "coches", "ford", "engranajes", "motor", "chasis", "ensamblaje", "clasico"],
+  coche: ["automovil", "coches", "ford", "engranajes", "motor", "ensamblaje", "clasico"],
+  coches: ["automovil", "coche", "ford", "engranajes", "motor", "ensamblaje", "clasico"],
+  solucion: ["coreagent", "workspace", "sheets", "telegram", "organizacion", "orden", "ecosistema", "eficiencia", "mockup", "panel"],
+  organiza: ["sheets", "calendar", "workspace", "tablas", "agenda", "orden", "planificacion", "estructura", "coreagent"],
+  organizar: ["sheets", "calendar", "workspace", "tablas", "agenda", "orden", "planificacion", "estructura", "coreagent"],
+  organizacion: ["sheets", "calendar", "workspace", "tablas", "agenda", "orden", "planificacion", "estructura", "coreagent"],
   millonario: ["riqueza", "rascacielos", "exito", "inversor", "lujo", "avion", "traje"],
   riqueza: ["millonario", "exito", "rascacielos", "inversor", "fortuna", "libertad"],
   tiempo: ["reloj", "amanecer", "atardecer", "engranajes", "paciencia"],

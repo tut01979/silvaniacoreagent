@@ -24,9 +24,18 @@ Cada imagen en `visualVectorIndex.json` incorpora el bloque `structuredAttribute
 | **`scriptThemes`** | Array de temas y arcos de guion (ej. `caos manual vs automatizacion ia`) | Coherencia narrativa global del vídeo. |
 | **`audience`** | Público objetivo del recurso (ej. `autonomos, pymes, directivos y equipos b2b`) | Separación entre audiencias B2B y público infantil/escolar. |
 | **`excludedProducts`** | Array de productos bloqueados (ej. `["eva"]` o `["coreagent","marketing"]`) | Aislamiento duro que impide contaminación cruzada entre agentes. |
-| **`setting`** | Entorno físico (ej. `clinica dental moderna`, `piso luminoso`, `despacho juridico`) | Contexto visual limpio y realista. |
+| **`setting`** | Entorno físico (ej. `clinica dental moderna`, `escritorio minimalista moderno`, `despacho juridico`) | Contexto visual limpio y realista. |
 | **`visualStyle`** | `fotografia_real`, `ilustracion_3d`, `holograma_futurista`, `editorial_minimalista` | Consistencia de formato. |
-| **`brandSafety`** | `clean_no_trademarks` | Garantía auditada de cero logos de terceros (Apple, Dell, etc.). |
+| **`brandSafety`** | `clean_no_trademarks` | Garantía auditada de calidad visual limpia. |
+| **`visualVerified`** | `true` \| `false` | Indica si los píxeles de la imagen han sido auditados visualmente. |
+| **`qualityTier`** | `hero_pro`, `clean_standard`, `dated_cluttered_hook`, `excluded_off_theme` | Excluye robots de juguete, portátiles antiguos cableados y ruido fuera de tema; prioriza activos *Hero Pro*. |
+| **`visualEra`** | `modern_2020s`, `timeless_clean`, `futuristic_clean`, `historical_early_1900s`, `historical_mid_1900s`, `dated_2000s_cluttered` | Coherencia temporal para que escenas modernas CoreAgent no muestren hardware obsoleto ni escenas de Henry Ford muestren oficinas actuales. |
+| **`domainTopic`** | Ej. `automocion_clasica_ford`, `mecanica_engranajes`, `textil_telares`, `google_sheets_tablas`, `ia_futurista_limpia` | Aislamiento estricto por industria/oficio real visible en la foto. |
+| **`excludedTopics`** | Array de temas prohibidos (ej. `["henry ford","automocion","coches"]` en telares textiles) | Bloqueo duro que impide emparejar talleres textiles con vídeos de automoción o pisos con guiones SaaS. |
+| **`actualVisualContent`** | Descripción literal verificada de lo que muestran los píxeles | Garantiza fidelidad 100% entre imagen real y guion. |
+| **`watermarkClean`** | `true` \| `false` | Detecta y filtra marcas de agua visibles (`pollinations.ai`, firmas sociales o sellos de archivo). |
+| **`colorPalette`** | Paleta cromática dominante | Coherencia estética entre planos consecutivos. |
+| **`composition`** | Encuadre visual (ej. `primer_plano_macro`, `cenital_flat_lay`, `plano_medio_cinematografico`) | Variedad visual y encuadre adecuado para formato vídeo. |
 
 ---
 

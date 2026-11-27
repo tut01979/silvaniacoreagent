@@ -51,6 +51,21 @@ export type VisualGenre =
   | "emocion_estado_animo"
   | "vida_cotidiana";
 
+export type VisualQualityTier =
+  | "hero_pro"
+  | "clean_standard"
+  | "dated_cluttered_hook"
+  | "excluded_off_theme";
+
+export type VisualEra =
+  | "modern_2020s"
+  | "timeless_clean"
+  | "futuristic_clean"
+  | "historical_early_1900s"
+  | "historical_mid_1900s"
+  | "dated_2000s_cluttered"
+  | "unknown";
+
 export interface VisualStructuredAttributes {
   industryProfile: CommercialProfile;
   narrativeRole: NarrativeRole;
@@ -69,6 +84,15 @@ export interface VisualStructuredAttributes {
   scriptThemes?: string[];
   audience?: string;
   excludedProducts?: ProductBrand[];
+  visualVerified?: boolean;
+  qualityTier?: VisualQualityTier;
+  visualEra?: VisualEra;
+  domainTopic?: string;
+  excludedTopics?: string[];
+  actualVisualContent?: string;
+  watermarkClean?: boolean;
+  colorPalette?: string;
+  composition?: string;
 }
 
 export interface VisualCatalogItem {
@@ -370,53 +394,39 @@ export const visualAssetSelector = {
     const chunks = getVectorChunks();
     if (chunks.length > 0) {
       let usageMap = marketingDb.getAssetUsageMap("visual");
+      const getFileFingerprint = (absPath: string): string | null => {
+        try {
+          const st = fs.statSync(absPath);
+          if (!st.isFile()) return null;
+          const fd = fs.openSync(absPath, "r");
+          try {
+            const buf = Buffer.alloc(64);
+            fs.readSync(fd, buf, 0, Math.min(64, st.size), 0);
+            return `${st.size}:${buf.toString("hex")}`;
+          } finally {
+            fs.closeSync(fd);
+          }
+        } catch {
+          return null;
+        }
+      };
       const usedInVideo = new Set(
         (options.usedImages || []).map((p) => path.resolve(p).toLowerCase())
       );
-
-      // Aislamiento estricto por producto y seguridad infantil:
-      // - Vídeos de Eva usan exclusivamente activos infantiles/fantasía/naturaleza/cosmos amigables.
-      // - Vídeos CoreAgent/Marketing excluyen ESTRICTAMENTE todo activo de Eva, niños y fantasía infantil.
-      // - Resto de vídeos adultos excluyen EVA y buscan en la memoria vectorial compatible.
-      const productFilteredChunks = chunks.filter((c) => {
-        if (isEvaMode) {
-          return (
-            c.product === "eva" ||
-            c.product === "fantasy_tales" ||
-            c.product === "nature_climates" ||
-            c.product === "cosmos" ||
-            c.product === "shared"
-          );
+      const usedFingerprints = new Set(
+        (options.usedImages || [])
+          .map((p) => getFileFingerprint(path.resolve(p)))
+          .filter((fp): fp is string => Boolean(fp))
+      );
+      const isAlreadyUsedInVideo = (relPath: string): boolean => {
+        const abs = path.resolve(process.cwd(), relPath);
+        if (usedInVideo.has(abs.toLowerCase())) return true;
+        if (usedFingerprints.size > 0) {
+          const fp = getFileFingerprint(abs);
+          if (fp && usedFingerprints.has(fp)) return true;
         }
-        if (isEvaOrChildAsset(c)) return false;
-        if (product === "coreagent" || product === "marketing" || explicitCommercial === "coreagent" || explicitCommercial === "marketing") {
-          return c.product !== "faith_bible";
-        }
-        return c.product !== "eva";
-      });
-      const nonEvaSafeFallback = isEvaMode ? chunks : chunks.filter((c) => c.product !== "eva" && !isEvaOrChildAsset(c));
-      const candidateChunks = productFilteredChunks.length > 0
-        ? productFilteredChunks
-        : (nonEvaSafeFallback.length > 0 ? nonEvaSafeFallback : chunks);
-
-      const unusedPool = candidateChunks.filter((c) => {
-        const isUnused = (usageMap.get(c.id)?.status ?? "sin_usar") === "sin_usar";
-        const abs = path.resolve(process.cwd(), c.relPath).toLowerCase();
-        return isUnused && !usedInVideo.has(abs);
-      });
-
-      let cycleResetTriggered = false;
-      if (unusedPool.length === 0) {
-        marketingDb.resetAssetPoolToUnused("visual");
-        usageMap = marketingDb.getAssetUsageMap("visual");
-        cycleResetTriggered = true;
-      }
-
-      const evaluationPool = candidateChunks.filter((c) => {
-        const abs = path.resolve(process.cwd(), c.relPath).toLowerCase();
-        return !usedInVideo.has(abs);
-      });
-      const finalPool = evaluationPool.length > 0 ? evaluationPool : candidateChunks;
+        return false;
+      };
 
       const cleanTopic = stripBoilerplateNoise(options.topic || "");
       const cleanScriptContext = stripBoilerplateNoise(scriptLevelContext);
@@ -442,6 +452,93 @@ export const visualAssetSelector = {
       const expandedTokens = getExpandedQueryTokens(queryText);
       const expandedStems = new Set(expandedTokens.map((t) => lightStemToken(t)));
       const expectedRole = getExpectedNarrativeRole(options.sceneIndex, options.totalScenes);
+
+      const matchesExcludedTopic = (excluded: string[] | undefined): boolean => {
+        if (!Array.isArray(excluded) || excluded.length === 0) return false;
+        for (const rawTopic of excluded) {
+          const nt = normalizeText(rawTopic);
+          if (!nt) continue;
+          if (nt === product || nt === explicitCommercial) return true;
+          if (normPaddedQuery.includes(` ${nt} `)) return true;
+          const parts = nt.split(/\s+/).filter((p) => p.length >= 4);
+          if (parts.length > 0 && parts.every((p) => expandedStems.has(lightStemToken(p)))) {
+            return true;
+          }
+        }
+        return false;
+      };
+
+      // Aislamiento estricto por producto, calidad visual y coherencia de dominio/época:
+      // 1) Nunca usar activos marcados como excluded_off_theme ni con marcas de agua sucias si hay alternativas.
+      // 2) Nunca mezclar activos infantiles Eva con CoreAgent/Marketing ni al revés.
+      // 3) Bloquear incoherencias temáticas explícitas (ej. telares textiles en vídeos de Henry Ford/coches,
+      //    o salones residenciales/PCs antiguos/cables desordenados en escenas de CoreAgent "solución / organiza").
+      const productFilteredChunks = chunks.filter((c) => {
+        if (isEvaMode) {
+          return (
+            c.product === "eva" ||
+            c.product === "fantasy_tales" ||
+            c.product === "nature_climates" ||
+            c.product === "cosmos" ||
+            c.product === "shared"
+          );
+        }
+        if (isEvaOrChildAsset(c)) return false;
+        if (product === "coreagent" || product === "marketing" || explicitCommercial === "coreagent" || explicitCommercial === "marketing") {
+          return c.product !== "faith_bible";
+        }
+        return c.product !== "eva";
+      });
+      const nonEvaSafeFallback = isEvaMode ? chunks : chunks.filter((c) => c.product !== "eva" && !isEvaOrChildAsset(c));
+      const basePool = productFilteredChunks.length > 0
+        ? productFilteredChunks
+        : (nonEvaSafeFallback.length > 0 ? nonEvaSafeFallback : chunks);
+
+      const cleanQualityPool = basePool.filter((c) => {
+        const sa = c.structuredAttributes;
+        if (sa?.qualityTier === "excluded_off_theme") return false;
+        if (sa?.watermarkClean === false) return false;
+        return true;
+      });
+      const qualityPool = cleanQualityPool.length > 0 ? cleanQualityPool : basePool;
+
+      const isModernCommercialIntent =
+        !isEvaMode &&
+        (product === "coreagent" ||
+          product === "marketing" ||
+          explicitCommercial === "coreagent" ||
+          explicitCommercial === "marketing") &&
+        !/historia|siglo xx|1900|1920|henry ford|coche clasico|vintage|retro/.test(normQuery);
+
+      const isHookPainScene = expectedRole === "hook_dolor" && !/\b(solucion|organiza|organizar|organizacion|ordena|estructura|moderno|moderna|sheets|workspace)\b/.test(normQuery);
+
+      const domainFilteredPool = qualityPool.filter((c) => {
+        const sa = c.structuredAttributes;
+        if (matchesExcludedTopic(sa?.excludedTopics)) return false;
+        if (isModernCommercialIntent && !isHookPainScene) {
+          if (sa?.qualityTier === "dated_cluttered_hook") return false;
+          if (sa?.visualEra === "dated_2000s_cluttered" || sa?.visualEra === "historical_early_1900s" || sa?.visualEra === "historical_mid_1900s") {
+            return false;
+          }
+        }
+        return true;
+      });
+      const candidateChunks = domainFilteredPool.length > 0 ? domainFilteredPool : qualityPool;
+
+      const unusedPool = candidateChunks.filter((c) => {
+        const isUnused = (usageMap.get(c.id)?.status ?? "sin_usar") === "sin_usar";
+        return isUnused && !isAlreadyUsedInVideo(c.relPath);
+      });
+
+      let cycleResetTriggered = false;
+      if (unusedPool.length === 0) {
+        marketingDb.resetAssetPoolToUnused("visual");
+        usageMap = marketingDb.getAssetUsageMap("visual");
+        cycleResetTriggered = true;
+      }
+
+      const evaluationPool = candidateChunks.filter((c) => !isAlreadyUsedInVideo(c.relPath));
+      const finalPool = evaluationPool.length > 0 ? evaluationPool : candidateChunks;
 
       let bestChunk = finalPool[0];
       let bestScore = -Infinity;
@@ -477,6 +574,8 @@ export const visualAssetSelector = {
         const chunkRichText = [
           chunk.title,
           chunk.description,
+          sa?.actualVisualContent || "",
+          sa?.domainTopic || "",
           chunk.emotions.join(" "),
           chunk.objective,
           chunk.keywords.join(" "),
@@ -518,9 +617,28 @@ export const visualAssetSelector = {
           score += 1.0;
         }
 
-        // 5. Alineación con rol narrativo (inicio -> dolor, desarrollo -> transición/solución, final -> éxito/cierre)
+        // 5. Alineación con rol narrativo y calidad visual verificada
         if (expectedRole && sa?.narrativeRole === expectedRole) {
           score += 1.0;
+        }
+        if (sa?.qualityTier === "hero_pro") {
+          score += 3.2;
+        } else if (sa?.qualityTier === "clean_standard") {
+          score += 1.2;
+        } else if (sa?.qualityTier === "dated_cluttered_hook" && !isHookPainScene) {
+          score -= 6.0;
+        }
+        if (sa?.visualVerified) {
+          score += 0.9;
+        }
+        if (isModernCommercialIntent && (sa?.visualEra === "modern_2020s" || sa?.visualEra === "futuristic_clean")) {
+          score += 1.8;
+        }
+        if (
+          /\b(historia|henry ford|ford|modelo t|coche clasico|origen|siglo xx|vintage)\b/.test(normQuery) &&
+          (sa?.visualEra === "historical_early_1900s" || sa?.domainTopic?.includes("automocion") || sa?.domainTopic === "mecanica_engranajes" || sa?.domainTopic === "mecanica_transmision_automotriz")
+        ) {
+          score += 3.5;
         }
 
         // 6. Afinidad emocional y estados de ánimo (exacta y por raíz)

@@ -190,9 +190,12 @@ function buildVisualIndex(): VisualVectorChunk[] {
     const baseId = path.basename(absFile, path.extname(absFile));
     const catMatch = catalogById.get(baseId);
     const inferred = inferProductAndEmotions(relPath);
+    const canonicalBaseId = /^(story_riq_|ca_|mk_|inmob_|animo_|vida_|eva_)/.test(baseId)
+      ? baseId
+      : `vis_${baseId}`;
 
     byRelPath.set(relPath, {
-      id: catMatch?.id || `vis_${baseId}`,
+      id: catMatch?.id || canonicalBaseId,
       relPath,
       product: (catMatch?.product as any) || inferred.product,
       category: catMatch?.subcategory || catMatch?.category || inferred.category,
@@ -308,9 +311,11 @@ function buildVisualIndex(): VisualVectorChunk[] {
   const chunks: VisualVectorChunk[] = [];
   for (const item of byRelPath.values()) {
     const existing = existingByRelPath.get(item.relPath);
+    const cleanExistingId = existing?.id?.replace(/^vis_(?=(?:story_riq_|ca_|mk_|inmob_|animo_|vida_|eva_))/, "");
     const mergedItem: VisualVectorChunk = {
       ...(existing || {}),
       ...item,
+      id: item.id || cleanExistingId || item.relPath,
       product: (existing?.product || item.product) as any,
       category: existing?.category || item.category,
       title: existing?.title || item.title,
