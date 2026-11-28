@@ -312,6 +312,12 @@ export const telegramReview = {
       return true;
     }
 
+    if (data === "mkt_ytauth") {
+      const { sendYouTubeOAuthPrompt } = await import("../services/youtubeAuthPrompt.js");
+      await sendYouTubeOAuthPrompt(bot, userId);
+      return true;
+    }
+
     const parts = data.split("_");
     const action = parts[1]; // pub, reg, rej, scr, pack
     const draftId = parts.slice(2).join("_");
@@ -379,20 +385,22 @@ export const telegramReview = {
 
       // 2. Publicar en YouTube de forma nativa si hay vídeo MP4 y credenciales
       let publishedYoutubeUrl: string | undefined;
+      let youtubeNeedsReconnect = false;
       const publishedUrls: NonNullable<MarketingDraft["publishedUrls"]> = { ...(draft.publishedUrls || {}) };
       const isVideoFormat = draft.format === "youtube_long" || draft.format === "youtube_short" || draft.format === "tiktok" || draft.format === "whatsapp_video";
       if (draft.videoPath || isVideoFormat) {
         if (draft.videoPath && fs.existsSync(draft.videoPath)) {
-          if (config.marketing?.youtubeRefreshToken) {
+          const { youtubePublisher } = await import("./services/youtubePublisher.js");
+          if (await youtubePublisher.hasCredentials()) {
             try {
               console.log(`🎬 [Marketing] Publicando vídeo en YouTube para borrador #${draftId}...`);
-              const { youtubePublisher } = await import("./services/youtubePublisher.js");
               const ytRes = await youtubePublisher.publishVideo(draft);
               if (ytRes.success) {
                 publishedYoutubeUrl = ytRes.url;
                 if (ytRes.url) publishedUrls.youtube = ytRes.url;
                 publishReport.push(`🎬 *YouTube:* Publicado en @silvania\\_ai\n🔗 [Ver en YouTube](${ytRes.url})`);
               } else {
+                if (ytRes.needsReconnect) youtubeNeedsReconnect = true;
                 publishReport.push(`⚠️ *YouTube:* ${ytRes.error}`);
               }
             } catch (ytErr: any) {
@@ -400,8 +408,9 @@ export const telegramReview = {
               publishReport.push(`⚠️ *YouTube:* ${ytErr.message}`);
             }
           } else {
+            youtubeNeedsReconnect = true;
             console.warn("⚠️ [Marketing] YOUTUBE_REFRESH_TOKEN no configurado.");
-            publishReport.push(`⚠️ *YouTube:* No configurado (falta YOUTUBE\\_REFRESH\\_TOKEN)`);
+            publishReport.push(`⚠️ *YouTube:* No configurado (usa \`/marketing youtube\` para vincular el canal)`);
           }
         } else {
           console.warn(`⚠️ [Marketing] El borrador #${draftId} no tiene archivo de vídeo disponible.`);
@@ -597,6 +606,9 @@ export const telegramReview = {
             .text("📦 Ver Pack Multirredes (1-Click)", `mkt_pack_${draftId}`)
             .row()
             .text("💚 Generar Vídeo WhatsApp 30s + Copy", `mkt_wa_${draftId}`);
+          if (youtubeNeedsReconnect) {
+            followUpKeyboard.row().text("🔗 Reconectar YouTube (@silvania_ai)", "mkt_ytauth");
+          }
           try {
             await ctx.reply(reportText, { parse_mode: "Markdown", reply_markup: followUpKeyboard });
           } catch {

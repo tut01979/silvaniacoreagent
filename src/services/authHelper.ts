@@ -119,3 +119,65 @@ export function getAuthUrl(userId: number): string | null {
     `&access_type=offline` +
     `&prompt=consent%20select_account`;
 }
+
+export type YouTubeClientMode = "youtube" | "beta";
+
+export function generateYouTubeState(userId: number, mode: YouTubeClientMode = "youtube"): string {
+  const prefix = mode === "beta" ? "ytb" : "yt";
+  const hash = crypto.createHmac("sha256", STATE_SECRET).update(`${prefix}:${userId}`).digest("hex");
+  return `${prefix}:${userId}:${hash}`;
+}
+
+export function verifyYouTubeState(state: string): { userId: number; mode: YouTubeClientMode } | null {
+  if (!state) return null;
+  const parts = state.split(":");
+  if (parts.length !== 3) return null;
+  const [prefix, userIdStr, hash] = parts;
+  if (prefix !== "yt" && prefix !== "ytb") return null;
+  const userId = parseInt(userIdStr, 10);
+  if (isNaN(userId)) return null;
+  const expectedHash = crypto.createHmac("sha256", STATE_SECRET).update(`${prefix}:${userId}`).digest("hex");
+  if (hash !== expectedHash) return null;
+  return { userId, mode: prefix === "ytb" ? "beta" : "youtube" };
+}
+
+export function getYouTubeOAuthCredentials(mode: YouTubeClientMode = "youtube"): {
+  client_id: string;
+  client_secret: string;
+  redirect_uri: string;
+  scopes: string;
+} | null {
+  const client_id = mode === "beta" ? config.oauth.betaClientId : config.marketing.youtubeClientId;
+  const client_secret = mode === "beta" ? config.oauth.betaClientSecret : config.marketing.youtubeClientSecret;
+  if (!client_id || !client_secret) return null;
+
+  const publicUrlRaw = process.env.PUBLIC_URL || (process.env.RAILWAY_STATIC_URL ? `https://${process.env.RAILWAY_STATIC_URL}` : "");
+  const PUBLIC_URL = publicUrlRaw.endsWith("/") ? publicUrlRaw.slice(0, -1) : publicUrlRaw;
+  const PORT = process.env.PORT || 3000;
+  const redirect_uri = PUBLIC_URL
+    ? `${PUBLIC_URL}/auth/google/callback`
+    : `http://localhost:${PORT}/auth/google/callback`;
+
+  const scopes = [
+    "https://www.googleapis.com/auth/youtube.upload",
+    "https://www.googleapis.com/auth/youtube.readonly",
+    "https://www.googleapis.com/auth/youtube.force-ssl"
+  ].join(" ");
+
+  return { client_id, client_secret, redirect_uri, scopes };
+}
+
+export function getYouTubeAuthUrl(userId: number, mode: YouTubeClientMode = "youtube"): string | null {
+  const creds = getYouTubeOAuthCredentials(mode);
+  if (!creds) return null;
+  const state = generateYouTubeState(userId, mode);
+  return `https://accounts.google.com/o/oauth2/v2/auth?` +
+    `response_type=code` +
+    `&client_id=${encodeURIComponent(creds.client_id)}` +
+    `&redirect_uri=${encodeURIComponent(creds.redirect_uri)}` +
+    `&scope=${encodeURIComponent(creds.scopes)}` +
+    `&state=${encodeURIComponent(state)}` +
+    `&access_type=offline` +
+    `&include_granted_scopes=true` +
+    `&prompt=consent%20select_account`;
+}

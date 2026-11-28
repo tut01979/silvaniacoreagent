@@ -6,8 +6,10 @@ import { marketingDb } from "../database.js";
 
 export interface DriveImageFile {
   id: string;
+  targetFileId?: string;
   name: string;
   mimeType?: string;
+  parents?: string[];
 }
 
 export interface BrandDriveFolders {
@@ -29,6 +31,7 @@ export interface BrandDriveBundle {
   isBrandConfigured: boolean;
   activeProject?: string;
   introImagePath?: string;
+  introSourceLabel?: string;
   middleImagePath?: string;
   outroImagePath?: string;
   bankImages: Array<{ fileId: string; name: string; localPath: string }>;
@@ -54,21 +57,30 @@ Plantilla en blanco para TU negocio. Edita estos campos en Google Drive o usa /m
 - Reglas explícitas de vídeo e imágenes (ej: usar siempre imágenes de 01_inicio, 02_medio y 03_cierre; estilo cinema cálido):
 `;
 
-const IMAGE_EXT_REGEX = /\.(png|jpe?g|webp|bmp|gif)$/i;
+const IMAGE_EXT_REGEX = /\.(png|jpe?g|webp|bmp|gif|svg|tiff?|heic|avif)$/i;
 const VIDEO_EXT_REGEX = /\.(mp4|mov|m4v|webm)$/i;
 const FOLDER_MIME = "application/vnd.google-apps.folder";
+const SHORTCUT_MIME = "application/vnd.google-apps.shortcut";
 
 function isImageFile(file: any): boolean {
   const mime = String(file?.mimeType || "").toLowerCase();
+  const targetMime = String(file?.shortcutDetails?.targetMimeType || "").toLowerCase();
   const name = String(file?.name || "");
   if (mime === FOLDER_MIME) return false;
+  if (mime === SHORTCUT_MIME) {
+    return targetMime.startsWith("image/") || IMAGE_EXT_REGEX.test(name);
+  }
   return mime.startsWith("image/") || IMAGE_EXT_REGEX.test(name);
 }
 
 function isVideoFile(file: any): boolean {
   const mime = String(file?.mimeType || "").toLowerCase();
+  const targetMime = String(file?.shortcutDetails?.targetMimeType || "").toLowerCase();
   const name = String(file?.name || "");
   if (mime === FOLDER_MIME) return false;
+  if (mime === SHORTCUT_MIME) {
+    return targetMime.startsWith("video/") || VIDEO_EXT_REGEX.test(name);
+  }
   return mime.startsWith("video/") || VIDEO_EXT_REGEX.test(name);
 }
 
@@ -93,15 +105,17 @@ function getLocalBrandRulesFile(userId: number): string {
 async function listFolderFiles(userId: number, folderId: string): Promise<DriveImageFile[]> {
   try {
     const raw = await runGog(
-      `drive search "'${folderId}' in parents and trashed = false" --raw-query --json`,
+      `drive search "'${folderId}' in parents and trashed = false" --raw-query --json --max=100`,
       userId
     );
     const parsed = JSON.parse(raw);
     const files = parsed.files || (Array.isArray(parsed) ? parsed : []);
     return files.map((f: any) => ({
       id: String(f.id),
+      targetFileId: f.shortcutDetails?.targetId ? String(f.shortcutDetails.targetId) : undefined,
       name: String(f.name || "asset"),
-      mimeType: f.mimeType ? String(f.mimeType) : undefined,
+      mimeType: f.shortcutDetails?.targetMimeType ? String(f.shortcutDetails.targetMimeType) : (f.mimeType ? String(f.mimeType) : undefined),
+      parents: Array.isArray(f.parents) ? f.parents.map(String) : undefined,
     }));
   } catch (err: any) {
     console.warn(`⚠️ [BrandDrive] No se pudo listar carpeta ${folderId}:`, err.message);
@@ -109,12 +123,46 @@ async function listFolderFiles(userId: number, folderId: string): Promise<DriveI
   }
 }
 
-async function downloadDriveFile(userId: number, fileId: string, outPath: string): Promise<boolean> {
+async function listFolderImagesDeep(userId: number, folderId: string, maxSubfolders: number = 3): Promise<DriveImageFile[]> {
+  const entries = await listFolderFiles(userId, folderId);
+  const images = entries.filter(isImageFile);
+  if (images.length > 0) return images;
+
+  const subfolders = entries.filter((f) => f.mimeType === FOLDER_MIME).slice(0, maxSubfolders);
+  for (const sub of subfolders) {
+    const subImgs = (await listFolderFiles(userId, sub.id)).filter(isImageFile);
+    if (subImgs.length > 0) return subImgs;
+  }
+  return [];
+}
+
+async function findFoldersByName(userId: number, folderName: string): Promise<DriveImageFile[]> {
   try {
-    await runGog(`drive download ${fileId} --out="${outPath}"`, userId);
+    const safeName = folderName.replace(/'/g, "\\'");
+    const raw = await runGog(
+      `drive search "name = '${safeName}' and mimeType = '${FOLDER_MIME}' and trashed = false" --raw-query --json --max=25`,
+      userId
+    );
+    const parsed = JSON.parse(raw);
+    const files = parsed.files || (Array.isArray(parsed) ? parsed : []);
+    return files.map((f: any) => ({
+      id: String(f.id),
+      name: String(f.name || folderName),
+      mimeType: FOLDER_MIME,
+      parents: Array.isArray(f.parents) ? f.parents.map(String) : undefined,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+async function downloadDriveFile(userId: number, fileIdOrObj: string | DriveImageFile, outPath: string): Promise<boolean> {
+  const downloadId = typeof fileIdOrObj === "string" ? fileIdOrObj : (fileIdOrObj.targetFileId || fileIdOrObj.id);
+  try {
+    await runGog(`drive download ${downloadId} --out="${outPath}"`, userId);
     return fs.existsSync(outPath) && fs.statSync(outPath).size > 0;
   } catch (err: any) {
-    console.warn(`⚠️ [BrandDrive] Falló descarga de ${fileId}:`, err.message);
+    console.warn(`⚠️ [BrandDrive] Falló descarga de ${downloadId}:`, err.message);
     return false;
   }
 }
@@ -371,14 +419,15 @@ export const brandDriveAssets = {
     fs.mkdirSync(tempDir, { recursive: true });
 
     let brandRulesText = "";
+    let marketingRootFiles: DriveImageFile[] = [];
     try {
-      const rootFiles = await listFolderFiles(userId, folders.rootFolderId);
-      const rulesFile = rootFiles.find(
+      marketingRootFiles = await listFolderFiles(userId, folders.rootFolderId);
+      const rulesFile = marketingRootFiles.find(
         (f) => f.name.toLowerCase() === "marca_y_reglas.md" || f.name.toLowerCase() === "marca_y_reglas.txt"
       );
       if (rulesFile) {
         const rulesPath = path.join(tempDir, rulesFile.name);
-        const ok = await downloadDriveFile(userId, rulesFile.id, rulesPath);
+        const ok = await downloadDriveFile(userId, rulesFile, rulesPath);
         if (ok) {
           const content = fs.readFileSync(rulesPath, "utf8");
           const localCache = getLocalBrandRulesFile(userId);
@@ -393,41 +442,90 @@ export const brandDriveAssets = {
       // ignore brand rules read errors
     }
 
-    // 1. Imágenes intrínsecas (01_inicio, 02_medio, 03_cierre + raíz de imagenes_intrinsecas)
-    const downloadIntrinsic = async (folderId: string, prefix: string): Promise<string | undefined> => {
-      const files = (await listFolderFiles(userId, folderId)).filter(isImageFile);
-      console.log(`🔍 [BrandDrive] Carpeta ${prefix} (${folderId}): ${files.length} imagen(es) detectada(s).`);
-      if (files.length === 0) return undefined;
-      const chosen = files[0];
+    // 1. Imágenes intrínsecas (01_inicio, 02_medio, 03_cierre + subcarpetas + duplicados + fallbacks)
+    const downloadChosenFile = async (chosen: DriveImageFile, prefix: string): Promise<string | undefined> => {
       const ext = path.extname(chosen.name) || ".png";
       const outPath = path.join(tempDir, `${prefix}${ext}`);
-      const ok = await downloadDriveFile(userId, chosen.id, outPath);
+      const ok = await downloadDriveFile(userId, chosen, outPath);
       if (ok) console.log(`✅ [BrandDrive] Descargada intrínseca ${prefix}: ${chosen.name}`);
       return ok ? outPath : undefined;
     };
 
-    let [introImagePath, middleImagePath, outroImagePath] = await Promise.all([
-      downloadIntrinsic(folders.inicioFolderId, "intrinsic_01_inicio"),
-      downloadIntrinsic(folders.medioFolderId, "intrinsic_02_medio"),
-      downloadIntrinsic(folders.cierreFolderId, "intrinsic_03_cierre"),
+    const downloadIntrinsic = async (
+      folderId: string,
+      folderName: string,
+      prefix: string
+    ): Promise<{ path?: string; source?: string; consumedFileId?: string }> => {
+      const files = await listFolderImagesDeep(userId, folderId);
+      console.log(`🔍 [BrandDrive] Carpeta ${prefix} (${folderId}): ${files.length} imagen(es) detectada(s).`);
+      if (files.length > 0) {
+        const chosen = files.find((f) => /logo|inicio|intro|portada|marca|cierre/i.test(f.name)) || files[0];
+        const p = await downloadChosenFile(chosen, prefix);
+        if (p) return { path: p, source: folderName, consumedFileId: chosen.id };
+      }
+
+      // Buscar en carpetas duplicadas con el mismo nombre exacto en Drive (p. ej. si el usuario subió a otra '01_inicio')
+      const duplicates = await findFoldersByName(userId, folderName);
+      for (const dup of duplicates) {
+        if (dup.id === folderId) continue;
+        const dupFiles = await listFolderImagesDeep(userId, dup.id, 1);
+        if (dupFiles.length > 0) {
+          console.log(`🔍 [BrandDrive] Carpeta duplicada '${folderName}' (${dup.id}): ${dupFiles.length} imagen(es) detectada(s).`);
+          const chosen = dupFiles[0];
+          const p = await downloadChosenFile(chosen, prefix);
+          if (p) return { path: p, source: `${folderName} (duplicada)`, consumedFileId: chosen.id };
+        }
+      }
+
+      return {};
+    };
+
+    const [introRes, medioRes, cierreRes] = await Promise.all([
+      downloadIntrinsic(folders.inicioFolderId, "01_inicio", "intrinsic_01_inicio"),
+      downloadIntrinsic(folders.medioFolderId, "02_medio", "intrinsic_02_medio"),
+      downloadIntrinsic(folders.cierreFolderId, "03_cierre", "intrinsic_03_cierre"),
     ]);
 
+    let introImagePath = introRes.path;
+    let introSourceLabel = introRes.source;
+    let middleImagePath = medioRes.path;
+    let outroImagePath = cierreRes.path;
+    const consumedBrandFileIds = new Set<string>(
+      [introRes.consumedFileId, medioRes.consumedFileId, cierreRes.consumedFileId].filter(Boolean) as string[]
+    );
+
     if (!introImagePath || !outroImagePath) {
-      const rootIntrinsicFiles = (await listFolderFiles(userId, folders.intrinsicFolderId)).filter(isImageFile);
+      const rootIntrinsicFiles = await listFolderImagesDeep(userId, folders.intrinsicFolderId, 2);
       if (rootIntrinsicFiles.length > 0) {
         const logoFile =
           rootIntrinsicFiles.find((f) => /logo|inicio|intro|marca/i.test(f.name)) || rootIntrinsicFiles[0];
-        const ext = path.extname(logoFile.name) || ".png";
-        const rootLogoPath = path.join(tempDir, `intrinsic_root_logo${ext}`);
-        const ok = await downloadDriveFile(userId, logoFile.id, rootLogoPath);
-        if (ok) {
-          if (!introImagePath) introImagePath = rootLogoPath;
-          if (!outroImagePath) outroImagePath = rootLogoPath;
+        const outP = await downloadChosenFile(logoFile, !introImagePath ? "intrinsic_01_inicio_root" : "intrinsic_root_logo");
+        if (outP) {
+          consumedBrandFileIds.add(logoFile.id);
+          if (!introImagePath) {
+            introImagePath = outP;
+            introSourceLabel = "imagenes_intrinsecas";
+          }
+          if (!outroImagePath && /logo|cierre|final|marca/i.test(logoFile.name)) {
+            outroImagePath = outP;
+          }
         }
       }
     }
 
-    const intrinsicCount = [introImagePath, middleImagePath, outroImagePath].filter(Boolean).length;
+    // Fallback: imágenes/logos colocados directamente en silvania/marketing/ raíz
+    if (!introImagePath && marketingRootFiles.length > 0) {
+      const mktRootImages = marketingRootFiles.filter(isImageFile);
+      if (mktRootImages.length > 0) {
+        const chosen = mktRootImages.find((f) => /logo|inicio|intro|marca|portada|emblema/i.test(f.name)) || mktRootImages[0];
+        const p = await downloadChosenFile(chosen, "intrinsic_01_inicio_mktroot");
+        if (p) {
+          consumedBrandFileIds.add(chosen.id);
+          introImagePath = p;
+          introSourceLabel = "silvania/marketing";
+        }
+      }
+    }
 
     // Resolver proyecto específico si se pidió o si hay uno activo
     const activeSlug = slugifyProjectName(explicitProjectName || "") || this.getActiveProject(userId);
@@ -446,10 +544,21 @@ export const brandDriveAssets = {
           const brief = pFiles.find((f) => f.name.toLowerCase() === "brief.md");
           if (brief) {
             const bPath = path.join(tempDir, "brief.md");
-            if (await downloadDriveFile(userId, brief.id, bPath)) {
+            if (await downloadDriveFile(userId, brief, bPath)) {
               const bContent = fs.readFileSync(bPath, "utf8");
               if (hasCustomizedBrandRules(bContent)) {
                 brandRulesText = `${brandRulesText}\n\n[PROYECTO ${proj.slug}]:\n${bContent}`.trim().slice(0, 2600);
+              }
+            }
+          }
+          if (!introImagePath) {
+            const projRootLogo = pFiles.filter(isImageFile).find((f) => /logo|inicio|intro|portada|emblema|marca/i.test(f.name));
+            if (projRootLogo) {
+              const p = await downloadChosenFile(projRootLogo, "intrinsic_01_inicio_proj");
+              if (p) {
+                consumedBrandFileIds.add(projRootLogo.id);
+                introImagePath = p;
+                introSourceLabel = `proyecto:${proj.slug}`;
               }
             }
           }
@@ -459,11 +568,70 @@ export const brandDriveAssets = {
 
     // 2. Banco visual de imágenes (del proyecto activo o global)
     const bankImages: Array<{ fileId: string; name: string; localPath: string }> = [];
-    if (maxBankImages > 0) {
-      let bankFiles = (await listFolderFiles(userId, targetImagesFolderId)).filter(isImageFile);
-      if (bankFiles.length === 0 && targetImagesFolderId !== folders.bancoVisualFolderId) {
-        bankFiles = (await listFolderFiles(userId, folders.bancoVisualFolderId)).filter(isImageFile);
+    let bankFiles = (await listFolderFiles(userId, targetImagesFolderId)).filter(isImageFile);
+    if (bankFiles.length === 0 && targetImagesFolderId !== folders.bancoVisualFolderId) {
+      bankFiles = (await listFolderFiles(userId, folders.bancoVisualFolderId)).filter(isImageFile);
+    }
+
+    // Si aún no hay logo de inicio, buscar un archivo explícito de logo/inicio en banco_visual
+    if (!introImagePath && bankFiles.length > 0) {
+      const bankLogo = bankFiles.find((f) => /logo|inicio|intro|portada|emblema/i.test(f.name));
+      if (bankLogo) {
+        const p = await downloadChosenFile(bankLogo, "intrinsic_01_inicio_bank");
+        if (p) {
+          consumedBrandFileIds.add(bankLogo.id);
+          introImagePath = p;
+          introSourceLabel = "banco_visual";
+        }
       }
+    }
+
+    // Fallback final en Drive: carpeta raíz silvania/ o búsqueda global de logo_inicio
+    if (!introImagePath) {
+      try {
+        const silvaniaRootId = await driveMemoryService.getOrCreateFolderPath(["silvania"], userId);
+        const silvaniaFiles = (await listFolderFiles(userId, silvaniaRootId)).filter(isImageFile);
+        const rootLogo = silvaniaFiles.find((f) => /logo|inicio|intro|emblema|silvania/i.test(f.name));
+        if (rootLogo) {
+          const p = await downloadChosenFile(rootLogo, "intrinsic_01_inicio_silvania");
+          if (p) {
+            consumedBrandFileIds.add(rootLogo.id);
+            introImagePath = p;
+            introSourceLabel = "silvania/";
+          }
+        }
+      } catch {}
+    }
+
+    // Fallback local de Silvania AI solo si la marca configurada es Silvania (o sin marca ajena) y se pidió/aplica 01_inicio
+    const isCustomNonSilvaniaBrand = Boolean(brandRulesText && !/\bsilvania\b/i.test(brandRulesText));
+    const mentionsIntroRule = /01_inicio|usar.*logo|logo.*inicio|\bcoreagent\b|\bsilvania\b/i.test(`${brandRulesText} ${topic}`);
+    if (!introImagePath && !isCustomNonSilvaniaBrand && mentionsIntroRule) {
+      const localCandidates = [
+        path.resolve(process.cwd(), "public/logo_core_emblem.png"),
+        path.resolve(process.cwd(), "public/logo.png"),
+        path.resolve(process.cwd(), "public/logo_ai.png"),
+      ];
+      const existingLocal = localCandidates.find((cp) => fs.existsSync(cp));
+      if (existingLocal) {
+        const ext = path.extname(existingLocal) || ".png";
+        const copied = path.join(tempDir, `intrinsic_01_inicio_local${ext}`);
+        fs.copyFileSync(existingLocal, copied);
+        introImagePath = copied;
+        introSourceLabel = "emblema_local_silvania";
+        console.log(`ℹ️ [BrandDrive] 01_inicio sin archivos propios en Drive; usando emblema oficial Silvania (${path.basename(existingLocal)}).`);
+      }
+    }
+
+    if (!introImagePath) {
+      console.warn(`⚠️ [BrandDrive] No se detectó logo de inicio en 01_inicio (${folders.inicioFolderId}) ni en duplicados/silvania/marketing/banco_visual.`);
+    }
+
+    const intrinsicCount = [introImagePath, middleImagePath, outroImagePath].filter(Boolean).length;
+
+    const filteredBankFiles = bankFiles.filter((f) => !consumedBrandFileIds.has(f.id));
+    if (maxBankImages > 0 && filteredBankFiles.length > 0) {
+      bankFiles = filteredBankFiles;
       if (bankFiles.length > 0) {
         const syncRows = bankFiles.map((f) => ({
           id: `drive:${userId}:${f.id}`,
@@ -504,7 +672,7 @@ export const brandDriveAssets = {
           const item = selected[i];
           const ext = path.extname(item.file.name) || ".jpg";
           const outPath = path.join(tempDir, `drive_bank_${i + 1}${ext}`);
-          const ok = await downloadDriveFile(userId, item.file.id, outPath);
+          const ok = await downloadDriveFile(userId, item.file, outPath);
           if (ok) {
             marketingDb.markAssetUsed("visual", item.dbId);
             bankImages.push({
@@ -529,7 +697,7 @@ export const brandDriveAssets = {
         const cf = selectedClips[i];
         const ext = path.extname(cf.name) || ".mp4";
         const outPath = path.join(tempDir, `drive_clip_${i + 1}${ext}`);
-        const ok = await downloadDriveFile(userId, cf.id, outPath);
+        const ok = await downloadDriveFile(userId, cf, outPath);
         if (ok) {
           console.log(`🎞️ [BrandDrive] Descargado clip corto: ${cf.name}`);
           bankClips.push({
@@ -547,6 +715,7 @@ export const brandDriveAssets = {
       isBrandConfigured: Boolean(brandRulesText),
       activeProject,
       introImagePath,
+      introSourceLabel,
       middleImagePath,
       outroImagePath,
       bankImages,

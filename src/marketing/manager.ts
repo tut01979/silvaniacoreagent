@@ -13,6 +13,7 @@ import { config } from "../config/config.js";
 import { visualAssetSelector } from "./services/visualAssetSelector.js";
 import { musicAssetSelector } from "./services/musicAssetSelector.js";
 import { brandDriveAssets } from "./services/brandDriveAssets.js";
+import { slideRenderer } from "./services/slideRenderer.js";
 import { generateTimedSrtAndTranscript } from "./services/subtitleGenerator.js";
 
 export const marketingManager = {
@@ -62,7 +63,11 @@ export const marketingManager = {
     );
     const brandParts: string[] = [];
     if (brandBundle.activeProject) brandParts.push(`proyecto:${brandBundle.activeProject}`);
-    if (brandBundle.intrinsicCount > 0) brandParts.push(`${brandBundle.intrinsicCount} intrínsecas`);
+    if (brandBundle.introSourceLabel) {
+      brandParts.push(`logo_inicio:${brandBundle.introSourceLabel}`);
+    } else if (brandBundle.intrinsicCount > 0) {
+      brandParts.push(`${brandBundle.intrinsicCount} intrínsecas`);
+    }
     if (brandBundle.clipCount > 0) brandParts.push(`${brandBundle.clipCount} clips MP4`);
     if (brandBundle.bankCount > 0) brandParts.push(`${brandBundle.bankCount} banco Drive`);
     if (brandParts.length > 0) {
@@ -299,12 +304,33 @@ export const marketingManager = {
       const explicitTopicProduct = visualAssetSelector.detectExplicitCommercialProduct(topic);
       const isPureStory = !explicitTopicProduct;
       let lastSelectedCategory = "";
+
+      const prepareBrandPlate = async (rawPath: string | undefined, suffix: string): Promise<string | null> => {
+        if (!rawPath || !fs.existsSync(rawPath)) return null;
+        try {
+          const outPlate = path.join(brandBundle.tempDir, `intrinsic_${suffix}_framed.jpg`);
+          await slideRenderer.renderBrandLogoPlate({
+            logoPath: rawPath,
+            width: imgDimensions.width,
+            height: imgDimensions.height,
+            outputPath: outPlate,
+            accentColor: explicitTopicProduct === "eva" ? "#10B981" : isPureStory ? "#F59E0B" : "#0EA5E9",
+          });
+          return fs.existsSync(outPlate) ? outPlate : rawPath;
+        } catch (plateErr: any) {
+          console.warn(`⚠️ [BrandDrive] No se pudo enmarcar placa ${suffix} (${plateErr.message}); usando original.`);
+          return rawPath;
+        }
+      };
+
+      const [effectiveIntroPath, effectiveMiddlePath, effectiveOutroRawPath] = await Promise.all([
+        prepareBrandPlate(brandBundle.introImagePath, "01_inicio"),
+        prepareBrandPlate(brandBundle.middleImagePath, "02_medio"),
+        prepareBrandPlate(brandBundle.outroImagePath, "03_cierre"),
+      ]);
+
       const effectiveOutroPath =
-        brandBundle.outroImagePath && fs.existsSync(brandBundle.outroImagePath)
-          ? brandBundle.outroImagePath
-          : wantsOutroLogo && brandBundle.introImagePath && fs.existsSync(brandBundle.introImagePath)
-            ? brandBundle.introImagePath
-            : null;
+        effectiveOutroRawPath || (wantsOutroLogo ? effectiveIntroPath : null);
 
       for (let idx = 0; idx < beatPlans.length; idx++) {
         const plan = beatPlans[idx];
@@ -312,14 +338,14 @@ export const marketingManager = {
 
         let sceneImgPath: string | null = null;
         let sceneMediaType: "image" | "video" = "image";
-        if (idx === 0 && brandBundle.introImagePath && fs.existsSync(brandBundle.introImagePath)) {
-          sceneImgPath = brandBundle.introImagePath;
-          console.log(`🏷️ [BrandDrive] Beat ${idx + 1}/${totalBeats}: Imagen intrínseca 01_inicio aplicada.`);
-        } else if (idx === lastBeatIdx && effectiveOutroPath) {
+        if (idx === 0 && effectiveIntroPath && fs.existsSync(effectiveIntroPath)) {
+          sceneImgPath = effectiveIntroPath;
+          console.log(`🏷️ [BrandDrive] Beat ${idx + 1}/${totalBeats}: Logo/imagen de inicio aplicada (${brandBundle.introSourceLabel || "01_inicio"}).`);
+        } else if (idx === lastBeatIdx && effectiveOutroPath && fs.existsSync(effectiveOutroPath)) {
           sceneImgPath = effectiveOutroPath;
           console.log(`🏷️ [BrandDrive] Beat ${idx + 1}/${totalBeats}: Logo/cierre final aplicado (${path.basename(effectiveOutroPath)}).`);
-        } else if (totalBeats >= 3 && idx === middleBeatIdx && brandBundle.middleImagePath && fs.existsSync(brandBundle.middleImagePath)) {
-          sceneImgPath = brandBundle.middleImagePath;
+        } else if (totalBeats >= 3 && idx === middleBeatIdx && effectiveMiddlePath && fs.existsSync(effectiveMiddlePath)) {
+          sceneImgPath = effectiveMiddlePath;
           console.log(`🏷️ [BrandDrive] Beat ${idx + 1}/${totalBeats}: Imagen intrínseca 02_medio aplicada.`);
         } else if (clipCursor < brandBundle.bankClips.length && fs.existsSync(brandBundle.bankClips[clipCursor].localPath) && (idx % 2 === 1 || bankCursor >= brandBundle.bankImages.length)) {
           sceneImgPath = brandBundle.bankClips[clipCursor].localPath;

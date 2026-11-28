@@ -667,4 +667,73 @@ export const slideRenderer = {
       product,
     };
   },
+
+  /**
+   * Adapta cualquier logo o imagen intrínseca (incluidos PNG transparentes o logotipos cuadrados)
+   * a un lienzo 16:9 / 9:16 opaco de estudio oscuro, eliminando fondos negros/verdes en FFmpeg.
+   */
+  async renderBrandLogoPlate(options: {
+    logoPath: string;
+    width: number;
+    height: number;
+    outputPath: string;
+    accentColor?: string;
+    brandLabel?: string;
+  }): Promise<string> {
+    ensureFontsRegistered();
+    const { width, height, outputPath } = options;
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext("2d");
+
+    const grad = ctx.createLinearGradient(0, 0, width, height);
+    grad.addColorStop(0, "#050A14");
+    grad.addColorStop(1, "#0E1B36");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, width, height);
+
+    const accent = options.accentColor || "#0EA5E9";
+    const radial = ctx.createRadialGradient(width / 2, height / 2, 20, width / 2, height / 2, Math.max(width, height) * 0.52);
+    radial.addColorStop(0, accent + "33");
+    radial.addColorStop(1, "transparent");
+    ctx.fillStyle = radial;
+    ctx.fillRect(0, 0, width, height);
+
+    const img = await loadImage(options.logoPath);
+    const imgAspect = img.width / Math.max(1, img.height);
+    const canvasAspect = width / Math.max(1, height);
+    const isNearExactAspect = Math.abs(imgAspect - canvasAspect) <= 0.18;
+
+    // Comprobar si tiene canal alfa transparente para decidir entre encuadre centrado o full-bleed
+    let hasTransparency = /\.png$|\.webp$/i.test(options.logoPath);
+    if (isNearExactAspect && !hasTransparency) {
+      ctx.drawImage(img, 0, 0, width, height);
+    } else {
+      const paddingScale = isNearExactAspect ? 0.94 : 0.72;
+      const maxW = width * paddingScale;
+      const maxH = height * (options.brandLabel ? paddingScale * 0.85 : paddingScale);
+      const scale = Math.min(maxW / Math.max(1, img.width), maxH / Math.max(1, img.height));
+      const drawW = Math.round(img.width * scale);
+      const drawH = Math.round(img.height * scale);
+      const drawX = Math.round((width - drawW) / 2);
+      const drawY = Math.round((height - drawH) / 2) - (options.brandLabel ? 14 : 0);
+
+      ctx.save();
+      ctx.shadowColor = "rgba(0, 0, 0, 0.55)";
+      ctx.shadowBlur = 28;
+      ctx.drawImage(img, drawX, drawY, drawW, drawH);
+      ctx.restore();
+
+      if (options.brandLabel) {
+        ctx.font = "bold 20px SilvaniaBold, sans-serif";
+        ctx.fillStyle = "rgba(226, 232, 240, 0.88)";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+        ctx.fillText(options.brandLabel, width / 2, height - 28);
+      }
+    }
+
+    fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+    fs.writeFileSync(outputPath, canvas.toBuffer("image/jpeg", 94));
+    return outputPath;
+  },
 };

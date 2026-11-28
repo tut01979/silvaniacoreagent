@@ -26,7 +26,12 @@ import fs from "fs";
 import crypto from "crypto";
 import { criticalLogService } from "./services/criticalLog.js";
 import { generateDriveLink } from "./services/linkGenerator.js";
-import { getAuthUrl, getGoogleCredentials } from "./services/authHelper.js";
+import {
+  getAuthUrl,
+  getGoogleCredentials,
+  verifyYouTubeState,
+  getYouTubeOAuthCredentials,
+} from "./services/authHelper.js";
 import { checkCourtesyGreeting } from "./services/courtesyHelper.js";
 import { EVA_EXERCISES_DATABASE, EVA_LESSONS } from "./config/evaExercises.js";
 import { clearUserGogCredentials } from "./tools/gogWrapper.js";
@@ -1799,6 +1804,59 @@ app.get("/auth/google/callback", rateLimiter(10, 60000), async (req: any, res: a
   if (!code || !state) {
     return res.status(400).send("Faltan parámetros code o state.");
   }
+
+  // Rama dedicada: OAuth de YouTube para Marketing Studio (@silvania_ai) sin tocar /auth de Workspace
+  const ytState = verifyYouTubeState(state as string);
+  if (ytState) {
+    try {
+      const ytCreds = getYouTubeOAuthCredentials(ytState.mode);
+      if (!ytCreds) {
+        return res.status(500).send("No se encontraron las credenciales OAuth de YouTube.");
+      }
+      const tokenResponse = await axios.post("https://oauth2.googleapis.com/token", {
+        code,
+        client_id: ytCreds.client_id,
+        client_secret: ytCreds.client_secret,
+        redirect_uri: ytCreds.redirect_uri,
+        grant_type: "authorization_code"
+      });
+      const ytRefreshToken = tokenResponse.data?.refresh_token;
+      if (!ytRefreshToken) {
+        return res.status(400).send("Google no devolvió refresh_token para YouTube. Revoca el acceso previo en myaccount.google.com/permissions y vuelve a autorizar.");
+      }
+      const { youtubePublisher } = await import("./marketing/services/youtubePublisher.js");
+      const saved = await youtubePublisher.saveYouTubeRefreshToken(ytRefreshToken, {
+        clientId: ytCreds.client_id,
+        clientSecret: ytCreds.client_secret,
+        clientMode: ytState.mode,
+        updatedBy: ytState.userId,
+      });
+      if (!saved.ok) {
+        return res.status(500).send(`Error validando el token de YouTube: ${saved.error}`);
+      }
+      await bot.api.sendMessage(
+        ytState.userId,
+        `✅ *Canal de YouTube reconectado con éxito:* \`${saved.channelTitle || "@silvania_ai"}\`\nYa puedes pulsar "Aprobar y Publicar" en cualquier borrador.`,
+        { parse_mode: "Markdown" }
+      ).catch(() => {});
+      return res.send(`
+        <html>
+          <head><title>YouTube Conectado — Silvania Marketing Studio</title><meta charset="utf-8"></head>
+          <body style="font-family: -apple-system, sans-serif; text-align: center; padding: 50px; background-color: #0b0f19; color: #f3f4f6;">
+            <div style="background: rgba(17, 24, 39, 0.7); padding: 40px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.08); display: inline-block;">
+              <h1 style="color: #10b981;">🎬 ¡YouTube Reconectado!</h1>
+              <p>Canal autorizado: <strong>${saved.channelTitle || "@silvania_ai"}</strong></p>
+              <p style="color: #9ca3af;">Ya puedes cerrar esta ventana y volver a Telegram.</p>
+            </div>
+          </body>
+        </html>
+      `);
+    } catch (ytCbErr: any) {
+      const desc = ytCbErr?.response?.data?.error_description || ytCbErr?.response?.data?.error?.message || ytCbErr.message;
+      console.error("❌ [YouTube OAuth Callback] Error:", desc);
+      return res.status(500).send(`Error procesando autorización de YouTube: ${desc}`);
+    }
+  }
   
   const userId = verifySecureState(state as string);
   if (!userId) {
@@ -2544,6 +2602,16 @@ bot.command(["auth", "login"], async (ctx) => {
   );
 });
 
+bot.command("yt_auth", async (ctx) => {
+  const userId = ctx.from!.id;
+  const adminIds = config.marketing?.adminIds || [1572946817];
+  if (!adminIds.includes(userId)) {
+    return ctx.reply("❌ No tienes permisos para reconectar el canal oficial de YouTube.");
+  }
+  const { sendYouTubeOAuthPrompt } = await import("./services/youtubeAuthPrompt.js");
+  await sendYouTubeOAuthPrompt(bot, userId);
+});
+
 // Comando /eva para derivar a la web de Eva con explicación de 0 scopes y privacidad
 bot.command("eva", async (ctx) => {
   await ctx.reply(
@@ -3026,14 +3094,36 @@ bot.command("marketing", async (ctx) => {
       "• `/marketing whatsapp [tema]` - Vídeo vertical 9:16 de 30s para WhatsApp.\n" +
       "• `/marketing post [linkedin|x|telegram] [tema]` - Post adaptado con imagen y audio.\n" +
       "• `/marketing setup` - Revisa/crea en Google Drive tus carpetas (`proyectos`, `clips_cortos`, `banco_visual`, `imagenes_intrinsecas`, `videos`).\n" +
+      "• `/marketing youtube [token ...]` - Diagnostica y reconecta el canal de YouTube (`invalid_grant`).\n" +
       "• `/marketing draft [coreagent|eva|marketing]` | `/marketing status`\n\n" +
-      "_Tip:_ Envía fotos o vídeos cortos `.mp4` con caption `/marketing` (o `/marketing proyecto:nombre`) para guardarlos directo en tu Drive.",
+      "_Tip:_ Envía fotos, PNGs sin comprimir o vídeos cortos `.mp4` con caption `/marketing logo` o `/marketing` para guardarlos directo en tu Drive.",
       { parse_mode: "Markdown" }
     );
   }
 
   const parts = rawArgs.split(/\s+/);
   const subCmd = parts[0].toLowerCase();
+
+  // Subcomando de diagnóstico y reconexión OAuth de YouTube (@silvania_ai)
+  if (subCmd === "youtube_auth" || subCmd === "yt_auth" || (subCmd === "youtube" && /^(auth|token|status|estado|reconectar|check)?$/i.test(parts[1] || ""))) {
+    const subAction = (parts[1] || "").toLowerCase();
+    if (subAction === "token" && parts[2]) {
+      const providedToken = parts[2].trim();
+      await ctx.deleteMessage().catch(() => {});
+      const { youtubePublisher } = await import("./marketing/services/youtubePublisher.js");
+      const saved = await youtubePublisher.saveYouTubeRefreshToken(providedToken, { updatedBy: userId });
+      if (!saved.ok) {
+        return ctx.reply(`❌ El token proporcionado no es válido:\n_${saved.error}_`, { parse_mode: "Markdown" });
+      }
+      return ctx.reply(
+        `✅ *Token de YouTube validado y activado en caliente.*\n📺 Canal: \`${saved.channelTitle || "@silvania_ai"}\`\n🔒 Tu mensaje anterior fue eliminado por seguridad.`,
+        { parse_mode: "Markdown" }
+      );
+    }
+    const { sendYouTubeOAuthPrompt } = await import("./services/youtubeAuthPrompt.js");
+    await sendYouTubeOAuthPrompt(bot, userId);
+    return;
+  }
 
   // Subcomando de configuración guiada de negocio/marca en silvania/marketing/
   if (subCmd === "config" || subCmd === "perfil") {
@@ -3568,6 +3658,91 @@ bot.on("message:text", async (ctx) => {
   }
 });
 
+async function handleTelegramMarketingImageUpload(
+  ctx: any,
+  userId: number,
+  telegramFileId: string,
+  caption: string,
+  originalExt: string = ".jpg"
+): Promise<void> {
+  const adminIds = config.marketing?.adminIds || [1572946817];
+  if (!adminIds.includes(userId)) {
+    await ctx.reply("❌ No tienes permisos para subir activos de marca a Silvania Marketing Studio.");
+    return;
+  }
+  const lowerCap = caption.toLowerCase();
+  const safeExt = /\.(png|jpe?g|webp|gif|svg)$/i.test(originalExt) ? originalExt.toLowerCase() : ".jpg";
+  await ctx.reply("📤 Subiendo imagen a tu carpeta de marca en Google Drive...");
+  let tmpPhotoPath = "";
+  try {
+    const file = await ctx.api.getFile(telegramFileId);
+    const fileUrl = `https://api.telegram.org/file/bot${config.telegram.token}/${file.file_path}`;
+    const resp = await fetch(fileUrl);
+    const buf = Buffer.from(await resp.arrayBuffer());
+    const fsMod = await import("fs");
+    const pathMod = await import("path");
+    tmpPhotoPath = pathMod.default.resolve(process.cwd(), `temp_media/tg_brand_${userId}_${Date.now()}${safeExt}`);
+    fsMod.default.mkdirSync(pathMod.default.dirname(tmpPhotoPath), { recursive: true });
+    fsMod.default.writeFileSync(tmpPhotoPath, buf);
+
+    const { brandDriveAssets } = await import("./marketing/services/brandDriveAssets.js");
+    const { driveMemoryService } = await import("./services/driveMemory.js");
+    const folders = await brandDriveAssets.ensureBrandDriveStructure(userId);
+    if (!folders) {
+      await ctx.reply("⚠️ No pude acceder a tu Google Drive. Verifica `/auth`.");
+      return;
+    }
+
+    let targetFolderId = folders.bancoVisualFolderId;
+    let folderLabel = "banco_visual";
+    let fileName = `brand_photo_${Date.now()}${safeExt}`;
+    const capProjMatch = caption.match(/\bproyecto:([^\s]+)/i);
+    const targetProjName = capProjMatch ? capProjMatch[1].trim() : brandDriveAssets.getActiveProject(userId);
+
+    if (/(01_?inicio|inicio|logo|intro|portada|emblema)/.test(lowerCap)) {
+      targetFolderId = folders.inicioFolderId;
+      folderLabel = "imagenes_intrinsecas/01_inicio";
+      fileName = `logo_inicio${safeExt}`;
+    } else if (/(02_?medio|medio|slogan|producto)/.test(lowerCap)) {
+      targetFolderId = folders.medioFolderId;
+      folderLabel = "imagenes_intrinsecas/02_medio";
+      fileName = `placa_medio${safeExt}`;
+    } else if (/(03_?cierre|cierre|final|cta)/.test(lowerCap)) {
+      targetFolderId = folders.cierreFolderId;
+      folderLabel = "imagenes_intrinsecas/03_cierre";
+      fileName = `placa_cierre${safeExt}`;
+    } else if (targetProjName) {
+      const proj = await brandDriveAssets.ensureProjectFolderStructure(userId, targetProjName, Boolean(capProjMatch));
+      if (proj) {
+        targetFolderId = proj.imagesFolderId;
+        folderLabel = `proyectos/${proj.slug}/imagenes`;
+      }
+    }
+
+    const uploadedId = await driveMemoryService.uploadOrReplace(userId, tmpPhotoPath, fileName, targetFolderId);
+    const driveUrl = uploadedId
+      ? `https://drive.google.com/file/d/${uploadedId}/view`
+      : `https://drive.google.com/drive/folders/${targetFolderId}`;
+    await ctx.reply(
+      `✅ *Imagen de marca guardada en Drive:*\n` +
+      `📁 Carpeta: \`silvania/marketing/${folderLabel}\`\n` +
+      `📄 Archivo: \`${fileName}\`\n` +
+      `🔗 [Ver en Drive](${driveUrl})\n\n` +
+      `_Se detectará automáticamente en tus próximos vídeos (incl. 01_inicio si es logo)._`,
+      { parse_mode: "Markdown" }
+    );
+  } catch (err: any) {
+    await ctx.reply(`❌ Error subiendo imagen de marca: ${err.message}`);
+  } finally {
+    if (tmpPhotoPath) {
+      try {
+        const fsMod = await import("fs");
+        if (fsMod.default.existsSync(tmpPhotoPath)) fsMod.default.unlinkSync(tmpPhotoPath);
+      } catch {}
+    }
+  }
+}
+
 // Manejador de fotos
 bot.on("message:photo", async (ctx) => {
   const userId = ctx.from.id;
@@ -3576,79 +3751,7 @@ bot.on("message:photo", async (ctx) => {
 
   const caption = (ctx.message.caption || "").trim();
   if (/^\/marketing\b/i.test(caption)) {
-    const adminIds = config.marketing?.adminIds || [1572946817];
-    if (!adminIds.includes(userId)) {
-      return ctx.reply("❌ No tienes permisos para subir activos de marca a Silvania Marketing Studio.");
-    }
-    const lowerCap = caption.toLowerCase();
-    await ctx.reply("📤 Subiendo imagen a tu carpeta de marca en Google Drive...");
-    let tmpPhotoPath = "";
-    try {
-      const file = await ctx.api.getFile(photo.file_id);
-      const fileUrl = `https://api.telegram.org/file/bot${config.telegram.token}/${file.file_path}`;
-      const resp = await fetch(fileUrl);
-      const buf = Buffer.from(await resp.arrayBuffer());
-      const fsMod = await import("fs");
-      const pathMod = await import("path");
-      tmpPhotoPath = pathMod.default.resolve(process.cwd(), `temp_media/tg_brand_${userId}_${Date.now()}.jpg`);
-      fsMod.default.mkdirSync(pathMod.default.dirname(tmpPhotoPath), { recursive: true });
-      fsMod.default.writeFileSync(tmpPhotoPath, buf);
-
-      const { brandDriveAssets } = await import("./marketing/services/brandDriveAssets.js");
-      const { driveMemoryService } = await import("./services/driveMemory.js");
-      const folders = await brandDriveAssets.ensureBrandDriveStructure(userId);
-      if (!folders) {
-        return ctx.reply("⚠️ No pude acceder a tu Google Drive. Verifica `/auth`.");
-      }
-
-      let targetFolderId = folders.bancoVisualFolderId;
-      let folderLabel = "banco_visual";
-      let fileName = `brand_photo_${Date.now()}.jpg`;
-      const capProjMatch = caption.match(/\bproyecto:([^\s]+)/i);
-      const targetProjName = capProjMatch ? capProjMatch[1].trim() : brandDriveAssets.getActiveProject(userId);
-
-      if (/(inicio|logo|intro)/.test(lowerCap)) {
-        targetFolderId = folders.inicioFolderId;
-        folderLabel = "imagenes_intrinsecas/01_inicio";
-        fileName = "logo_inicio.jpg";
-      } else if (/(medio|slogan|producto)/.test(lowerCap)) {
-        targetFolderId = folders.medioFolderId;
-        folderLabel = "imagenes_intrinsecas/02_medio";
-        fileName = "placa_medio.jpg";
-      } else if (/(cierre|final|cta)/.test(lowerCap)) {
-        targetFolderId = folders.cierreFolderId;
-        folderLabel = "imagenes_intrinsecas/03_cierre";
-        fileName = "placa_cierre.jpg";
-      } else if (targetProjName) {
-        const proj = await brandDriveAssets.ensureProjectFolderStructure(userId, targetProjName, Boolean(capProjMatch));
-        if (proj) {
-          targetFolderId = proj.imagesFolderId;
-          folderLabel = `proyectos/${proj.slug}/imagenes`;
-        }
-      }
-
-      const uploadedId = await driveMemoryService.uploadOrReplace(userId, tmpPhotoPath, fileName, targetFolderId);
-      const driveUrl = uploadedId
-        ? `https://drive.google.com/file/d/${uploadedId}/view`
-        : `https://drive.google.com/drive/folders/${targetFolderId}`;
-      return ctx.reply(
-        `✅ *Imagen de marca guardada en Drive:*\n` +
-        `📁 Carpeta: \`silvania/marketing/${folderLabel}\`\n` +
-        `📄 Archivo: \`${fileName}\`\n` +
-        `🔗 [Ver en Drive](${driveUrl})\n\n` +
-        `_Al subirla desde aquí, el scope seguro \`drive.file\` ya la detecta automáticamente en tus próximos vídeos._`,
-        { parse_mode: "Markdown" }
-      );
-    } catch (err: any) {
-      return ctx.reply(`❌ Error subiendo imagen de marca: ${err.message}`);
-    } finally {
-      if (tmpPhotoPath) {
-        try {
-          const fsMod = await import("fs");
-          if (fsMod.default.existsSync(tmpPhotoPath)) fsMod.default.unlinkSync(tmpPhotoPath);
-        } catch {}
-      }
-    }
+    return await handleTelegramMarketingImageUpload(ctx, userId, photo.file_id, caption, ".jpg");
   }
 
   await ctx.replyWithChatAction("typing");
@@ -3697,6 +3800,17 @@ bot.on("message:document", async (ctx) => {
   if (docNameThreat) {
     const warning = await handleSecurityAlert(userId, ctx.from.username || "Usuario de Telegram", docNameThreat);
     return await ctx.reply(warning);
+  }
+
+  // Permitir subir imágenes sin comprimir (PNG transparente, JPG, WEBP) para Marketing Studio con /marketing
+  const docCaption = (ctx.message.caption || "").trim();
+  const docName = doc.file_name || "";
+  const docMime = String(doc.mime_type || "").toLowerCase();
+  const isImageDoc = docMime.startsWith("image/") || /\.(png|jpe?g|webp|gif|svg)$/i.test(docName);
+  if (/^\/marketing\b/i.test(docCaption) && isImageDoc) {
+    const extMatch = docName.match(/\.(png|jpe?g|webp|gif|svg)$/i);
+    const ext = extMatch ? `.${extMatch[1].toLowerCase()}` : (docMime.includes("png") ? ".png" : ".jpg");
+    return await handleTelegramMarketingImageUpload(ctx, userId, doc.file_id, docCaption, ext);
   }
 
   await ctx.replyWithChatAction("typing");

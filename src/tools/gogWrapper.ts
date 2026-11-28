@@ -23,6 +23,12 @@ export async function runGogRaw(command: string, customEnv?: any): Promise<strin
       const escapedJson = jsonStr.replace(/"/g, '\\"');
       return `"${escapedJson}"`;
     });
+  } else {
+    // En POSIX (/bin/sh), las comillas simples internas (ej. '+346...' o d'Alzira) rompen '--values-json '[...]''
+    processedCmd = processedCmd.replace(/--values-json '([\s\S]*?)'(?= --|\s*$)/g, (_, jsonStr) => {
+      const safeSingle = jsonStr.replace(/'/g, `'\\''`);
+      return `--values-json '${safeSingle}'`;
+    });
   }
 
   const fullCmd = `"${gogPath}" ${processedCmd}`;
@@ -393,6 +399,12 @@ export async function runGog(command: string, userId?: number): Promise<string> 
     const tokenTier = tokenObj.authTier || tokenObj.client;
     // Si el tier del token no coincide con el tier configurado para este usuario (mismatch prod vs beta)
     if (tokenTier && userCreds && tokenTier !== userCreds.tier) {
+      // Si el entorno actual no tiene configuradas variables BETA_USER_IDS / GOOGLE_CLIENT_ID_BETA (ej. ejecución local),
+      // NO borrar el token beta compartido en Firestore; solo limpiar keyring local y abortar.
+      if (tokenTier === "beta" && (!config.oauth.betaClientId || !config.oauth.betaUserIds.includes(uId))) {
+        console.warn(`⚠️ [GOG] Token 'beta' para usuario ${uId} protegido: variables beta no activas en este entorno. No se borra de DB.`);
+        throw new Error("Entorno local sin credenciales beta configuradas; token beta preservado en nube.");
+      }
       console.warn(`⚠️ [GOG] Mismatch de tier para usuario ${uId}: token tiene '${tokenTier}', pero tier configurado es '${userCreds.tier}'. Purgando para solicitar /auth.`);
       try {
         await dbService.deleteUserToken(uId);

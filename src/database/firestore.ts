@@ -175,6 +175,30 @@ export const firestoreService = {
     }
   },
 
+  async saveSystemToken(key: string, token: any) {
+    try {
+      const db = getDb();
+      const docRef = db.collection("system_tokens").doc(key);
+      await docRef.set({ token, updatedAt: new Date().toISOString() });
+    } catch (error) {
+      console.error(`Error guardando system_token (${key}) en Firestore:`, error);
+    }
+  },
+
+  async getSystemToken(key: string): Promise<any | null> {
+    try {
+      const db = getDb();
+      const doc = await db.collection("system_tokens").doc(key).get();
+      if (doc.exists) {
+        return doc.data()?.token || null;
+      }
+      return null;
+    } catch (error) {
+      console.error(`Error obteniendo system_token (${key}) de Firestore:`, error);
+      return null;
+    }
+  },
+
   async saveUserSubscription(userId: number, subscription: any) {
     try {
       const db = getDb();

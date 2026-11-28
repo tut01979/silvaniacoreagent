@@ -91,16 +91,38 @@ export const musicAssetSelector = {
     const chunks = loadMusicChunks();
     if (chunks.length === 0) return null;
 
+    const targetProd = options.product || "shared";
+
+    // Aislamiento estricto: la música infantil_eva NUNCA debe mezclarse en vídeos no-Eva (CoreAgent, Marketing, Henry Ford, etc.)
+    const isEvaProduct = targetProd === "eva";
+    let eligiblePool = chunks.filter((c) => {
+      if (isEvaProduct) {
+        return c.category === "infantil_eva" || c.products.includes("eva");
+      }
+      return c.category !== "infantil_eva";
+    });
+    if (eligiblePool.length === 0) {
+      eligiblePool = chunks;
+    }
+
+    // Si hay pistas específicas para el producto (coreagent/marketing), priorizar su subpool para no agotar con tracks ajenos
+    if (targetProd === "coreagent" || targetProd === "marketing") {
+      const productSpecific = eligiblePool.filter((c) => c.products.includes(targetProd));
+      if (productSpecific.length > 0) {
+        eligiblePool = productSpecific;
+      }
+    }
+
     let usageMap = marketingDb.getAssetUsageMap("music");
-    let unusedPool = chunks.filter(
+    let unusedPool = eligiblePool.filter(
       (c) => (usageMap.get(c.id)?.status ?? "sin_usar") === "sin_usar"
     );
 
     let cycleResetTriggered = false;
     if (unusedPool.length === 0) {
-      marketingDb.resetAssetPoolToUnused("music");
+      marketingDb.resetMusicAssetsToUnused(eligiblePool.map((c) => c.id));
       usageMap = marketingDb.getAssetUsageMap("music");
-      unusedPool = chunks;
+      unusedPool = eligiblePool;
       cycleResetTriggered = true;
     }
 
@@ -115,7 +137,6 @@ export const musicAssetSelector = {
 
     const queryVec = computeSemanticVector(queryText);
     const normQuery = normalizeToken(queryText);
-    const targetProd = options.product || "shared";
 
     let bestChunk = unusedPool[0];
     let bestScore = -Infinity;

@@ -132,6 +132,19 @@ const migrations: { [version: number]: () => void } = {
     } catch (e: any) {
       console.warn("⚠️ Columna preferredVoice ya existía en user_settings:", e.message);
     }
+  },
+  6: () => {
+    try {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS system_tokens (
+          key TEXT PRIMARY KEY,
+          token TEXT NOT NULL,
+          updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+    } catch (e: any) {
+      console.warn("⚠️ Error creando tabla system_tokens:", e.message);
+    }
   }
 };
 
@@ -289,7 +302,15 @@ export const dbService = {
 
     const stmt = db.prepare("SELECT token FROM user_tokens WHERE userId = ?");
     const row = stmt.get(userId) as { token: string } | undefined;
-    return row ? JSON.parse(row.token) : null;
+    if (row) {
+      const parsed = JSON.parse(row.token);
+      if (config.db.useFirebase && parsed?.refresh_token) {
+        // Auto-curación si Firestore perdió el documento pero SQLite del volumen aún lo conserva
+        firestoreService.saveUserToken(userId, parsed).catch(() => {});
+      }
+      return parsed;
+    }
+    return null;
   },
 
   deleteUserToken: async (userId: number): Promise<void> => {
@@ -298,6 +319,32 @@ export const dbService = {
 
     if (config.db.useFirebase) {
       await firestoreService.deleteUserToken(userId);
+    }
+  },
+
+  saveSystemToken: async (key: string, token: any): Promise<void> => {
+    const stmt = db.prepare(
+      "INSERT INTO system_tokens (key, token, updatedAt) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET token = excluded.token, updatedAt = CURRENT_TIMESTAMP"
+    );
+    stmt.run(key, JSON.stringify(token));
+
+    if (config.db.useFirebase) {
+      await firestoreService.saveSystemToken(key, token);
+    }
+  },
+
+  getSystemToken: async (key: string): Promise<any | null> => {
+    if (config.db.useFirebase) {
+      const token = await firestoreService.getSystemToken(key);
+      if (token) return token;
+    }
+
+    try {
+      const stmt = db.prepare("SELECT token FROM system_tokens WHERE key = ?");
+      const row = stmt.get(key) as { token: string } | undefined;
+      return row ? JSON.parse(row.token) : null;
+    } catch {
+      return null;
     }
   },
 

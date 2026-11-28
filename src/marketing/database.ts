@@ -195,6 +195,17 @@ export const marketingDb = {
     prepareCached(`UPDATE ${table} SET status = 'sin_usar'`).run();
   },
 
+  resetMusicAssetsToUnused(ids: string[]): void {
+    if (!ids || ids.length === 0) return;
+    const stmt = prepareCached(`UPDATE music_asset_usage SET status = 'sin_usar' WHERE id = ?`);
+    const tx = db.transaction((targetIds: string[]) => {
+      for (const id of targetIds) {
+        stmt.run(id);
+      }
+    });
+    tx(ids);
+  },
+
   getAssetPoolStats(pool: "visual" | "music"): {
     total: number;
     unused: number;
